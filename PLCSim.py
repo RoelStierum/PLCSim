@@ -1,167 +1,202 @@
-from asyncua import Server, ua
-from asyncua.common.node import Node
-from datetime import datetime
-import asyncio
-from enum import Enum
+from opcua import Server, ua
 import logging
+import signal
+import sys
+import socket
+import time
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-class SystemMode(Enum):
-    MANUAL = 0
-    AUTOMATIC = 1
-    MAINTENANCE = 2
+def is_port_in_use(port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1)
+            result = s.connect_ex(('localhost', port))
+            if result == 0:
+                logger.info(f"Port {port} is in use")
+                return True
+            else:
+                logger.info(f"Port {port} is available (error code: {result})")
+                return False
+    except Exception as e:
+        logger.error(f"Error checking port {port}: {e}")
+        return False
 
-class TaskType(Enum):
-    NONE = 0
-    PICK = 1
-    PLACE = 2
-    MOVE = 3
-
-class Status(Enum):
-    IDLE = 0
-    BUSY = 1
-    ERROR = 2
-    COMPLETED = 3
-
-class PLCSimulator:
+class PLCTest:
     def __init__(self):
         self.server = None
         self.namespace = None
         self.variables = {}
-        self.status = Status.IDLE
-        self.task_type = TaskType.NONE
-        self.system_mode = SystemMode.MANUAL
-        self.error_message = ""
+        self.watchdog_counter = 0
+        self.watchdog_value = False
+        self.server_url = "opc.tcp://127.0.0.1:4860"
+        logger.info("[INIT] PLCTest initialized with URL: %s", self.server_url)
 
-    async def initialize(self):
+    def initialize(self):
+        """Initialize the OPC UA server and create variables"""
         try:
-            # Initialize server
+            # Create server
             self.server = Server()
-            
-            # Set endpoint and server name
-            await self.server.init()
-            self.server.set_endpoint("opc.tcp://127.0.0.1:4860")
-            self.server.set_server_name("PLCSimulator")
-            
-            # Set security policy to allow open connections
-            self.server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
+            self.server.set_endpoint("opc.tcp://0.0.0.0:4860/")
+            self.server.set_server_name("PLCSim")
             
             # Register namespace
-            uri = "http://plcsim.example.com"
-            self.namespace = await self.server.register_namespace(uri)
-            logger.info(f"Namespace registered with index {self.namespace}")
+            self.namespace = self.server.register_namespace("http://plcsim.example.com")
             
-            # Create objects and variables
-            objects = self.server.nodes.objects
-            plc_node = await objects.add_object(self.namespace, "PLC")
+            # Get Objects node
+            objects = self.server.get_objects_node()
             
-            # Add variables with proper data types and make them writable
-            self.variables["status"] = await plc_node.add_variable(self.namespace, "iStatus", ua.Variant(0, ua.VariantType.Int32))
-            self.variables["task_type"] = await plc_node.add_variable(self.namespace, "iTaskType", ua.Variant(0, ua.VariantType.Int32))
-            self.variables["system_mode"] = await plc_node.add_variable(self.namespace, "iMainStatus", ua.Variant(0, ua.VariantType.Int32))
-            self.variables["error_message"] = await plc_node.add_variable(self.namespace, "sAlarmMessage", ua.Variant("", ua.VariantType.String))
+            # Create PLC object
+            self.plc = objects.add_object(self.namespace, "PLC")
             
-            # Add additional variables needed by EcoSystemSim
-            self.variables["origination"] = await plc_node.add_variable(self.namespace, "iOrigination", ua.Variant(0, ua.VariantType.Int32))
-            self.variables["destination"] = await plc_node.add_variable(self.namespace, "iDestination", ua.Variant(0, ua.VariantType.Int32))
-            self.variables["station_status"] = await plc_node.add_variable(self.namespace, "iStationStatus", ua.Variant(0, ua.VariantType.Int32))
-            self.variables["short_alarm"] = await plc_node.add_variable(self.namespace, "sShortAlarmDescription", ua.Variant("", ua.VariantType.String))
-            self.variables["alarm_solution"] = await plc_node.add_variable(self.namespace, "sAlarmSolution", ua.Variant("", ua.VariantType.String))
-            self.variables["watchdog"] = await plc_node.add_variable(self.namespace, "xWatchDog", ua.Variant(False, ua.VariantType.Boolean))
-            self.variables["tray_in_elevator"] = await plc_node.add_variable(self.namespace, "xTrayInElevator", ua.Variant(False, ua.VariantType.Boolean))
-            self.variables["ack_movement"] = await plc_node.add_variable(self.namespace, "xAcknowledgeMovement", ua.Variant(False, ua.VariantType.Boolean))
+            # Create variables
+            self.variables = {
+                "xWatchDog": self.plc.add_variable(self.namespace, "xWatchDog", False),
+                "xStopServer": self.plc.add_variable(self.namespace, "xStopServer", False),
+                "iStatus": self.plc.add_variable(self.namespace, "iStatus", 0),
+                "iTaskType": self.plc.add_variable(self.namespace, "iTaskType", 0),
+                "iOrigin": self.plc.add_variable(self.namespace, "iOrigin", 0),
+                "iDestination": self.plc.add_variable(self.namespace, "iDestination", 0),
+                "iError": self.plc.add_variable(self.namespace, "iError", 0),
+                "iErrorCode": self.plc.add_variable(self.namespace, "iErrorCode", 0),
+                "iErrorText": self.plc.add_variable(self.namespace, "iErrorText", ""),
+                "iMode": self.plc.add_variable(self.namespace, "iMode", 0),
+                # Log variables
+                "sLastJob": self.plc.add_variable(self.namespace, "sLastJob", ""),
+                "sJobHistory": self.plc.add_variable(self.namespace, "sJobHistory", ""),
+                "sErrorHistory": self.plc.add_variable(self.namespace, "sErrorHistory", ""),
+                "iTotalJobs": self.plc.add_variable(self.namespace, "iTotalJobs", 0),
+                "iTotalErrors": self.plc.add_variable(self.namespace, "iTotalErrors", 0)
+            }
             
-            # Make variables writable
+            # Set variables to be writable
             for var in self.variables.values():
-                await var.set_writable()
-            
-            # Set initial values
-            await self.variables["status"].write_value(ua.Variant(self.status.value, ua.VariantType.Int32))
-            await self.variables["task_type"].write_value(ua.Variant(self.task_type.value, ua.VariantType.Int32))
-            await self.variables["system_mode"].write_value(ua.Variant(self.system_mode.value, ua.VariantType.Int32))
-            await self.variables["error_message"].write_value(ua.Variant(self.error_message, ua.VariantType.String))
+                var.set_writable()
             
             # Start server
-            await self.server.start()
-            logger.info(f"Server started at {self.server.endpoint}")
+            self.server.start()
+            logger.info("Server started at opc.tcp://0.0.0.0:4860/")
+            
+            return True
             
         except Exception as e:
             logger.error(f"Error initializing server: {e}")
-            if self.server:
-                try:
-                    await self.server.stop()
-                except:
-                    pass
-            raise
+            return False
 
-    async def update_status(self, new_status: Status):
+    def run(self):
+        """Run the server and handle watchdog updates"""
         try:
-            self.status = new_status
-            await self.variables["status"].write_value(ua.Variant(new_status.value, ua.VariantType.Int32))
-            logger.info(f"Status updated to {new_status.name}")
-        except Exception as e:
-            logger.error(f"Error updating status: {e}")
-            raise
-
-    async def update_task_type(self, new_task_type: TaskType):
-        try:
-            self.task_type = new_task_type
-            await self.variables["task_type"].write_value(ua.Variant(new_task_type.value, ua.VariantType.Int32))
-            logger.info(f"Task type updated to {new_task_type.name}")
-        except Exception as e:
-            logger.error(f"Error updating task type: {e}")
-            raise
-
-    async def send_error_message(self, message: str):
-        try:
-            self.error_message = message
-            await self.variables["error_message"].write_value(ua.Variant(message, ua.VariantType.String))
-            logger.info(f"Error message updated: {message}")
-        except Exception as e:
-            logger.error(f"Error sending error message: {e}")
-            raise
-
-    async def run(self):
-        try:
-            # Toggle watchdog every second to indicate system is alive
-            watchdog_value = False
+            self.running = True
+            counter = 0
             
-            while True:
-                # Toggle watchdog
-                watchdog_value = not watchdog_value
-                await self.variables["watchdog"].write_value(ua.Variant(watchdog_value, ua.VariantType.Boolean))
+            while self.running:
+                # Check if stop flag is set
+                if self.variables["xStopServer"].get_value():
+                    logger.info("Stop flag detected, shutting down server...")
+                    self.stop()
+                    break
                 
-                # Simulate PLC behavior
-                if self.status == Status.BUSY:
-                    # Simulate task execution
-                    await asyncio.sleep(2)
-                    await self.update_status(Status.COMPLETED)
+                # Update watchdog
+                counter += 1
+                self.variables["xWatchDog"].set_value(not self.variables["xWatchDog"].get_value())
+                logger.info(f"[WATCHDOG] Updated: {self.variables['xWatchDog'].get_value()} (counter: {counter})")
                 
-                await asyncio.sleep(1)
+                time.sleep(1)
+                
         except Exception as e:
-            logger.error(f"Error in main loop: {e}")
-            raise
+            logger.error(f"Error in run loop: {e}")
+            self.stop()
 
-async def main():
-    plc = PLCSimulator()
+    def stop(self):
+        """Stop the server gracefully"""
+        try:
+            logger.info("[STOP] Stopping server...")
+            self.server.stop()
+            logger.info("[STOP] Server stopped successfully")
+        except Exception as e:
+            logger.error(f"[STOP] Error stopping server: {str(e)}")
+        finally:
+            sys.exit(0)
+
+    def log_job(self, job_type, origin, destination, status):
+        """Log a job to the PLC history"""
+        try:
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            job_info = f"[{timestamp}] {job_type}: {origin} -> {destination} ({status})"
+            
+            # Update last job
+            self.variables["sLastJob"].set_value(job_info)
+            
+            # Update job history (keep last 10 jobs)
+            current_history = self.variables["sJobHistory"].get_value()
+            new_history = f"{job_info}\n{current_history}"
+            if new_history.count('\n') > 10:  # Keep only last 10 entries
+                new_history = '\n'.join(new_history.split('\n')[:10])
+            self.variables["sJobHistory"].set_value(new_history)
+            
+            # Update total jobs counter
+            total_jobs = self.variables["iTotalJobs"].get_value()
+            self.variables["iTotalJobs"].set_value(total_jobs + 1)
+            
+            logger.info(f"Logged job: {job_info}")
+        except Exception as e:
+            logger.error(f"Error logging job: {e}")
+
+    def log_error(self, error_code, error_text):
+        """Log an error to the PLC history"""
+        try:
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            error_info = f"[{timestamp}] Error {error_code}: {error_text}"
+            
+            # Update error history (keep last 10 errors)
+            current_history = self.variables["sErrorHistory"].get_value()
+            new_history = f"{error_info}\n{current_history}"
+            if new_history.count('\n') > 10:  # Keep only last 10 entries
+                new_history = '\n'.join(new_history.split('\n')[:10])
+            self.variables["sErrorHistory"].set_value(new_history)
+            
+            # Update total errors counter
+            total_errors = self.variables["iTotalErrors"].get_value()
+            self.variables["iTotalErrors"].set_value(total_errors + 1)
+            
+            logger.info(f"Logged error: {error_info}")
+        except Exception as e:
+            logger.error(f"Error logging error: {e}")
+
+def signal_handler(sig, frame):
+    logger.info("[SIGNAL] Received shutdown signal, stopping server...")
+    if plc and plc.server:
+        plc.stop()
+    sys.exit(0)
+
+def main():
+    global plc
+    # Register signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    plc = PLCTest()
     try:
-        await plc.initialize()
-        logger.info("PLC simulator initialized successfully")
-        await plc.run()
+        plc.initialize()
+        logger.info("[MAIN] PLC test simulator initialized successfully")
+        plc.run()
     except KeyboardInterrupt:
-        logger.info("Shutting down server...")
+        logger.info("[MAIN] Shutting down server...")
         if plc.server:
-            await plc.server.stop()
+            plc.stop()
     except Exception as e:
-        logger.error(f"Error in main: {e}")
+        logger.error(f"[MAIN] Error in main: {str(e)}")
         if plc.server:
             try:
-                await plc.server.stop()
+                plc.stop()
             except:
                 pass
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    plc = None
+    main() 
