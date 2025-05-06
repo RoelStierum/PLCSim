@@ -1,0 +1,8 @@
+2025-05-06 12:07:39,338 - PLCSim_DualLift_ST - INFO - Setting up dual-lift server on endpoint: opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-06 12:07:42,623 - PLCSim_DualLift_ST - INFO - Server initialized with basic setup, now adding namespaces and nodes...
+2025-05-06 12:07:42,623 - PLCSim_DualLift_ST - INFO - Registered namespace with index: 2
+2025-05-06 12:07:43,138 - PLCSim_DualLift_ST - INFO - Created LiftSystem object node
+2025-05-06 12:07:43,139 - PLCSim_DualLift_ST - INFO - Creating variables for Lift1
+2025-05-06 12:07:43,145 - PLCSim_DualLift_ST - INFO - Creating variables for Lift2
+2025-05-06 12:07:43,152 - PLCSim_DualLift_ST - INFO - OPC UA Server Variables Initialized
+2025-05-06 12:07:43,152 - PLCSim_DualLift_ST - INFO - Dual Lift PLC Simulator Server Started (ST Logic).

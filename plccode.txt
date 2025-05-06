@@ -1,0 +1,972 @@
+
+REGION Functionblock Documentation
+    
+(*  Gibas Automation B.V.
+    =========================================
+    created: 03.03.2021 Adrie van der Meer    // To V0.1
+    edited:  08.10.2021 Adrie van der Meer    // To V0.2 
+    
+    +-----+    +-------------------------------------------+                                                                                                             
+    |     |    |                                           |                                                                                                             
+    |     |    |    Region: Warning / Error Bit Mapping    |    In this REGION all station internal warning and error can be mapped to BOOL variables.                   
+    |     |    |                                           |                                                                                                             
+    |     |    +-------------------------------------------+                                                                                                             
+    |     |    +-------------------------------------------+                                                                                                             
+    |     |    |                                           |                                                                                                             
+    |     |    |    Region: Standard station Handler       |    In this REGION the functionblock "FB_Station_Handler" is declared. Used for other methods then the main  
+    |     |    |                                           |    Cycle, But influence the "#iCycle". Example: Errors, Warnings, timeouts & Cycle steps.                   
+    |  F  |    +-------------------------------------------+                                                                                                             
+    |  B  |    +-------------------------------------------+                                                                                                             
+    |     |    |                                           |    In this REGION the functionblock "FB_Station_Cntrl" is declared. this is a station internal control      
+    |  B  |    | Region: Station internal "Enable" control |    Functionblock. This links the states TO the Main control "FB_Main_Cntrl" as output BY DataType           
+    |  a  |    |                                           |    "iq_Station_Cntrl_States" -> Controls the the Variable  "#xCMD_Enable"  in the function block.           
+    |  s  |    +-------------------------------------------+                                                                                                             
+    |  i  |    +-------------------------------------------+                                                                                                             
+    |  c  |    |                                           |                                                                                                             
+    |     |    |        Region: Main Program Cycle         |    In this REGION de Main Progam Case "#iCycle" is declared. Here some steps are fixed as an standard       
+    |  L  |    |                                           |    'situation" step (-30 TO 100,200,300,400,500,600,777 & 888). Everthing in between can be used FOR the station user program.  
+    |  a  |    +-------------------------------------------+                                                                                                             
+    |  y  |    +-------------------------------------------+                                                                                                             
+    |  o  |    |                                           |                                                                                                             
+    |  u  |    |        Region: HMI states simplefy        |    In this REGION the functionblock "#FB_HMI_Simple_State" is declared. Function for simplefying all states 
+    |  t  |    |                                           |    AND situation from the specific station TO the "HMI". Also the "States" from Subfunction can be mapped here. 
+    |     |    +-------------------------------------------+                                                                                                             
+    |     |    +-------------------------------------------+                                                                                                             
+    |     |    |                                           |                                                                                                             
+    |     |    |          Region: Sub functions            |    REGION where sub function can be declared.Example for robot communcation, Camera's, cylinders or forc    
+    |     |    |                                           |    programs that runs parralel TO the Main program Cycle, etc.                                              
+    |     |    +-------------------------------------------+                                                                                                             
+    |     |    +-------------------------------------------+                                                                                                             
+    |     |    |                                           |                                                                                                             
+    |     |    |   Region: Discrete Output Functionblock   |    In this REGION all station internal variables that must be written to de station output can be declared. 
+    |     |    |                                           |                                                                                                             
+    +-----+    +-------------------------------------------+   *)
+END_REGION
+
+REGION Warning / "Error" bit mapping 
+(* Warning positive flank - bit mapping *)
+    #arrEdge_R_Warning[0] := #xProces_start;  // Auto init station by rising edge on application start
+    #arrEdge_R_Warning[1] := #xSub1Warning;
+    #arrEdge_R_Warning[2] := #xSub2Warning;
+    //#arrEdge_R_Warning[3]:= ;
+    //#arrEdge_R_Warning[4]:= ;
+    //#arrEdge_R_Warning[5]:= ;
+    //#arrEdge_R_Warning[6]:= ;
+    //#arrEdge_R_Warning[7]:= ;
+    //#arrEdge_R_Warning[8]:= ;
+    //#arrEdge_R_Warning[9]:= ;
+    //#arrEdge_R_Warning[10]:= ;
+    //#arrEdge_R_Warning[11]:= ;
+    //#arrEdge_R_Warning[12]:= ;
+    //#arrEdge_R_Warning[13]:= ;
+    //#arrEdge_R_Warning[14]:= ;
+    //#arrEdge_R_Warning[15]:= ;
+    
+(* Error positive flank - bit mapping *)
+    #arrEdge_R_Error[0] := #FB_Station_Handler.q_xCycle_T_to_State;
+    #arrEdge_R_Error[1] := #FB_Station_Handler.q_xGeneric_Timeout;
+    //arrEdge_R_Error[2]:= ;
+    //arrEdge_R_Error[3]:= ;
+    //arrEdge_R_Error[4]:= ;
+    //arrEdge_R_Error[5]:= ;
+    //arrEdge_R_Error[6]:= ;
+    //arrEdge_R_Error[7]:= ;
+    //arrEdge_R_Error[8]:= ;
+    //arrEdge_R_Error[9]:= ;
+    //arrEdge_R_Error[10]:= ;
+    //arrEdge_R_Error[11]:= ;
+    //arrEdge_R_Error[12]:= ;
+    //arrEdge_R_Error[13]:= ;
+    //arrEdge_R_Error[14]:= ;
+    //arrEdge_R_Error[15]:= ;
+    
+(* Error static - bit mapping / when one = true no reset possible*)
+    #arrStatic_R_Error[0] := #i_xExt_Error;
+    #arrStatic_R_Error[1] := #i_xEmer_Stop;
+    #arrStatic_R_Error[2] := #xSub1Error;
+    #arrStatic_R_Error[3] := #xSub2Error;
+    //arrStatic_R_Error[4]:= ;
+    //arrStatic_R_Error[5]:= ;
+    //arrStatic_R_Error[6]:= ;
+    //arrStatic_R_Error[7]:= ;
+    //arrStatic_R_Error[8]:= ;
+    //arrStatic_R_Error[9]:= ;
+    //arrStatic_R_Error[10]:= ;
+    //arrStatic_R_Error[11]:= ;
+    //arrStatic_R_Error[12]:= ;
+    //arrStatic_R_Error[13]:= ;
+    //arrStatic_R_Error[14]:= ;
+    //arrStatic_R_Error[15]:= ;
+END_REGION
+
+REGION Standard station Handler - used for Errors, Warnings, timeouts & Cycle steps. 
+(* Standard station Handler - Used for other methods then the main Cycle, But influence the "#iCycle". Example: Errors, Warnings, timeouts & Cycle steps *)
+    #FB_Station_Handler(i_xCMD_Enable := #xCMD_Enable,
+                        i_xCMD_Reset := #i_xCMD_Reset,
+                        i_xAuto_mode := #xAuto_Mode,
+                        i_xHand_mode := #xHand_Mode,
+                        i_xTeach_mode := #xTeach_Mode,
+                        i_xInit_all := #xInit_all,
+                        i_xEmer_Stop := #i_xEmer_Stop,
+                        i_xReset_State := #xReset_State,   // Main Control Reset state,,,,
+                        i_xCycle_Timeout := #xCycle_Timeout,
+                        i_tCycle_Timeout := #tCycle_Timeout,
+                        i_tCycle_T_to_State := #tCycle_T_to_State,
+                        i_xCycle_Step_seq := #xCycle_Step_seq,
+                        i_tCycle_Step_seq := #tCycle_Step_seq,
+                        i_iCycle_Count := #iCycle_count,
+                        i_arrEdge_R_Warning := #arrEdge_R_Warning,
+                        i_arrEdge_R_Error := #arrEdge_R_Error,
+                        i_arrStatic_R_Error := #arrStatic_R_Error,
+                        iq_Settings_Application := #iq_Settings_Application,
+                        iq_Settings_Station := #iq_Settings_Station,
+                        iq_iCycle := #iCycle,
+                        iq_arrRemove_Product := #arrRemove_Product);
+END_REGION
+
+REGION Station internal "Enable" control Functionblock
+(*Station internal control Functionblock. This links the states to the main control "FB_Main_Cntrl" as output by DataType "iq_Station_Cntrl_States" -> enable the the Variable  "#xCMD_Enable"  in the function block. *)
+    #FB_Station_Cntrl(i_xCMD_Pause_Process := #xCmdPause_Process,
+                      i_arrRemove_Product := #arrRemove_Product,
+                      i_iNr_off_products := #iNr_off_products,
+                      i_iState_Simple := #iq_HMI_Stat_State.iState_Simple,
+                      q_xReset_State => #xReset_State,
+                      q_xInit_all => #xInit_all,
+                      q_xProces_start => #xProces_start,
+                      iq_iCycle := #iCycle,
+                      iq_Settings_Application := #iq_Settings_Application,
+                      iq_Settings_Station := #iq_Settings_Station,
+                      iq_Station_Cntrl_States := #iq_Station_Cntrl_States);
+    
+    (* Combine external enable "i_xCMD_Enable" and internal enable by "#FB_Station_Cntrl" *)
+    #xCMD_Enable := #FB_Station_Cntrl.q_xCMD_Enable OR #i_xCMD_Enable;
+    
+(* Combine external #xAuto_Mode "#i_xAuto_mode" and internal enable by "#FB_Station_Cntrl" *)
+    #xAuto_Mode := #FB_Station_Cntrl.q_xAuto_Mode OR #i_xAuto_mode;
+    
+(* Combine external #xHand_Mode "#i_xHand_mode" and internal enable by "#FB_Station_Cntrl" *)
+    #xHand_Mode := #FB_Station_Cntrl.q_xHand_Mode OR #i_xHand_mode;
+    
+(* Combine external #xHand_Mode "#i_xHand_mode" and internal enable by "#FB_Station_Cntrl" *)
+    #xTeach_Mode := #FB_Station_Cntrl.q_xTeach_mode OR #i_xTeach_Mode;
+    
+END_REGION
+
+REGION Main program Cycle
+(* Main Program *)
+    
+    (* Cycle program documentation *)
+    (*
+    +-----+   +-----------------------------+    
+    |     |   |                             |           CASE: Hand mode.    
+    |     |   |         iCycle: -30         |           When this mode is activated the station is in hand control AND active
+    |     |   |                             |           This CASE can be activated with variable "#xHand_Mode" AND "#xCMD_Enable" must be true. All hand discrete 
+    |     |   +-----------------------------+           variables must be declared in this CASE. Example: Festo Jog, Cylinder control, etc. 
+    |     |   +-----------------------------+    
+    |     |   |                             |           CASE: Home/ init.
+    |     |   |         iCycle: -20         |           This CASE is used FOR devices that are assigned TO the station AND must go an Home / init position. Used FOR 
+    |     |   |                             |           example easy acces BY the device.When devices has reached position the CASE #iCycle must be 0.
+    |     |   +-----------------------------+    
+    |     |   +-----------------------------+    
+    |     |   |                             |           CASE: Software init.
+    |     |   |         iCycle: -10         |           This CASE is used FOR init Main program cycle AND Subfunctions (When more porgrams must be syncronized as
+    |     |   |                             |           complete oriented station). FOR Example When robot is used in the station AND both Software must be restart
+    |     |   +-----------------------------+           because the machine has an warning/"Error" OR the complete installation was stopped. 
+    |     |   +-----------------------------+    
+    |     |   |                             |           CASE: Station/ program start/ Idle.
+    |     |   |         iCycle: 0           |           In this CASE the station is waiting FOR an start from the proces OR the station is NOT active.
+    |     |   |                             |           The variables '#xCMD_Enable' AND '#xAuto_Mode' must be true TO go TO CASE 10. also used FOR the internal
+    |     |   +-----------------------------+           variables that must be initialized.
+    |     |   +-----------------------------+    
+    |     |   |                             |           CASE: cycle "pre" start.
+    |     |   |         iCycle: 10          |           This CASE is used FOR an cycle "pre" start function. The state is used in combinatie with "FB_Main_Cntrl" TO check
+    |     |   |                             |           IF an station is cycle start. FOR Example When an robot must go TO an start position AND the complete installation 
+    |     |   +-----------------------------+           must wait FOR the robot has reached this position. When the robot has reached the position the CASE will be 100.
+    |     |   +-----------------------------+ --+       
+    |     |   |                             | N |       CASE: station program waiting.
+    |     |   |         iCycle: 100         | o |       From this point the main application program cycle is waiting, but the station is 'waiting'. When  the value #iCycle
+    |     |   |                             | r |       = 100 means FOR the "FB_Main_Cntrl" that the station is 'running' AND the cycle "pre start is done.
+    |     |   +-----------------------------+ m |
+    |     |   +-----------------------------+ a |
+    |     |   |                             | l |       CASE: Station Program running.
+    |     |   |      iCycle: 101..199       |   |       From this point the main application program cycle is running AND the station is 'running'.the value #iCycle = 101
+    |     |   |                             | P |       TO 199 means FOR the "FB_Main_Cntrl" that the station is 'running' AND When cycle stop is active the CASE must
+    |     |   +-----------------------------+ r |       be at least different THEN the #iCycle numbers.
+    |     |   +-----------------------------+ o |
+    |     |   |                             | g |       CASE: Station Program waiting.
+    |  R  |   |         iCycle: 200         | r |       From this point the main application program cycle is waiting, but the station is 'waiting'. When  the value #iCycle 
+    |  e  |   |                             | a |       = 200 means FOR the "FB_Main_Cntrl" that the station is 'running' AND the cycle "pre start is done. 
+    |  g  |   +-----------------------------+ m |
+    |  i  |   +-----------------------------+   |
+    |  o  |   |                             |   |       CASE: Station Program running.
+    |  n  |   |      iCycle: 201..299       |   |       From this point the main application program cycle is running AND the station is 'running'.the value #iCycle = 201
+    |  :  |   |                             |   |       TO 299 means FOR the "FB_Main_Cntrl" that the station is 'running' AND When cycle stop is active the CASE must
+    |  M  |   +-----------------------------+ --+       be at least different THEN the #iCycle numbers.
+    |  a  |   +-----------------------------+ --+
+    |  i  |   |                             | S |       CASE: Station Program waiting.
+    |  n  |   |         iCycle: 300         | e |       From this point the main application program cycle is waiting, but the station is 'waiting'. When  the value #iCycle
+    |     |   |                             | c |       = 300 means FOR the "FB_Main_Cntrl" that the station is 'running' AND the cycle "pre start is done.  
+    |  p  |   +-----------------------------+ o |
+    |  r  |   +-----------------------------+ n |
+    |  o  |   |                             | d |       CASE: Station Program running.
+    |  g  |   |      iCycle: 301..399       |   |       From this point the main application program cycle is running AND the station is 'running'.the value #iCycle = 301
+    |  r  |   |                             | P |       TO 399 means FOR the "FB_Main_Cntrl" that the station is 'running' AND When cycle stop is active the CASE must
+    |  a  |   +-----------------------------+ r |       be at least different THEN the #iCycle numbers.
+    |  m  |   +-----------------------------+ o |
+    |     |   |                             | g |       CASE: Station Program waiting.
+    |  C  |   |         iCycle: 400         | r |       From this point the main application program cycle is waiting, but the station is 'waiting'. When  the value #iCycle
+    |  y  |   |                             | a |       = 400 means FOR the "FB_Main_Cntrl" that the station is 'running' AND the cycle "pre start is done. 
+    |  c  |   +-----------------------------+ m |
+    |  l  |   +-----------------------------+   |
+    |  e  |   |                             |   |       CASE: Station Program running.  
+    |     |   |      iCycle: 401..499       |   |       From this point the main application program cycle is running AND the station is 'running'.the value #iCycle = 401
+    |     |   |                             |   |       TO 499 means FOR the "FB_Main_Cntrl" that the station is 'running' AND When cycle stop is active the CASE must
+    |     |   +-----------------------------+ --+       be at least different THEN the #iCycle numbers
+    |     |   +-----------------------------+ --+
+    |     |   |                             | T |       CASE: station program waiting.
+    |     |   |         iCycle: 500         | h |       From this point the main application program cycle is waiting, but the station is 'waiting'. When  the value #iCycle
+    |     |   |                             | i |       = 500 means FOR the "FB_Main_Cntrl" that the station is 'running' AND the cycle "pre start is done. 
+    |     |   +-----------------------------+ r |
+    |     |   +-----------------------------+ d |
+    |     |   |                             |   |       CASE: Station Program running.
+    |     |   |      iCycle: 501..599       | P |       From this point the main application program cycle is running AND the station is 'running'.the value #iCycle = 501
+    |     |   |                             | r |       TO 599 means FOR the "FB_Main_Cntrl" that the station is 'running' AND When cycle stop is active the CASE must 
+    |     |   +-----------------------------+ o |       be at least different THEN the #iCycle numbers
+    |     |   +-----------------------------+ g |
+    |     |   |                             | r |       CASE: station program waiting.
+    |     |   |         iCycle: 600         | a |       From this point the main application program cycle is waiting, but the station is 'waiting'. When  the value #iCycle 
+    |     |   |                             | M |       = 600 means FOR the "FB_Main_Cntrl" that the station is 'running' AND the cycle "pre start is done. 
+    |     |   +-----------------------------+   |
+    |     |   +-----------------------------+   |
+    |     |   |                             |   |       CASE: Station Program running.
+    |     |   |      iCycle: 601..699       |   |       From this point the main application program cycle is running AND the station is 'running'.the value #iCycle = 601
+    |     |   |                             |   |       TO 699 means FOR the "FB_Main_Cntrl" that the station is 'running' AND When cycle stop is active the CASE must 
+    |     |   +-----------------------------+ --+       be at least different THEN the #iCycle numbers
+    |     |   +-----------------------------+    
+    |     |   |                             |           CASE: station Teachmode
+    |     |   |      #iCycle: 700..776      |           can be Classified  FOR Application specific robot/ device teach mode.
+    |     |   |                             |    
+    |     |   +-----------------------------+    
+    |     |   +-----------------------------+    
+    |     |   |                             |           CASE: Station Warning.
+    |     |   |         iCycle: 777         |           Can be Classified  FOR Non installation specific warning/ Error.
+    |     |   |                             |    
+    |     |   +-----------------------------+    
+    |     |   +-----------------------------+    
+    |     |   |                             |           CASE: Station Error.
+    |     |   |         iCycle: 888         |           Can be Classified  FOR installation specific warning/ Error. When this error occured the 
+    |     |   |                             |    
+    +-----+   +-----------------------------+  *)
+    
+    CASE #iCycle OF
+        -40: // Home / Not active mode
+            #sSeq_Step_comment := 'Home mode';
+            IF NOT #iq_HMI_Elevator.xReqHomeMode THEN
+                #iCycle := 10;
+            END_IF;
+            
+        -30: // Hand mode - if hand is false then icycle = 777
+            #sSeq_Step_comment := 'Handmatige modus actief';
+            
+        -20: //  Dit werkt niet in deze versie van A3ML
+            #sSeq_Step_comment := 'Station gaat naar zijn rustpositie';
+
+        -10: // init case PLC And Sub Functions -> alway -10 when xEnable was false
+            #sSeq_Step_comment := 'init case PLC And Sub Functions';
+            
+            (* +------------------------------------------------------------------------------------------------------------------+ 
+               |  Here can variables be added for example: Drive is enabled and Laser is active. When init done then iCycle:=0;   |
+               +------------------------------------------------------------------------------------------------------------------+ *)
+            
+            #xStartFrokInit := true;
+            #iReqForkPos := #iCurrentForkSide;
+            IF #SubSt_01_Forks.q_iSubStation_Cycle >= 10 THEN
+                #xStartEnginInit := true;
+                IF #SubSt_02_Engin.q_iSubStation_Cycle >= 10 THEN
+                    #iCycle := 0;
+                END_IF;
+            END_IF;
+            
+        0: // Idle State -> Idle / cycle programm start point
+            
+            (* Step Comment to HMI *)
+            #sSeq_Step_comment := 'Idle State -> cycle programm Idle/ start point';
+            
+            (* Init internal variables *)
+            #xCycle_Timeout := false;
+            #tCycle_Timeout := T#0s;
+            #tCycle_T_to_State := T#0s;
+            #xCycle_Step_seq := false;
+            #tCycle_Step_seq := t#0s;
+            #iCycle_count := 0;
+            #xTeachSuccesfull := false;
+            #xTeachFailed := false;
+            #iActiveTeachInValue := 0;
+            #xTeachNewLocation := false;
+            #iActiveTeachInArrayLoc := 0;
+            #ActiveElevatorAssignment.iDestination := 0;
+            #ActiveElevatorAssignment.iOrigination := 0;
+            #ActiveElevatorAssignment.iTaskType := 0;
+            #iToEnginGoToLoc := 0;
+            #xLiftAddPickupOffset := false;
+            #xStartEnginInit := false;
+            #xStartFrokInit := false;
+            
+            (* Station is ready to start the program *)
+            IF #xCMD_Enable AND #xAuto_Mode THEN // Here can variables be added for example: robot is running, Drive is enabled or Laser is active
+                #iCycle := 10;
+            END_IF;
+            
+        10: // Station is ready. Example: Drive enabled, Robot ready etc.
+            #sSeq_Step_comment := 'Station is waiting for ready start';
+            
+            #iq_HMI_Elevator.ManualElevatorAssignment.iTaskType := 0;
+            #iq_HMI_Elevator.ManualElevatorAssignment.iDestination := 0;
+            #iq_HMI_Elevator.ManualElevatorAssignment.iOrigination := 0;
+            #ActiveElevatorAssignment.iDestination := 0;
+            #ActiveElevatorAssignment.iOrigination := 0;
+            #ActiveElevatorAssignment.iTaskType := 0;
+            #xExecutingSemiAutoAssignment := false;
+            
+            (*When cycle start is done*)
+            IF #FB_Station_Cntrl.q_xProces_run THEN
+                IF #i_xSemiAutoMode THEN
+                    #iCycle := 15;
+                    #sSeq_Step_comment := 'Waiting for semi-automatic assignment';
+                ELSE
+                    #iCycle := 20;
+                END_IF;
+            END_IF;
+            
+            IF #iq_HMI_Elevator.xReqHomeMode AND #i_xHomeSensor THEN
+                #iCycle := -40;
+            ELSIF #iq_HMI_Elevator.xReqHomeMode AND NOT (#iCycle = -20) THEN
+                #sSeq_Step_comment := 'Cannot go into homemode, home sensor NOT activated';
+            END_IF;
+            
+        15: // Waiting for semi-automatic assignment
+            IF #iq_HMI_Elevator.ManualElevatorAssignment.iTaskType > 0 AND #xFromHmiExecuteManualTask THEN
+                IF #iq_HMI_Elevator.ManualElevatorAssignment.iOrigination < 0 OR #iq_HMI_Elevator.ManualElevatorAssignment.iOrigination > #iq_RowLocationInfo.Amount_Of_Rows THEN
+                    #sSeq_Step_comment := 'Assignemnt not possible orgin is out of reach';
+                ELSIF #iq_HMI_Elevator.ManualElevatorAssignment.iDestination < 0 OR #iq_HMI_Elevator.ManualElevatorAssignment.iDestination > #iq_RowLocationInfo.Amount_Of_Rows THEN
+                    #sSeq_Step_comment := 'Assignemnt not possible destination is out of reach';
+                ELSE
+                    #iCycle := 25;
+                    #ActiveElevatorAssignment := #iq_HMI_Elevator.ManualElevatorAssignment;
+                    #xExecutingSemiAutoAssignment := true;
+                END_IF;
+            END_IF;
+            
+            IF #iq_HMI_Elevator.xReqHomeMode THEN
+                #iCycle := 40;
+            ELSIF NOT #i_xSemiAutoMode THEN
+                #iCycle := 10;
+            END_IF;
+        20:
+            #sSeq_Step_comment := 'Waiting for assignment from the eco system';
+            
+            IF #i_EcoSystemElevatorAssignment.iTaskType > 0 THEN
+                IF #i_EcoSystemElevatorAssignment.iOrigination < 0 OR #i_EcoSystemElevatorAssignment.iOrigination > #iq_RowLocationInfo.Amount_Of_Rows THEN
+                    #iCycle := 650;
+                    #iCancelAssignmentReson := 3;
+                    #sSeq_Step_comment := 'Error - Eco system. Origin out of reach';
+                ELSIF #i_EcoSystemElevatorAssignment.iDestination < 0 OR #i_EcoSystemElevatorAssignment.iDestination > #iq_RowLocationInfo.Amount_Of_Rows THEN
+                    #iCycle := 650;
+                    #iCancelAssignmentReson := 2;
+                    #sSeq_Step_comment := 'Error - Eco system. Destination out of reach';
+                ELSE
+                    #iCycle := 25;
+                    #ActiveElevatorAssignment := #i_EcoSystemElevatorAssignment;
+                END_IF;
+            END_IF;
+            
+            IF #iq_HMI_Elevator.xReqHomeMode THEN
+                #iCycle := 40;
+            ELSIF #i_xSemiAutoMode THEN
+                #iCycle := 10;
+            END_IF;
+        25:
+            #sSeq_Step_comment := 'Checking the assignment';
+            // chekcing reach the other lift
+            
+            IF #i_iReachOtherLiftHigh >= #q_iActiveReachLow XOR #i_iReachOtherLiftLow >= #q_iActiveReachHigh THEN
+                #iCycle := 650;
+                #iCancelAssignmentReson := 5;
+                #sSeq_Step_comment := 'Error - Lifts cross eachother';
+            ELSIF #i_iReachOtherLiftHigh = #q_iActiveReachLow OR #i_iReachOtherLiftLow = #q_iActiveReachHigh THEN
+                #iCycle := 650;
+                #iCancelAssignmentReson := 5;
+                #sSeq_Step_comment := 'Error - Lifts cross eachother';
+            ELSE
+                IF (#ActiveElevatorAssignment.iDestination = 0 OR #ActiveElevatorAssignment.iOrigination = 0) AND #ActiveElevatorAssignment.iTaskType = 1 THEN
+                    #iCycle := 650;
+                    #iCancelAssignmentReson := 4;
+                    #sSeq_Step_comment := 'Error - Destination and orgin cant be zero with a full move opp';
+                ELSIF #ActiveElevatorAssignment.iOrigination = 0 AND (#ActiveElevatorAssignment.iTaskType = 2 OR #ActiveElevatorAssignment.iTaskType = 3) THEN
+                    #iCycle := 650;
+                    #iCancelAssignmentReson := 4;
+                    #sSeq_Step_comment := 'Error - Orgin cant be zero with a prepare or move to opp';
+                ELSE
+                    #iCycle := 30;
+                END_IF;
+            END_IF;
+            
+        30:
+            #sSeq_Step_comment := 'Assignemnt accepted';
+            
+            IF #ActiveElevatorAssignment.iOrigination = #iElevatorRowLocation AND #ActiveElevatorAssignment.iTaskType = 1 THEN
+                // checking wether the assignment is prepared.
+                #sSeq_Step_comment := 'Assignemnt accepted and lift is at the right row';
+                IF #iCurrentForkSide = #OpperatorSide OR #iCurrentForkSide = #RobotSide THEN
+                    
+                    "DetermenForkSide"(i_iToDetermenLocation := #ActiveElevatorAssignment.iOrigination,
+                                       i_iTransferPoint := #OverslagPuntOppZijdeRobZijde,
+                                       q_iReqSide => #iReqForkSide);
+                    
+                    IF #iReqForkSide = #RobotSide AND #iCurrentForkSide = #RobotSide THEN
+                        #sSeq_Step_comment := 'Vorken zijn juist voorbereid voor deze opdracht';
+                        #iCycle := 102;
+                    ELSIF #iReqForkSide = #OpperatorSide AND #iCurrentForkSide = #OpperatorSide THEN
+                        #sSeq_Step_comment := 'Vorken zijn juist voorbereid voor deze opdracht';
+                        #iCycle := 102;
+                    ELSE
+                        #sSeq_Step_comment := 'Vorken zijn niet juist voorbereid voor deze opdracht';
+                        #iCycle := 100;
+                    END_IF;
+                ELSE
+                    // De lift is op de juiste locatie maar de vorken zijn hier niet op voorbereid
+                    #sSeq_Step_comment := 'Forks are not prepared';
+                    #iCycle := 100;
+                END_IF;
+            ELSE
+                CASE #ActiveElevatorAssignment.iTaskType OF
+                    #FullAssignment:  // Full assignment
+                        IF #iq_HMI_Elevator.xTrayInElevator THEN
+                            #iCycle := 650;
+                            #iCancelAssignmentReson := 1;
+                            #sSeq_Step_comment := 'Error - Picup assignment while tray is on forks';
+                        ELSE
+                            #iCycle := 100;
+                        END_IF;
+                    #MoveToAssignment:  // Move to assignment
+                        #iCycle := 300;
+                    #PreparePickUp:  // Prepare pickup assignment
+                        IF #iq_HMI_Elevator.xTrayInElevator THEN
+                            #iCycle := 650;
+                            #iCancelAssignmentReson := 1;
+                            #sSeq_Step_comment := 'Error - Picup assignment while tray is on forks';
+                        ELSE
+                            #iCycle := 400;
+                        END_IF;
+                    #BringAway:  // bring away assignment
+                        #iCycle := 199;
+                    ELSE
+                        #iCycle := 650;
+                        #iCancelAssignmentReson := 6;
+                        #sSeq_Step_comment := 'Error - Invalid assignment';
+                END_CASE;
+            END_IF;
+            
+        40:
+            // To home mode
+            #sSeq_Step_comment := 'Checking home mode';
+            
+            IF #i_xHomeSensor AND NOT #i_xSensProductInLift THEN
+                #iCycle := -40;
+            ELSIF #i_xSensProductInLift THEN
+                #sSeq_Step_comment := 'Error - Home mode geactiveerd met een product in de lift';
+                "FC_16_WriteErrorDescriptions"(i_sAlarmSolution := 'Haal de tray die op de lift ligt ervanaf.',
+                                               i_sShortAlarmDescr := 'Tray aanwezig',
+                                               i_sSeqSetCom := #sSeq_Step_comment,
+                                               iq_States_StationErrorDescriptions := #iq_States_StationErrorDescriptions,
+                                               iq_Settings_Station := #iq_Settings_Station);
+                #iCycle := 888;
+            ELSIF NOT #i_xHomeSensor THEN
+                #sSeq_Step_comment := 'Zet de lift in de home pos in handmatige modus';
+            END_IF;
+            
+        (*41:
+            #sSeq_Step_comment := 'Lift naar home pos sturen';
+            
+            #iToEnginGoToLoc := 1;
+            #xLiftAddPickupOffset := false;
+            IF #SubSt_02_Engin.q_xLocationReached THEN
+                #iCycle := 42;
+            END_IF;
+            
+        42:
+            #sSeq_Step_comment := 'Lift at location';
+            #iToEnginGoToLoc := 0;
+            #xLiftAddPickupOffset := false;
+            IF NOT #SubSt_02_Engin.q_xLocationReached THEN
+                #iCycle := 43;
+            END_IF;
+            
+        43:
+            #sSeq_Step_comment := 'Lift procces done';
+            #iCycle := -40;*)
+            
+        100:
+            #iq_EcoAssignmentAcknwl.iAssingmentType := #GetTray;
+            #iq_EcoAssignmentAcknwl.iRowNr := #ActiveElevatorAssignment.iOrigination;
+            IF #iq_EcoAssignmentAcknwl.xAcknowldeFromEco OR #i_xSemiAutoMode THEN
+                #iCycle := 101;
+                #iq_EcoAssignmentAcknwl.iAssingmentType := 0;
+                #iq_EcoAssignmentAcknwl.iRowNr := 0;
+            END_IF;
+            
+            (* normal application specific program cycle *)
+        101: // normal application specific program cycle. Wating for product infeed
+            #sSeq_Step_comment := 'Program - Checking starting point';
+            IF NOT #iq_EcoAssignmentAcknwl.xAcknowldeFromEco OR #i_xSemiAutoMode THEN
+                // start when the handshake with the eco system is done
+                IF #SubSt_01_Forks.q_iCurrentForkLocation = #MiddenLocation AND #i_xSensForkStartLocation = true THEN
+                    #iCycle := 102;
+                ELSIF #SubSt_01_Forks.q_iCurrentForkLocation > #MiddenLocation THEN
+                    #sSeq_Step_comment := 'Resetting forks';
+                    #iReqForkPos := #MiddenLocation;
+                END_IF;
+            END_IF;
+        102: // Normal application specific program cycle
+            #sSeq_Step_comment := 'Sending lift to pickup point';
+            
+            #iToEnginGoToLoc := #ActiveElevatorAssignment.iOrigination;
+            #xLiftAddPickupOffset := false;
+            IF #SubSt_02_Engin.q_xLocationReached THEN
+                #iCycle := 105;
+            END_IF;
+            
+        105:
+            #sSeq_Step_comment := 'Lift at location';
+            #iToEnginGoToLoc := 0;
+            #xLiftAddPickupOffset := false;
+            IF NOT #SubSt_02_Engin.q_xLocationReached THEN
+                #iCycle := 106;
+            END_IF;
+        106:
+            #sSeq_Step_comment := 'Lift procces done';
+            IF #ActiveElevatorAssignment.iTaskType = 2 THEN
+                #iCycle := 399;
+            ELSIF #ActiveElevatorAssignment.iTaskType = 1 OR #ActiveElevatorAssignment.iTaskType = 3 THEN
+                #iCycle := 150;
+            END_IF;
+        150:
+            #sSeq_Step_comment := 'Start fork procces';
+            
+            #iCycle := 151;
+        151:
+            #sSeq_Step_comment := 'Determening for side';
+            
+            IF #ActiveElevatorAssignment.iOrigination < #OverslagPuntOppZijdeRobZijde THEN
+                #iReqForkPos := #RobotSide;
+                #iCycle := 152;
+            ELSE
+                #iReqForkPos := #OpperatorSide;
+                #iCycle := 152;
+            END_IF;
+            
+        152:
+            #sSeq_Step_comment := 'Forks buzzy';
+            
+            IF #SubSt_01_Forks.q_xLocationReached THEN
+                #iCycle := 153;
+            END_IF;
+        153:
+            #sSeq_Step_comment := 'Forks Location reached';
+            IF #ActiveElevatorAssignment.iTaskType = 3 THEN
+                #iCycle := 499;
+            ELSIF #ActiveElevatorAssignment.iTaskType = 1 THEN
+                #iCycle := 155;
+            END_IF;
+        155:
+            #sSeq_Step_comment := 'Lift to pickup location plus pickup offset';
+            #xLiftAddPickupOffset := true;
+            #iToEnginGoToLoc := #ActiveElevatorAssignment.iOrigination;
+            
+            IF #SubSt_02_Engin.q_xLocationReached THEN
+                #iCycle := 156;
+                #iq_HMI_Elevator.xTrayInElevator := true;
+            END_IF;
+            
+        156:
+            #sSeq_Step_comment := 'Lift at location';
+            #iToEnginGoToLoc := 0;
+            #xLiftAddPickupOffset := false;
+            IF NOT #SubSt_02_Engin.q_xLocationReached THEN
+                #iCycle := 157;
+            END_IF;
+        157:
+            #sSeq_Step_comment := 'Lift procces done';
+            #iCycle := 160;
+            
+        160:
+            #sSeq_Step_comment := 'Move fork to the middle position';
+            #iCycle := 161;
+            
+        161:
+            #sSeq_Step_comment := 'Determening for side';
+            #iReqForkPos := #MiddenLocation;
+            #iCycle := 162;
+            
+        162:
+            #sSeq_Step_comment := 'Forks buzzy';
+            
+            IF #SubSt_01_Forks.q_xLocationReached THEN
+                #iCycle := 163;
+            END_IF;
+            
+        163:
+            #sSeq_Step_comment := 'Forks Location reached';
+            #iCycle := 165;
+            
+        165:
+            #sSeq_Step_comment := 'Pickup done';
+            #iCycle := 199;
+            
+        199:
+            IF #SubSt_01_Forks.q_iCurrentForkLocation = #MiddenLocation AND #i_xSensForkStartLocation = true THEN
+                #iCycle := 201;
+            ELSE
+                #iCycle := 888;
+                #sSeq_Step_comment := 'Error - Forks in wrong position';
+            END_IF;
+            
+        200: // normal application specific program cycle. Wating for product infeed
+            #sSeq_Step_comment := 'Program - Checking starting point';
+            
+        201:
+            #iq_EcoAssignmentAcknwl.iAssingmentType := #SetTray;
+            #iq_EcoAssignmentAcknwl.iRowNr := #ActiveElevatorAssignment.iDestination;
+            IF #iq_EcoAssignmentAcknwl.xAcknowldeFromEco OR #i_xSemiAutoMode THEN
+                #iCycle := 202;
+                #iq_EcoAssignmentAcknwl.iAssingmentType := 0;
+                #iq_EcoAssignmentAcknwl.iRowNr := 0;
+            END_IF;
+        202: // Normal application specific program cycle   
+            #sSeq_Step_comment := 'Sending lift to dropoff point plus pickup offset';
+            IF NOT #iq_EcoAssignmentAcknwl.xAcknowldeFromEco OR #i_xSemiAutoMode THEN
+                #iToEnginGoToLoc := #ActiveElevatorAssignment.iDestination;
+                #xLiftAddPickupOffset := true;
+                IF #SubSt_02_Engin.q_xLocationReached THEN
+                    #iCycle := 205;
+                END_IF;
+            END_IF;
+        205:
+            #sSeq_Step_comment := 'Lift at location';
+            #iToEnginGoToLoc := 0;
+            #xLiftAddPickupOffset := false;
+            IF NOT #SubSt_02_Engin.q_xLocationReached THEN
+                #iCycle := 206;
+            END_IF;
+        206:
+            #sSeq_Step_comment := 'Lift procces done';
+            #iCycle := 250;
+            
+        250:
+            #sSeq_Step_comment := 'Start fork procces';
+            #iCycle := 251;
+            
+        251:
+            #sSeq_Step_comment := 'Determening for side';
+            
+            IF #ActiveElevatorAssignment.iDestination < #OverslagPuntOppZijdeRobZijde THEN
+                #iReqForkPos := #RobotSide;
+                #iCycle := 252;
+            ELSE
+                #iReqForkPos := #OpperatorSide;
+                #iCycle := 252;
+            END_IF;
+            
+        252:
+            #sSeq_Step_comment := 'Forks buzzy';
+            
+            IF #SubSt_01_Forks.q_xLocationReached THEN
+                #iCycle := 253;
+            END_IF;
+            
+        253:
+            #sSeq_Step_comment := 'Forks Location reached';
+            #iCycle := 255;
+            
+        255:
+            #sSeq_Step_comment := 'Lift to dropoff location';
+            #xLiftAddPickupOffset := false;
+            #iToEnginGoToLoc := #ActiveElevatorAssignment.iDestination;
+            
+            IF #SubSt_02_Engin.q_xLocationReached THEN
+                #iCycle := 256;
+                #iq_HMI_Elevator.xTrayInElevator := false;
+            END_IF;
+            
+        256:
+            #sSeq_Step_comment := 'Lift at location';
+            #iToEnginGoToLoc := 0;
+            #xLiftAddPickupOffset := false;
+            IF NOT #SubSt_02_Engin.q_xLocationReached THEN
+                #iCycle := 257;
+            END_IF;
+        257:
+            #sSeq_Step_comment := 'Lift procces done';
+            #iCycle := 260;
+            
+        260:
+            #sSeq_Step_comment := 'Move fork to the middle position';
+            #iCycle := 261;
+            
+        261:
+            #sSeq_Step_comment := 'Determening for side';
+            #iReqForkPos := #MiddenLocation;
+            #iCycle := 262;
+            
+        262:
+            #sSeq_Step_comment := 'Forks buzzy';
+            
+            IF #SubSt_01_Forks.q_xLocationReached THEN
+                #iCycle := 263;
+            END_IF;
+            
+        263:
+            #sSeq_Step_comment := 'Forks Location reached';
+            #iCycle := 299;
+            
+        299:
+            #sSeq_Step_comment := 'Pickup done. Waiting for eco system to finish';
+            IF (NOT #xExecutingSemiAutoAssignment AND #i_EcoSystemElevatorAssignment.iTaskType = 0) OR #xExecutingSemiAutoAssignment THEN
+                #iCycle := 10;
+            END_IF;
+        300: // Second application specific program cycle. Wating for product infeed
+            #sSeq_Step_comment := 'Starting task type 2';
+            #iCycle := 100;
+            
+        399: // Second application specific program cycle
+            
+            #sSeq_Step_comment := 'task type 2 finished. Waiting for eco system to finish';
+            IF (NOT #xExecutingSemiAutoAssignment AND #i_EcoSystemElevatorAssignment.iTaskType = 0) OR #xExecutingSemiAutoAssignment THEN
+                #iCycle := 10;
+            END_IF;
+            
+        400: // Second application specific program cycle. Wating for product outfeed
+            #sSeq_Step_comment := 'Starting task type 3';
+            #iCycle := 100;
+            
+        499: // Second application specific program cycle
+            #sSeq_Step_comment := 'task type 3 finished. Waiting for eco system to finish';
+            IF (NOT #xExecutingSemiAutoAssignment AND #i_EcoSystemElevatorAssignment.iTaskType = 0) OR #xExecutingSemiAutoAssignment THEN
+                #iCycle := 10;
+            END_IF;
+            
+        500: // Third application specific program cycle. Wating for product infeed
+            #sSeq_Step_comment := 'Third Program - Waiting for infeed product';
+            ;
+            
+        550: // third application specific program cycle 
+            #sSeq_Step_comment := 'Opdracht anuleren';
+            ;
+            
+        600: // Third application specific program cycle. Wating for product outfeed
+            #sSeq_Step_comment := 'Third Program - Waiting for outfeed product';
+            ;
+            
+        650:// Assignment not ok IVM Tray on fork or not on fork communicating with the eco system
+            
+            IF (NOT #xExecutingSemiAutoAssignment AND #i_EcoSystemElevatorAssignment.iTaskType = 0) THEN
+                #iCycle := 10;
+            ELSIF #xExecutingSemiAutoAssignment AND #iq_HMI_Elevator.ManualElevatorAssignment.iTaskType > 0 THEN
+                #sSeq_Step_comment := 'Reset the task type to proceed';
+            ELSIF #xExecutingSemiAutoAssignment AND #iq_HMI_Elevator.ManualElevatorAssignment.iTaskType = 0 THEN
+                #iCycle := 10;
+            END_IF;
+            
+        700: // Teach mode
+            
+            // Checking that teach array doenst exeed the array length
+            IF #iq_HMI_Elevator.iActiveTeachInIndexNr > #iq_RowLocationInfo.Amount_Of_Rows THEN
+                #iq_HMI_Elevator.iActiveTeachInIndexNr := 0;
+            ELSIF #iq_HMI_Elevator.iActiveTeachInIndexNr < 0 THEN
+                #iq_HMI_Elevator.iActiveTeachInIndexNr := #iq_RowLocationInfo.Amount_Of_Rows;
+            END_IF;
+            
+            #TechNewLocationV2(i_iMaxAmountOfRows:= #iq_RowLocationInfo.Amount_Of_Rows,
+                               iq_xTeachNewLocation:=#iq_HMI_Elevator.xTeachNewLocation,
+                               i_iTransferPointRob_OppSide:=#OverslagPuntOppZijdeRobZijde,
+                               q_xTeachFailed=>#xTeachFailed,
+                               q_xTeachSuccesfull=>#xTeachSuccesfull,
+                               iq_RowLocationInfo:=#iq_RowLocationInfo,
+                               iq_ServoCnrl:=#iq_HMI_Stat_Cntrl.HMI_Servo_Cntrl[2],
+                               iq_iActiveArrayLocation:=#iq_HMI_Elevator.iActiveTeachInIndexNr);
+            
+            IF #xTeachFailed THEN
+                #sSeq_Step_comment := 'Locatie inleren gefaald. Locatie bevind zich niet tussen boven en onder locaties.';
+            ELSIF #xTeachSuccesfull THEN
+                #sSeq_Step_comment := 'Locatie inleren succesvol';
+            ELSE
+                #sSeq_Step_comment := 'inleer mode actief';
+            END_IF;
+            #iActiveTeachInValue := #iq_RowLocationInfo.Row_Height_Loc[#iq_HMI_Elevator.iActiveTeachInIndexNr];
+            
+        777: // Station has a warning.
+            #iCycle := -10; // auto init after warning ( case icycle = 777 )
+            
+        888: // Station has an error. only resolves by manual operation
+            
+            IF #FB_Station_Handler.q_xGeneric_Timeout THEN
+                #sSeq_Step_comment := 'Error - Generic Timeout from program';
+            END_IF;
+            
+            IF #iCycle_prev = 0 THEN
+                #sSeq_Step_comment := 'Error - Station has an Main Error!';
+            END_IF;
+            
+            IF #i_xEmer_Stop THEN
+                #sSeq_Step_comment := 'Error - Application has main Emergency Stop!';
+                "FC_16_WriteErrorDescriptions"(i_sAlarmSolution := 'Haal de noodstop los en reset het systeem.',
+                                               i_sShortAlarmDescr := 'EMG stop',
+                                               i_sSeqSetCom := #sSeq_Step_comment,
+                                               iq_States_StationErrorDescriptions := #iq_States_StationErrorDescriptions,
+                                               iq_Settings_Station := #iq_Settings_Station);
+            END_IF;
+            
+    END_CASE;
+    (* When case change, init timer #tCycle_Step_seq, #tCycle_Timeout, Etc *)
+    IF #iCycle <> #iCycle_prev THEN
+        #xCycle_Step_seq := false;
+        #tCycle_Step_seq := t#0s;
+        #xCycle_Timeout := false;
+        #tCycle_Timeout := T#0s;
+        #tCycle_T_to_State := t#0s;
+        #iCycle_count := 0;
+    END_IF;
+END_REGION
+
+REGION Sub functions
+    // Statement section REGION
+    
+    #SubSt_01_Forks(i_xCMD_Enable := #xCMD_Enable,
+                    i_xCMD_Reset := #i_xCMD_Reset,
+                    i_xAuto_mode := #xAuto_Mode,
+                    i_xHand_mode := #xHand_Mode,
+                    i_xTeach_Mode := #xTeach_Mode,
+                    i_xInit_all := #xInit_all,
+                    i_xReset_State := #xReset_State,
+                    i_xStartInit := #xStartFrokInit,
+                    i_iReqForkPosition := #iReqForkPos,
+                    i_iActiveSpeed:=#iForkSpeed,
+                    i_iStationCycle := #iCycle,
+                    i_xProces_start := #xProces_start,
+                    i_xSensOpperatorSide:=true,
+                    i_xSensMiddelPosition:=true,
+                    i_xSensRobotSide:=true,
+                    i_xProductOnForks:=#iq_HMI_Elevator.xTrayInElevator,
+                    q_xFB_Enabled => #xSub1Enabled,
+                    q_iSubStation_Cycle => #iSubstationCycleSub1,
+                    q_xSubStation_Warning => #xSub1Warning,
+                    q_xSubStation_Error => #xSub1Error,
+                    q_sSubStation_Step_comment => #sSubStationStepCommentSub1,
+                    q_iCurrentForkLocation=>#iCurrentForkSide,
+                    iq_Settings_Application := #iq_Settings_Application,
+                    iq_Settings_Station := #iq_Settings_Station,
+                    iq_HMI_Stat_State := #iq_HMI_Stat_State,
+                    iq_HMI_Stat_Cntrl := #iq_HMI_Stat_Cntrl);
+    
+    #SubSt_02_Engin(i_xCMD_Enable := #xCMD_Enable,
+                    i_xCMD_Reset := #i_xCMD_Reset,
+                    i_xAuto_mode := #xAuto_Mode,
+                    i_xHand_mode := #xHand_Mode,
+                    i_xTeach_Mode := #xTeach_Mode,
+                    i_xInit_all := #xInit_all,
+                    i_xReset_State := #xReset_State,
+                    i_xStartInit := #xStartEnginInit,
+                    i_iNextLocation := #iToEnginGoToLoc,
+                    i_xActiveSpeed:=#iElevatorSpeed,
+                    i_iStationCycle := #iCycle,
+                    i_xTrayPickup := #xLiftAddPickupOffset,
+                    i_iTrayPickupOffset := #i_iPickupOffset,
+                    i_xInitProcesStart := #xProces_start,
+                    i_iStartLocation := #i_iHomeLocation,
+                    i_xButHoldToRun:=#i_xButHold2Run,
+                    i_xInvertedElevator:=#i_xInvertedElevator,
+                    q_xFB_Enabled => #xSub2Enabled,
+                    q_iSubStation_Cycle => #iSubstationCycleSub2,
+                    q_xSubStation_Warning => #xSub2Warning,
+                    q_xSubStation_Error => #xSub2Error,
+                    q_sSubStation_Step_comment => #sSubStationStepCommentSub2,
+                    q_iElevatorLocation => #iq_HMI_Stat_Cntrl.HMI_Servo_Cntrl[2].Variables.diAct_Position,
+                    q_iElevatorAtRowNr => #iElevatorRowLocation,
+                    iq_Settings_Application := #iq_Settings_Application,
+                    iq_Settings_Station := #iq_Settings_Station,
+                    iq_HMI_Stat_State := #iq_HMI_Stat_State,
+                    iq_HMI_Stat_Cntrl:=#iq_HMI_Stat_Cntrl,
+                    iq_RowLocationData := #iq_RowLocationInfo);
+    
+END_REGION
+
+REGION HMI states
+    
+    #iq_HMI_Elevator.iStationEcoStatus := "FC_19_GetStationToEcoStatus"(i_xSemiAutoMode := #i_xSemiAutoMode,
+                                                                        iq_Station_Cntrl_States := #iq_Station_Cntrl_States,
+                                                                        iq_Settings_Station := #iq_Settings_Station,
+                                                                        iq_Settings_Application := #iq_Settings_Application);
+    
+    #iq_States_StationErrorDescriptions.stations[#iq_Settings_Station.iStation_ID / #iq_Settings_Application.iScale_Station_ID].iStationEcoState := #iq_HMI_Elevator.iStationEcoStatus;
+    
+    (* State and commens from "Main program cycle" to HMI *)
+    #iq_HMI_Stat_State.HMI_States.Station_State_Cycle.iState_Cycle := #iCycle;
+    #iq_HMI_Stat_State.HMI_States.Station_State_Cycle.sStep_comment := #sSeq_Step_comment;
+    
+    (* States and comments from "sub functions" to HMI *)
+    #iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[1].iState_Cycle := #iSubstationCycleSub1;
+    #iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[1].sStep_comment := #sSubStationStepCommentSub1;
+    #iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[2].iState_Cycle := #iSubstationCycleSub2;
+    #iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[2].sStep_comment := #sSubStationStepCommentSub2;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[3].iState_Cycle := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[3].sStep_comment := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[4].iState_Cycle := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[4].sStep_comment := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[5].iState_Cycle := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[5].sStep_comment := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[6].iState_Cycle := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[6].sStep_comment := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[7].iState_Cycle := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[7].sStep_comment := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[8].iState_Cycle := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[8].sStep_comment := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[9].iState_Cycle := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[9].sStep_comment := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[10].iState_Cycle := ;
+    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[10].sStep_comment := ;
+    
+    // Functionblock for state(s) to HMI
+    #FB_HMI_State(i_xStation_Not_used := #iq_Settings_Station.xStation_Not_Used OR #FB_Station_Cntrl.q_xNot_Actived,
+                  i_xCMD_Enable := #xCMD_Enable,
+                  i_xStation_OK := #iCycle >= -10 AND #iCycle < 777,
+                  i_xStation_booting := #iCycle = -10,
+                  i_xProces_Notif := #FB_Station_Handler.q_xCycle_Timeout OR #i_xEcoSystemConnected, //
+                  i_xComm_Error := #i_xExt_Error, // or more profinet devices,
+                  i_xInit_all := #xInit_all,
+                  i_xCMD_Pause_Process := #xCmdPause_Process,
+                  i_xError_App_Stop := #FB_Station_Cntrl.q_xError_App_Stop,
+                  i_iState_Cycle := #iCycle,
+                  iq_HMI_Stat_State := #iq_HMI_Stat_State,
+                  iq_arrRemove_Product := #arrRemove_Product);
+END_REGION
+
+REGION Discrete Output Functionblock
+    
+    // Code om uit te zoeken welke lagen gereserveerd moeten zijn voor deze lift
+    "GetReservedLocations"(i_iActiveAssignmentOrigin:=#ActiveElevatorAssignment.iOrigination,
+                           i_iActiveAssignmentDestination:=#ActiveElevatorAssignment.iDestination,
+                           i_iActiveLocation:=#iq_HMI_Stat_Cntrl.HMI_Servo_Cntrl[2].Variables.diAct_Position,
+                           i_iPickupOffset:=#i_iPickupOffset,
+                           q_iReservedLocHigh=>#q_iActiveReachHigh,
+                           q_iReservedLocLow=>#q_iActiveReachLow,
+                           iq_RowLocationInfo:=#iq_RowLocationInfo);
+    
+    #q_xFB_Enabled := #xCMD_Enable;
+    #q_iState_Cycle := #iCycle;
+    #q_xStation_Warning := #iCycle = 777;
+    #q_xStation_Error := #iCycle >= 888;
+END_REGION
+
+REGION Previous Variables
+    #iCycle_prev := #iCycle;
+END_REGION
