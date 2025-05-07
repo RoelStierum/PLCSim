@@ -58,6 +58,18 @@ class PLCSimulator_DualLift_ST:
         self.running = False
         self._task_duration = 2.0 # Faster simulation
         self._pickup_offset = 2  # Adding the missing pickup offset attribute with a default value of 2
+        
+        # Definieer het coördinatensysteem
+        # Operatorzijde: 1-50 (interne posities 1-50)
+        # Robotzijde: 1-49 (interne posities 51-99)
+        
+        # Functie om interne positie om te zetten naar fysieke positie
+        # Voor de operatorzijde: 1-50 blijft 1-50
+        # Voor de robotzijde: 51-99 wordt 1-49
+        self.to_physical_pos = lambda pos: pos if pos <= 50 else pos - 50
+        
+        # Functie om te bepalen aan welke kant een positie zich bevindt
+        self.get_side = lambda pos: "operator" if pos <= 50 else "robot"
 
         # --- Default PLC State Variables (Aligning with PLC code) ---
         self.lift_state_template = {
@@ -301,11 +313,10 @@ class PLCSimulator_DualLift_ST:
 
     def _get_reserved_locations(self, origin, destination, current_pos, pickup_offset, row_location_info=None):
         """Simulatie van het GetReservedLocations functieblok van de PLC."""
-        # Pas een offset toe voor de rechterkolom voor eenvoudigere vergelijking
-        # Rijen in rechterkolom (51-100) worden omgezet naar (1-50)
-        display_origin = origin - 50 if origin > 50 else origin
-        display_destination = destination - 50 if destination > 50 else destination
-        display_current = current_pos - 50 if current_pos > 50 else current_pos
+        # Convert to physical positions (1-50 scale) for better comparison
+        physical_origin = origin - 50 if origin > 50 else origin
+        physical_destination = destination - 50 if destination > 50 else destination
+        physical_current = current_pos - 50 if current_pos > 50 else current_pos
         
         # Bereken de hoge reservering (q_iReservedLocHigh)
         if origin > destination:
@@ -338,12 +349,13 @@ class PLCSimulator_DualLift_ST:
         if reserved_high > 100:
             reserved_high = 100
         
-        # Bereken ook de display-waarden voor logging
-        display_low = reserved_low - 50 if reserved_low > 50 else reserved_low
-        display_high = reserved_high - 50 if reserved_high > 50 else reserved_high
+        # Calculate physical values for low and high (1-50 scale)
+        physical_low = reserved_low - 50 if reserved_low > 50 else reserved_low
+        physical_high = reserved_high - 50 if reserved_high > 50 else reserved_high
         
-        # Log met zowel originele als omgerekende waardes voor vergelijking
-        logger.debug(f"Reach berekening: O:{origin}({display_origin})->D:{destination}({display_destination}), Pos:{current_pos}({display_current}) => Reach:{reserved_low}({display_low})-{reserved_high}({display_high})")
+        # Log with both original and physical values for comparison
+        logger.debug(f"Reach calculation: O:{origin}({physical_origin})->D:{destination}({physical_destination}), " +
+                     f"Pos:{current_pos}({physical_current}) => Reach:{reserved_low}({physical_low})-{reserved_high}({physical_high})")
         
         return reserved_low, reserved_high
 
@@ -391,34 +403,100 @@ class PLCSimulator_DualLift_ST:
         other_cycle = self.lift_state[other_lift_id]["iCycle"]
         current_pos = self.lift_state[lift_id]["iElevatorRowLocation"]
         
-        # Als de andere lift in rust is (cycle 0 of 10) en niet op de doelpositie staat, is er geen probleem
+        # Zet alle posities om naar fysieke posities (1-50 voor operator, 1-49 voor robot)
+        physical_current = self.to_physical_pos(current_pos)
+        physical_target = self.to_physical_pos(target_pos)
+        physical_other = self.to_physical_pos(other_pos)
+        
+        # Bepaal aan welke kant elke positie zich bevindt
+        current_side = self.get_side(current_pos)
+        target_side = self.get_side(target_pos)
+        other_side = self.get_side(other_pos)
+        
+        logger.info(f"[BLOCKING] {lift_id}: Beweging van {current_pos}({physical_current}/{current_side}) naar {target_pos}({physical_target}/{target_side})")
+        logger.info(f"[BLOCKING] {other_lift_id} staat op positie {other_pos}({physical_other}/{other_side}), cycle={other_cycle}")
+        
+        # Als de andere lift inactief is (cycle 0 of 10) en niet op de doelpositie staat, geen probleem
         if (other_cycle == 0 or other_cycle == 10) and other_pos != target_pos:
+            logger.info(f"[BLOCKING] Geen blokkering: {other_lift_id} is inactief en niet op doelpositie")
             return False
-            
-        # Controleer of doelpositie exact bezet is door andere lift
+        
+        # Check 1: Exacte positie bezet?
         if target_pos == other_pos:
-            logger.warning(f"[{lift_id}] Collision detected: Target position {target_pos} is occupied by {other_lift_id}")
+            logger.warning(f"[BLOCKING] Blokkering gedetecteerd: Doelpositie {target_pos} is bezet door {other_lift_id}")
             return True
+        
+        # Als we van zijde wisselen (kruis beweging), controleer of de doelpositie
+        # het pad van de andere lift kruist (als deze actief is)
+        if current_side != target_side and other_cycle not in [0, 10]:
+            # Bereken het pad van deze lift
+            my_origin = self.lift_state[lift_id]["ActiveElevatorAssignment_iOrigination"]
+            my_destination = self.lift_state[lift_id]["ActiveElevatorAssignment_iDestination"]
             
-        # Controleer of het pad naar het doel geblokkeerd is door de andere lift
-        # Dit is cruciaal: als de andere lift tussen de huidige positie en het doel is, is er een botsing
-        if (current_pos < other_pos < target_pos) or (current_pos > other_pos > target_pos):
-            logger.warning(f"[{lift_id}] Collision detected: Path from {current_pos} to {target_pos} is blocked by {other_lift_id} at position {other_pos}")
-            return True
+            # Als we het pad van de andere lift kruisen, is er mogelijk een blokkering
+            other_origin = self.lift_state[other_lift_id]["ActiveElevatorAssignment_iOrigination"]
+            other_destination = self.lift_state[other_lift_id]["ActiveElevatorAssignment_iDestination"]
             
-        # Controleer of er overlap is in bereiken (als beide liften actief zijn)
-        if other_cycle not in [0, 10]:
-            my_reach_low = self.lift_state[lift_id]["q_iActiveReachLow"]
-            my_reach_high = self.lift_state[lift_id]["q_iActiveReachHigh"]
-            other_reach_low = self.lift_state[other_lift_id]["q_iActiveReachLow"]
-            other_reach_high = self.lift_state[other_lift_id]["q_iActiveReachHigh"]
+            # Zet alle paden om naar fysieke posities
+            physical_my_origin = self.to_physical_pos(my_origin)
+            physical_my_dest = self.to_physical_pos(my_destination)
+            physical_other_origin = self.to_physical_pos(other_origin)
+            physical_other_dest = self.to_physical_pos(other_destination)
             
-            # Check voor overlap in bereiken
-            overlap = not (my_reach_high < other_reach_low or my_reach_low > other_reach_high)
-            if overlap:
-                logger.warning(f"[{lift_id}] Collision potential: Reach overlap with {other_lift_id}. My reach: {my_reach_low}-{my_reach_high}, Other reach: {other_reach_low}-{other_reach_high}")
+            logger.info(f"[BLOCKING] Pad controle voor kruisbeweging: {lift_id} pad {physical_my_origin}-{physical_my_dest} vs {other_lift_id} pad {physical_other_origin}-{physical_other_dest}")
+            
+            # Als de andere lift ook een kruis beweging maakt, check of de fysieke posities overlappen
+            if self.get_side(other_origin) != self.get_side(other_destination):
+                if (min(physical_my_origin, physical_my_dest) <= physical_other) and (physical_other <= max(physical_my_origin, physical_my_dest)):
+                    logger.warning(f"[BLOCKING] Blokkering gedetecteerd: Kruisende paden tussen {lift_id} en {other_lift_id}")
+                    return True
+        
+        # Als beide liften op dezelfde zijde bewegen, check of het pad geblokkeerd is
+        if target_side == other_side:
+            # Bepaal of de andere lift tussen huidige positie en doelpositie staat
+            if ((physical_current < physical_other < physical_target) or 
+                (physical_current > physical_other > physical_target)):
+                logger.warning(f"[BLOCKING] Blokkering gedetecteerd: Pad van {current_pos} naar {target_pos} wordt geblokkeerd door {other_lift_id} op positie {other_pos}")
                 return True
+            
+            logger.info(f"[BLOCKING] Pad is vrij van {current_pos} naar {target_pos} op {target_side} zijde")
+        else:
+            logger.info(f"[BLOCKING] Liften op verschillende zijden, geen direct blokkeringsrisico")
+        
+        # Als de andere lift actief is, controleer of het volledige pad vrij is
+        if other_cycle not in [0, 10]:
+            # Bereken het complete pad dat deze lift zal afleggen
+            if self.lift_state[lift_id]["ActiveElevatorAssignment_iTaskType"] != 0:
+                # Haal origin en destination op uit de actieve job
+                job_origin = self.lift_state[lift_id]["ActiveElevatorAssignment_iOrigination"] 
+                job_dest = self.lift_state[lift_id]["ActiveElevatorAssignment_iDestination"]
                 
+                # Zet om naar fysieke posities
+                physical_job_origin = self.to_physical_pos(job_origin)
+                physical_job_dest = self.to_physical_pos(job_dest)
+                
+                # Bereken het pad van de andere lift
+                other_job_origin = self.lift_state[other_lift_id]["ActiveElevatorAssignment_iOrigination"]
+                other_job_dest = self.lift_state[other_lift_id]["ActiveElevatorAssignment_iDestination"]
+                
+                # Zet om naar fysieke posities
+                physical_other_origin = self.to_physical_pos(other_job_origin)
+                physical_other_dest = self.to_physical_pos(other_job_dest)
+                
+                logger.info(f"[BLOCKING] Volledig pad controle: {lift_id} pad {physical_job_origin}-{physical_job_dest} vs {other_lift_id} pad {physical_other_origin}-{physical_other_dest}")
+                
+                # Als paden elkaar kruisen op dezelfde fysieke rijnummers, is er een blokkering
+                # Bereken het bereik van elke lift
+                my_range = range(min(physical_job_origin, physical_job_dest), max(physical_job_origin, physical_job_dest) + 1)
+                other_range = range(min(physical_other_origin, physical_other_dest), max(physical_other_origin, physical_other_dest) + 1)
+                
+                # Controleer op overlap in de paden
+                if (self.get_side(job_origin) == self.get_side(other_job_origin) and 
+                    any(pos in other_range for pos in my_range)):
+                    logger.warning(f"[BLOCKING] Blokkering gedetecteerd: Padoverlap op dezelfde zijde")
+                    return True
+        
+        logger.info(f"[BLOCKING] RESULTAAT: Geen blokkering gedetecteerd voor {lift_id} beweging naar {target_pos}")
         return False
 
     async def _simulate_sub_movement(self, lift_id):
@@ -585,7 +663,7 @@ class PLCSimulator_DualLift_ST:
                     logger.error(f"Error reading datatype information: {e}")
                     logger.info(f"******* JOB RECEIVED DEBUG *******")
                     logger.info(f"[{lift_id}] Read method returned: {eco_task_type}, Origin={eco_origin}, Dest={eco_destination}")
-                    logger.info(f"[{lift_id}] Direct node read: Type={direct_eco_task_type}, Origin={direct_eco_origin}, Dest={direct_eco_destination}")
+                    logger.info(f"[{lift_id}] Direct node read: Type={direct_eco_task_type}, Origin={direct_eco_origin}, Dest={direct_dest_node}")
                     logger.info(f"[{lift_id}] State dictionary: Type={state['Eco_iTaskType']}, Origin={state['Eco_iOrigination']}, Dest={state['Eco_iDestination']}")
                     logger.info(f"********************************")
                 
@@ -646,10 +724,6 @@ class PLCSimulator_DualLift_ST:
             # Check 1: Lifts Cross? (doen de berekende reaches elkaar overlappen?)
             # Overlap exists if !(my_reach_high < other_reach_low OR my_reach_low > other_reach_high)
             # Dit is precies wat de PLC doet met de XOR logica
-            overlap = not (my_reach_high < other_reach_low or my_reach_low > other_reach_high)
-            
-            # De PLC XOR logica in het GetReservedLocations functieblok:
-            # IF #i_iReachOtherLiftHigh >= #q_iActiveReachLow XOR #i_iReachOtherLiftLow >= #q_iActiveReachHigh THEN
             cross_check_plc = (other_reach_high >= my_reach_low) ^ (other_reach_low >= my_reach_high) # XOR in Python is ^
             
             # Ook controleert de PLC op gelijkheid:
@@ -1141,12 +1215,13 @@ class PLCSimulator_DualLift_ST:
           if await self._simulate_sub_movement(lift_id):
               return # Don't advance state machine while sub-systems are busy
 
-          # --- Read Inputs ---
+          # --- Read Inputs (currently unused, but keeping for future expansion) ---
           eco_task_type = await self._read_opc_value(lift_id, "Eco_iTaskType")
-          eco_origin = await self._read_opc_value(lift_id, "Eco_iOrigination")
-          eco_destination = await self._read_opc_value(lift_id, "Eco_iDestination")
-          eco_ack = await self._read_opc_value(lift_id, "EcoAck_xAcknowldeFromEco")
-          clear_error_req = await self._read_opc_value(lift_id, "xClearError")
+          # Deze variabelen worden niet gebruikt, maar behouden voor toekomstige expansie
+          _eco_origin = await self._read_opc_value(lift_id, "Eco_iOrigination")
+          _eco_destination = await self._read_opc_value(lift_id, "Eco_iDestination")
+          _eco_ack = await self._read_opc_value(lift_id, "EcoAck_xAcknowldeFromEco")
+          _clear_error_req = await self._read_opc_value(lift_id, "xClearError")
 
           next_cycle = current_logic_state # Default: stay in current logic state
           next_internal_step = "IDLE" # Default internal step change
@@ -1163,11 +1238,13 @@ class PLCSimulator_DualLift_ST:
 
                       if current_pos == target:
                           logger.info(f"[{lift_id}] Already at target {target} for step {current_logic_state}.")
-                          next_step_after_reach = "PICK_UP" if current_logic_state == "REQ_MOVE_TO_ORIGIN" else 399 # MoveTo ends here
-                          if current_logic_state == "REQ_MOVE_TO_ORIGIN": next_internal_step = "PICK_UP"
-                          else: next_cycle = 399 # Jump to numeric cycle
+                          # Deze variabele wordt niet gebruikt in de rest van de code
+                          _next_step_after_reach = "PICK_UP" if current_logic_state == "REQ_MOVE_TO_ORIGIN" else 399 # MoveTo ends here
+                          if current_logic_state == "REQ_MOVE_TO_ORIGIN": 
+                              next_internal_step = "PICK_UP"
+                          else: 
+                              next_cycle = 399 # Jump to numeric cycle
                           next_internal_step = "IDLE" # Clear internal step
-
                       else:
                            # Check shaft status for collision avoidance
                            # --- Get Other Lift's Reach ---
@@ -1192,8 +1269,6 @@ class PLCSimulator_DualLift_ST:
 
                                 next_cycle = next_move_cycle
                                 next_internal_step = "IDLE" # Clear internal step
-
-
                   elif current_logic_state == "PICK_UP":
                        # This state is now handled numerically (e.g., 155)
                        logger.warning(f"[{lift_id}] Logic error: Ended up in internal step PICK_UP")
@@ -1204,7 +1279,6 @@ class PLCSimulator_DualLift_ST:
                       logger.error(f"[{lift_id}] Unknown internal step: {current_logic_state}")
                       next_cycle = -10 # Reset on error
                       next_internal_step = "IDLE"
-
               # --- Handle Numeric iCycle States ---
               elif isinstance(current_logic_state, int):
                    # Map numeric cycle logic here, mirroring the CASE statement
@@ -1236,7 +1310,6 @@ class PLCSimulator_DualLift_ST:
                             state["_current_job_valid"] = False
                             # ... (set cancel reason) ...
                             next_cycle = 650
-
                    # Example cycle 102 (Move to Origin)
                    elif current_logic_state == 102:
                         step_comment = "Moving Lift to Origin"
@@ -1251,21 +1324,22 @@ class PLCSimulator_DualLift_ST:
                             # Stay in 102 while moving, _simulate_sub_movement handles exit
                             next_cycle = 102 # Explicitly stay until move done
                    # ... and so on for all cycles defined in the ST code ...
-
                    # Default for unknown numeric cycle
                    else:
                        # This check is now redundant if the main block covers all numeric cases
-                       # logger.warning(f"[{lift_id}] Entered unknown cycle {current_logic_state}. Resetting.")
-                       # next_cycle = -10
-                       pass # Keep current cycle if not handled? Or reset?
-
+                       logger.warning(f"[{lift_id}] Entered unknown cycle {current_logic_state}. Resetting.")
+                       next_cycle = -10
+              else:
+                  logger.error(f"[{lift_id}] Invalid current_logic_state type: {type(current_logic_state)}")
+                  next_cycle = -10
+                  next_internal_step = "IDLE"
+                  
           except Exception as e:
               logger.exception(f"[{lift_id}] CRITICAL ERROR during logic processing for state {current_logic_state}: {e}")
               # Attempt to set error state safely
               await self._set_error(lift_id, 999, "LOGIC_ERR", f"Exception in state {current_logic_state}", cycle=888)
               next_cycle = 888 # Ensure it goes to error state
               next_internal_step = "IDLE"
-
 
           # --- Update state for next iteration ---
           await self._update_opc_value(lift_id, "sSeq_Step_comment", step_comment)
@@ -1278,12 +1352,10 @@ class PLCSimulator_DualLift_ST:
 
                     await self._update_opc_value(lift_id, "_Internal_Job_Step", next_internal_step)
                     await self._update_opc_value(lift_id, "iCycle", current_opc_cycle) # Update external cycle too
-
               elif next_cycle != current_logic_state: # Check against the state we processed
                    await self._update_opc_value(lift_id, "iCycle", next_cycle)
                    # Clear internal step if we jumped based on numeric cycle
                    await self._update_opc_value(lift_id, "_Internal_Job_Step", "IDLE")
-
     async def _write_value(self, path, value, datatype=None):
         """Helper to write a value to an OPC UA node based on its path."""
         if not self.server or not self.namespace_idx:

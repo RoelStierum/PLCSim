@@ -168,12 +168,16 @@ class EcoSystemGUI_DualLift_ST:
         ttk.Radiobutton(job_frame, text="2: Move To", variable=controls['task_type_var'], value=2).grid(row=0, column=2, sticky=tk.W)
         ttk.Radiobutton(job_frame, text="3: Prepare PickUp", variable=controls['task_type_var'], value=3).grid(row=0, column=3, sticky=tk.W)
         ttk.Label(job_frame, text="Task Type:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
-        controls['origin_var'] = tk.IntVar(value=10 if lift_id == LIFT1_ID else 60)
+        
+        # Verwijder standaardwaarden voor origin en destination (0 in plaats van specifieke waarden)
+        controls['origin_var'] = tk.IntVar(value=0)
         ttk.Label(job_frame, text="Origin:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
         ttk.Entry(job_frame, textvariable=controls['origin_var'], width=10).grid(row=1, column=1, sticky=tk.W, padx=5)
-        controls['destination_var'] = tk.IntVar(value=50 if lift_id == LIFT1_ID else 20)
+        
+        controls['destination_var'] = tk.IntVar(value=0)
         ttk.Label(job_frame, text="Destination:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
         ttk.Entry(job_frame, textvariable=controls['destination_var'], width=10).grid(row=2, column=1, sticky=tk.W, padx=5)
+        
         controls['send_job_button'] = ttk.Button(job_frame, text="Send Job Request", command=lambda l=lift_id: self.send_job(l), state=tk.DISABLED)
         controls['send_job_button'].grid(row=3, column=0, columnspan=2, pady=10)
         controls['clear_task_button'] = ttk.Button(job_frame, text="Clear Task (Reset PLC)", command=lambda l=lift_id: self.clear_task(l), state=tk.DISABLED)
