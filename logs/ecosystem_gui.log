@@ -1,0 +1,33 @@
+2025-05-07 15:30:31,943 - EcoSystemSim_DualLift_ST - INFO - Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-07 15:30:31,945 - opcua_client - INFO - OPCUAClient: Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-07 15:30:31,952 - opcua_client - INFO - OPCUAClient: Connected to opc.tcp://127.0.0.1:4860/gibas/plc/. Namespace Index: 2
+2025-05-07 15:30:31,952 - EcoSystemSim_DualLift_ST - INFO - Waiting 1 second before starting monitor...
+2025-05-07 15:30:32,953 - EcoSystemSim_DualLift_ST - INFO - Starting Dual Lift PLC monitoring task (ST Logic).
+2025-05-07 15:30:32,953 - EcoSystemSim_DualLift_ST - INFO - Monitoring variables: ['iCycle', 'iStatus', 'iElevatorRowLocation', 'xTrayInElevator', 'iCurrentForkSide', 'ActiveElevatorAssignment_iTaskType', 'ActiveElevatorAssignment_iOrigination', 'ActiveElevatorAssignment_iDestination', 'sSeq_Step_comment', 'EcoAck_iAssingmentType', 'EcoAck_iRowNr', 'EcoAck_xAcknowldeFromEco', 'iErrorCode', 'xWatchDog']
+2025-05-07 15:30:32,960 - EcoSystemSim_DualLift_ST - INFO - Initial read successful: Lift1/iCycle = 10
+2025-05-07 15:30:33,011 - lift_visualization - INFO - Lift Lift1 moving from row 1 (Y: 545.00) to 5 (Y: 505.00)
+2025-05-07 15:30:33,012 - lift_visualization - INFO - Lift Lift2 moving from row 1 (Y: 545.00) to 90 (Y: 146.94)
+2025-05-07 15:30:33,530 - lift_visualization - INFO - Lift Lift1 animation completed at row 5
+2025-05-07 15:30:33,531 - lift_visualization - INFO - Lift Lift2 animation completed at row 90
+2025-05-07 15:30:33,960 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1: Type=1, Origin=10, Dest=50
+2025-05-07 15:30:33,964 - opcua_client - INFO - OPCUAClient: Writing value: 1 (UA Variant: Variant(Value=1, VariantType=<VariantType.Int16: 4>, Dimensions=None, is_array=False)) to Lift1/Eco_iTaskType
+2025-05-07 15:30:33,967 - opcua_client - INFO - OPCUAClient: Type mismatch. Trying alternative integer types for Lift1/Eco_iTaskType
+2025-05-07 15:30:33,967 - opcua_client - INFO - OPCUAClient: Trying with type Int16 for Lift1/Eco_iTaskType
+2025-05-07 15:30:33,968 - opcua_client - INFO - OPCUAClient: Trying with type UInt16 for Lift1/Eco_iTaskType
+2025-05-07 15:30:33,970 - opcua_client - INFO - OPCUAClient: Trying with type UInt32 for Lift1/Eco_iTaskType
+2025-05-07 15:30:33,971 - opcua_client - INFO - OPCUAClient: Trying with type Int64 for Lift1/Eco_iTaskType
+2025-05-07 15:30:33,971 - opcua_client - INFO - OPCUAClient: Successfully wrote 1 with type Int64 to Lift1/Eco_iTaskType
+2025-05-07 15:30:33,974 - opcua_client - INFO - OPCUAClient: Writing value: 10 (UA Variant: Variant(Value=10, VariantType=<VariantType.Int16: 4>, Dimensions=None, is_array=False)) to Lift1/Eco_iOrigination
+2025-05-07 15:30:33,974 - opcua_client - INFO - OPCUAClient: Type mismatch. Trying alternative integer types for Lift1/Eco_iOrigination
+2025-05-07 15:30:33,974 - opcua_client - INFO - OPCUAClient: Trying with type Int16 for Lift1/Eco_iOrigination
+2025-05-07 15:30:33,975 - opcua_client - INFO - OPCUAClient: Trying with type UInt16 for Lift1/Eco_iOrigination
+2025-05-07 15:30:33,976 - opcua_client - INFO - OPCUAClient: Trying with type UInt32 for Lift1/Eco_iOrigination
+2025-05-07 15:30:33,976 - opcua_client - INFO - OPCUAClient: Trying with type Int64 for Lift1/Eco_iOrigination
+2025-05-07 15:30:33,977 - opcua_client - INFO - OPCUAClient: Successfully wrote 10 with type Int64 to Lift1/Eco_iOrigination
+2025-05-07 15:30:33,979 - opcua_client - INFO - OPCUAClient: Writing value: 50 (UA Variant: Variant(Value=50, VariantType=<VariantType.Int16: 4>, Dimensions=None, is_array=False)) to Lift1/Eco_iDestination
+2025-05-07 15:30:33,980 - opcua_client - INFO - OPCUAClient: Type mismatch. Trying alternative integer types for Lift1/Eco_iDestination
+2025-05-07 15:30:33,981 - opcua_client - INFO - OPCUAClient: Trying with type Int16 for Lift1/Eco_iDestination
+2025-05-07 15:30:33,981 - opcua_client - INFO - OPCUAClient: Trying with type UInt16 for Lift1/Eco_iDestination
+2025-05-07 15:30:33,982 - opcua_client - INFO - OPCUAClient: Trying with type UInt32 for Lift1/Eco_iDestination
+2025-05-07 15:30:33,983 - opcua_client - INFO - OPCUAClient: Trying with type Int64 for Lift1/Eco_iDestination
+2025-05-07 15:30:33,983 - opcua_client - INFO - OPCUAClient: Successfully wrote 50 with type Int64 to Lift1/Eco_iDestination

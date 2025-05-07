@@ -1,8 +1,24 @@
-2025-05-06 12:07:39,338 - PLCSim_DualLift_ST - INFO - Setting up dual-lift server on endpoint: opc.tcp://127.0.0.1:4860/gibas/plc/
-2025-05-06 12:07:42,623 - PLCSim_DualLift_ST - INFO - Server initialized with basic setup, now adding namespaces and nodes...
-2025-05-06 12:07:42,623 - PLCSim_DualLift_ST - INFO - Registered namespace with index: 2
-2025-05-06 12:07:43,138 - PLCSim_DualLift_ST - INFO - Created LiftSystem object node
-2025-05-06 12:07:43,139 - PLCSim_DualLift_ST - INFO - Creating variables for Lift1
-2025-05-06 12:07:43,145 - PLCSim_DualLift_ST - INFO - Creating variables for Lift2
-2025-05-06 12:07:43,152 - PLCSim_DualLift_ST - INFO - OPC UA Server Variables Initialized
-2025-05-06 12:07:43,152 - PLCSim_DualLift_ST - INFO - Dual Lift PLC Simulator Server Started (ST Logic).
+2025-05-07 15:30:26,863 - PLCSim_DualLift_ST - INFO - Setting up dual-lift server on endpoint: opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-07 15:30:29,464 - PLCSim_DualLift_ST - INFO - Server initialized with basic setup, now adding namespaces and nodes...
+2025-05-07 15:30:29,465 - PLCSim_DualLift_ST - INFO - Registered namespace with index: 2
+2025-05-07 15:30:29,980 - PLCSim_DualLift_ST - INFO - Created LiftSystem object node
+2025-05-07 15:30:29,981 - PLCSim_DualLift_ST - INFO - Creating variables for Lift1
+2025-05-07 15:30:29,994 - PLCSim_DualLift_ST - INFO - Creating variables for Lift2
+2025-05-07 15:30:30,006 - PLCSim_DualLift_ST - INFO - OPC UA Server Variables Initialized
+2025-05-07 15:30:30,007 - PLCSim_DualLift_ST - INFO - Dual Lift PLC Simulator Server Started (ST Logic).
+2025-05-07 15:30:34,027 - PLCSim_DualLift_ST - INFO - ******* JOB RECEIVED DEBUG *******
+2025-05-07 15:30:34,027 - PLCSim_DualLift_ST - INFO - [Lift1] Read method returned: Type=1, Origin=10, Dest=50
+2025-05-07 15:30:34,027 - PLCSim_DualLift_ST - INFO - [Lift1] Direct node read: Type=1, Origin=10, Dest=50
+2025-05-07 15:30:34,027 - PLCSim_DualLift_ST - INFO - [Lift1] Node datatypes: Type=4, Origin=4, Dest=4
+2025-05-07 15:30:34,028 - PLCSim_DualLift_ST - INFO - [Lift1] State dictionary: Type=1, Origin=10, Dest=50
+2025-05-07 15:30:34,028 - PLCSim_DualLift_ST - INFO - ********************************
+2025-05-07 15:30:34,028 - PLCSim_DualLift_ST - ERROR - Error writing to OPC path Lift1/Eco_iTaskType: The value supplied for the attribute is not of the same type as the attribute"s value.(BadTypeMismatch)
+2025-05-07 15:30:34,028 - PLCSim_DualLift_ST - INFO - [Lift1] Received Job Request: Type=1, Origin=10, Dest=50
+2025-05-07 15:30:34,028 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 10 -> 25
+2025-05-07 15:30:34,213 - PLCSim_DualLift_ST - INFO - [Lift1] Validating job: Type=1, Origin=10, Dest=50
+2025-05-07 15:30:34,215 - PLCSim_DualLift_ST - INFO - [Lift1] Assignment Validated Successfully.
+2025-05-07 15:30:34,215 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 25 -> 30
+2025-05-07 15:30:34,427 - PLCSim_DualLift_ST - INFO - [Lift1] Processing Accepted Job: Type=1, Origin=10, Dest=50
+2025-05-07 15:30:34,427 - PLCSim_DualLift_ST - INFO - [Lift1] Current Position: Pos=5, Fork=0
+2025-05-07 15:30:34,428 - PLCSim_DualLift_ST - INFO - [Lift1] Need to move to origin, proceeding to handshake
+2025-05-07 15:30:34,428 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 30 -> 100

@@ -299,6 +299,54 @@ class PLCSimulator_DualLift_ST:
         await asyncio.sleep(0.5)
         await self._update_opc_value(lift_id, "xErrorClearedAck", False)
 
+    def _get_reserved_locations(self, origin, destination, current_pos, pickup_offset, row_location_info=None):
+        """Simulatie van het GetReservedLocations functieblok van de PLC."""
+        # Pas een offset toe voor de rechterkolom voor eenvoudigere vergelijking
+        # Rijen in rechterkolom (51-100) worden omgezet naar (1-50)
+        display_origin = origin - 50 if origin > 50 else origin
+        display_destination = destination - 50 if destination > 50 else destination
+        display_current = current_pos - 50 if current_pos > 50 else current_pos
+        
+        # Bereken de hoge reservering (q_iReservedLocHigh)
+        if origin > destination:
+            reserved_high = origin + pickup_offset
+        elif origin < destination:
+            reserved_high = destination + pickup_offset
+        else:
+            reserved_high = current_pos + pickup_offset
+        
+        # Inclusief de huidige positie als deze hoger is dan de berekende hoge reservering
+        if current_pos > reserved_high:
+            reserved_high = current_pos
+        
+        # Bereken de lage reservering (q_iReservedLocLow)
+        if origin < destination:
+            reserved_low = origin
+        elif origin > destination:
+            reserved_low = destination
+        else:
+            reserved_low = current_pos
+            
+        # Inclusief de huidige positie als deze lager is dan de berekende lage reservering
+        if current_pos < reserved_low:
+            reserved_low = current_pos
+            
+        # Beperk waarden tot geldig bereik
+        if reserved_low < 1:
+            reserved_low = 1
+            
+        if reserved_high > 100:
+            reserved_high = 100
+        
+        # Bereken ook de display-waarden voor logging
+        display_low = reserved_low - 50 if reserved_low > 50 else reserved_low
+        display_high = reserved_high - 50 if reserved_high > 50 else reserved_high
+        
+        # Log met zowel originele als omgerekende waardes voor vergelijking
+        logger.debug(f"Reach berekening: O:{origin}({display_origin})->D:{destination}({display_destination}), Pos:{current_pos}({display_current}) => Reach:{reserved_low}({display_low})-{reserved_high}({display_high})")
+        
+        return reserved_low, reserved_high
+
     def _calculate_reach(self, lift_id):
         """Calculate the potential reach for the current active job based on PLC logic."""
         state = self.lift_state[lift_id]
@@ -314,50 +362,80 @@ class PLCSimulator_DualLift_ST:
              state["q_iActiveReachHigh"] = current_pos
              return
         
-        # Implementation of GetReservedLocations from PLC code:
-        # First calculate the high reach value
-        if origin > destination:
-            # Going down, origin is higher
-            reserved_high = origin + self._pickup_offset
-        elif origin < destination:
-            # Going up, destination is higher
-            reserved_high = destination + self._pickup_offset
-        else:
-            # Same position (shouldn't happen normally)
-            reserved_high = current_pos + self._pickup_offset
+        # Roep het gesimuleerde GetReservedLocations functieblok aan
+        # Dit komt overeen met de PLC code: "GetReservedLocations"(i_iActiveAssignmentOrigin:= ...
+        reserved_low, reserved_high = self._get_reserved_locations(
+            origin=origin,
+            destination=destination,
+            current_pos=current_pos,
+            pickup_offset=self._pickup_offset
+        )
         
-        # Include current position if it's higher than calculated high reach
-        if current_pos > reserved_high:
-            reserved_high = current_pos
-        
-        # Now calculate the low reach value
-        if origin < destination:
-            # Going up, origin is lower
-            reserved_low = origin
-        elif origin > destination:
-            # Going down, destination is lower
-            reserved_low = destination
-        else:
-            # Same position (shouldn't happen normally)
-            reserved_low = current_pos
-            
-        # Include current position if it's lower than calculated low reach
-        if current_pos < reserved_low:
-            reserved_low = current_pos
-            
-        # Set the reach values
+        # Sla de berekende waarden op in de lift state
         state["q_iActiveReachLow"] = reserved_low
         state["q_iActiveReachHigh"] = reserved_high
         
-        logger.debug(f"[{lift_id}] Calculated Reach: Job({origin}->{destination}), Current({current_pos}) -> Reach({reserved_low}-{reserved_high})")
+        # Display offset voor rechterkolom voor betere vergelijking
+        display_low = reserved_low - 50 if reserved_low > 50 else reserved_low
+        display_high = reserved_high - 50 if reserved_high > 50 else reserved_high
+        display_origin = origin - 50 if origin > 50 else origin
+        display_dest = destination - 50 if destination > 50 else destination
+        display_pos = current_pos - 50 if current_pos > 50 else current_pos
+        
+        logger.debug(f"[{lift_id}] Calculated Reach: Job({origin}({display_origin})->{destination}({display_dest})), Current({current_pos}({display_pos})) -> Reach({reserved_low}({display_low})-{reserved_high}({display_high}))")
+
+    def _check_collision_potential(self, lift_id, target_pos):
+        """Check if moving to target position would cause a collision with the other lift"""
+        other_lift_id = LIFT2_ID if lift_id == LIFT1_ID else LIFT1_ID
+        other_pos = self.lift_state[other_lift_id]["iElevatorRowLocation"]
+        other_cycle = self.lift_state[other_lift_id]["iCycle"]
+        current_pos = self.lift_state[lift_id]["iElevatorRowLocation"]
+        
+        # Als de andere lift in rust is (cycle 0 of 10) en niet op de doelpositie staat, is er geen probleem
+        if (other_cycle == 0 or other_cycle == 10) and other_pos != target_pos:
+            return False
+            
+        # Controleer of doelpositie exact bezet is door andere lift
+        if target_pos == other_pos:
+            logger.warning(f"[{lift_id}] Collision detected: Target position {target_pos} is occupied by {other_lift_id}")
+            return True
+            
+        # Controleer of het pad naar het doel geblokkeerd is door de andere lift
+        # Dit is cruciaal: als de andere lift tussen de huidige positie en het doel is, is er een botsing
+        if (current_pos < other_pos < target_pos) or (current_pos > other_pos > target_pos):
+            logger.warning(f"[{lift_id}] Collision detected: Path from {current_pos} to {target_pos} is blocked by {other_lift_id} at position {other_pos}")
+            return True
+            
+        # Controleer of er overlap is in bereiken (als beide liften actief zijn)
+        if other_cycle not in [0, 10]:
+            my_reach_low = self.lift_state[lift_id]["q_iActiveReachLow"]
+            my_reach_high = self.lift_state[lift_id]["q_iActiveReachHigh"]
+            other_reach_low = self.lift_state[other_lift_id]["q_iActiveReachLow"]
+            other_reach_high = self.lift_state[other_lift_id]["q_iActiveReachHigh"]
+            
+            # Check voor overlap in bereiken
+            overlap = not (my_reach_high < other_reach_low or my_reach_low > other_reach_high)
+            if overlap:
+                logger.warning(f"[{lift_id}] Collision potential: Reach overlap with {other_lift_id}. My reach: {my_reach_low}-{my_reach_high}, Other reach: {other_reach_low}-{other_reach_high}")
+                return True
+                
+        return False
 
     async def _simulate_sub_movement(self, lift_id):
          """Simulate the progress of engine or fork movement."""
          state = self.lift_state[lift_id]
          now = time.time()
 
-         # Simulate Engine Movement
+         # Simuleer engine movement
          if state["_sub_engine_moving"]:
+             # Controleer voordat de beweging begint of er een botsing zou kunnen optreden
+             if now - state["_move_start_time"] < 0.1:  # Alleen checken aan het begin van de beweging
+                 if self._check_collision_potential(lift_id, state["_move_target_pos"]):
+                     logger.error(f"[{lift_id}] Movement stopped: Collision detected with other lift when moving to {state['_move_target_pos']}")
+                     state["_sub_engine_moving"] = False
+                     state["iToEnginGoToLoc"] = 0  # Clear trigger
+                     return False  # Beweging gestopt vanwege botsingsrisico
+                 
              if now - state["_move_start_time"] >= self._task_duration:
                  logger.info(f"[{lift_id}] Engine movement finished. Reached: {state['_move_target_pos']}")
                  await self._update_opc_value(lift_id, "iElevatorRowLocation", state["_move_target_pos"])
@@ -487,11 +565,29 @@ class PLCSimulator_DualLift_ST:
                 direct_eco_origin = await self._direct_read_node_value(f"{lift_id}/Eco_iOrigination")
                 direct_eco_destination = await self._direct_read_node_value(f"{lift_id}/Eco_iDestination")
                 
-                logger.info(f"******* JOB RECEIVED DEBUG *******")
-                logger.info(f"[{lift_id}] Read method returned: Type={eco_task_type}, Origin={eco_origin}, Dest={eco_destination}")
-                logger.info(f"[{lift_id}] Direct node read: Type={direct_eco_task_type}, Origin={direct_eco_origin}, Dest={direct_eco_destination}")
-                logger.info(f"[{lift_id}] State dictionary: Type={state['Eco_iTaskType']}, Origin={state['Eco_iOrigination']}, Dest={state['Eco_iDestination']}")
-                logger.info(f"********************************")
+                # Add datatype inspection
+                direct_task_node = self.nodes[lift_id]["Eco_iTaskType"]
+                direct_origin_node = self.nodes[lift_id]["Eco_iOrigination"]
+                direct_dest_node = self.nodes[lift_id]["Eco_iDestination"]
+                
+                try:
+                    task_datatype = await direct_task_node.read_data_type_as_variant_type()
+                    origin_datatype = await direct_origin_node.read_data_type_as_variant_type()
+                    dest_datatype = await direct_dest_node.read_data_type_as_variant_type()
+                    
+                    logger.info(f"******* JOB RECEIVED DEBUG *******")
+                    logger.info(f"[{lift_id}] Read method returned: Type={eco_task_type}, Origin={eco_origin}, Dest={eco_destination}")
+                    logger.info(f"[{lift_id}] Direct node read: Type={direct_eco_task_type}, Origin={direct_eco_origin}, Dest={direct_eco_destination}")
+                    logger.info(f"[{lift_id}] Node datatypes: Type={task_datatype}, Origin={origin_datatype}, Dest={dest_datatype}")
+                    logger.info(f"[{lift_id}] State dictionary: Type={state['Eco_iTaskType']}, Origin={state['Eco_iOrigination']}, Dest={state['Eco_iDestination']}")
+                    logger.info(f"********************************")
+                except Exception as e:
+                    logger.error(f"Error reading datatype information: {e}")
+                    logger.info(f"******* JOB RECEIVED DEBUG *******")
+                    logger.info(f"[{lift_id}] Read method returned: {eco_task_type}, Origin={eco_origin}, Dest={eco_destination}")
+                    logger.info(f"[{lift_id}] Direct node read: Type={direct_eco_task_type}, Origin={direct_eco_origin}, Dest={direct_eco_destination}")
+                    logger.info(f"[{lift_id}] State dictionary: Type={state['Eco_iTaskType']}, Origin={state['Eco_iOrigination']}, Dest={state['Eco_iDestination']}")
+                    logger.info(f"********************************")
                 
                 # Copy request to internal processing variables
                 state["ActiveElevatorAssignment_iTaskType"] = eco_task_type
