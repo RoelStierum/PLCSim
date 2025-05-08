@@ -129,67 +129,86 @@ class OPCUAClient:
                 # get_node already logs the error
                 return False
 
-            # Determine if this is one of the known problematic nodes
-            is_eco_job_node = any(x in node_identifier for x in ["/Eco_iTaskType", "/Eco_iOrigination", "/Eco_iDestination"])
+            eco_specific_parts = [
+                "Eco_iTaskType", "Eco_iOrigination", "Eco_iDestination",
+                "EcoAck_iAssingmentType", "EcoAck_iRowNr", "EcoAck_xAcknowldeFromEco"
+            ]
+            # Check if any of the eco_specific_parts are present in the node_identifier string
+            is_eco_job_node = any(part in node_identifier for part in eco_specific_parts)
             
-            if datatype:
-                # Use explicitly provided datatype if given
-                ua_value = ua.Variant(value, datatype)
-            else:
-                # Infer datatype if not provided, common types
-                if isinstance(value, bool):
-                    ua_value = ua.Variant(value, ua.VariantType.Boolean)
-                elif isinstance(value, int):
-                    if is_eco_job_node:
-                        # Try Int32 for job-related nodes that have shown type mismatch issues
-                        ua_value = ua.Variant(value, ua.VariantType.Int32)
-                        logger.info(f"OPCUAClient: Using Int32 type for {node_identifier}")
-                    else:
-                        # Default to Int16 as often used in PLCs
-                        ua_value = ua.Variant(value, ua.VariantType.Int16)
-                elif isinstance(value, float):
-                    ua_value = ua.Variant(value, ua.VariantType.Float)
-                elif isinstance(value, str):
-                    ua_value = ua.Variant(value, ua.VariantType.String)
-                else:
-                    ua_value = ua.Variant(value) # Let asyncua handle it
+            ua_variant_to_write = None
 
-            logger.info(f"OPCUAClient: Writing value: {value} (UA Variant: {ua_value}) to {node_identifier}")
+            # Verwijder de specifieke Int64-forceringsregel voor is_eco_job_node.
+            # Laat de generieke type-inferentie en fallback dit afhandelen.
+            if datatype: # Als een expliciet datatype is meegegeven
+                ua_variant_to_write = ua.Variant(value, datatype)
+                logger.info(f"OPCUAClient: Using provided datatype {datatype.name} for {node_identifier} (value: {value}).")
+            else:
+                # Infer datatype if not provided
+                if isinstance(value, bool):
+                    ua_variant_to_write = ua.Variant(value, ua.VariantType.Boolean)
+                elif isinstance(value, int): 
+                    # Standaard naar Int32 voor integers als geen specifiek type is gegeven.
+                    # De PLC definieert Eco-nodes als Int16, dus de fallback zal dit corrigeren.
+                    ua_variant_to_write = ua.Variant(value, ua.VariantType.Int32) 
+                elif isinstance(value, float):
+                    ua_variant_to_write = ua.Variant(value, ua.VariantType.Float)
+                elif isinstance(value, str):
+                    ua_variant_to_write = ua.Variant(value, ua.VariantType.String)
+                else:
+                    ua_variant_to_write = ua.Variant(value) # Let asyncua infer
+                logger.info(f"OPCUAClient: Inferred datatype {ua_variant_to_write.VariantType.name} for {node_identifier} (value: {value}).")
+
+            logger.info(f"OPCUAClient: Attempting to write value: {value} (Final UA Variant: {ua_variant_to_write}) to {node_identifier}")
             
+            initial_type_used_for_write_attempt = ua_variant_to_write.VariantType
+
             try:
-                await node.write_value(ua_value)
-                logger.debug(f"OPCUAClient: Successfully wrote {value} to {node_identifier}")
+                await node.write_value(ua_variant_to_write)
+                logger.debug(f"OPCUAClient: Successfully wrote {value} to {node_identifier} with type {initial_type_used_for_write_attempt.name}.")
                 return True
             except ua.UaStatusCodeError as type_error:
+                # Fallback logic only if it's an integer.
                 if "BadTypeMismatch" in str(type_error) and isinstance(value, int):
-                    logger.info(f"OPCUAClient: Type mismatch. Trying alternative integer types for {node_identifier}")
-                    # Try with a series of integer types
-                    types_to_try = [
-                        ua.VariantType.Int16, ua.VariantType.UInt16, 
-                        ua.VariantType.Int32, ua.VariantType.UInt32,
-                        ua.VariantType.Int64, ua.VariantType.UInt64
+                    logger.info(f"OPCUAClient: Type mismatch for {node_identifier} with type {initial_type_used_for_write_attempt.name}. Trying alternative integer types.")
+                    potential_types = [
+                        ua.VariantType.Int16, ua.VariantType.Int32, ua.VariantType.Int64,
+                        ua.VariantType.UInt16, ua.VariantType.UInt32, ua.VariantType.UInt64,
+                        ua.VariantType.SByte, ua.VariantType.Byte
                     ]
-                    
-                    # If we already tried Int32 as our first guess, remove it from the list
-                    if is_eco_job_node:
-                        types_to_try.remove(ua.VariantType.Int32)
-                    
+                    types_to_try = [ptype for ptype in potential_types if ptype != initial_type_used_for_write_attempt]
+
+                    # Geen speciale behandeling meer voor is_eco_job_node hier, de lijst is alomvattend.
+
+                    if not types_to_try:
+                        logger.warning(f"OPCUAClient: No alternative integer types left after initial attempt with {initial_type_used_for_write_attempt.name} for {node_identifier}.")
+                        # Fall through to log the error and return False
+
                     for alt_type in types_to_try:
                         try:
-                            logger.info(f"OPCUAClient: Trying with type {alt_type.name} for {node_identifier}")
+                            logger.info(f"OPCUAClient: Retrying with type {alt_type.name} for {node_identifier}")
                             alt_ua_value = ua.Variant(value, alt_type)
                             await node.write_value(alt_ua_value)
-                            logger.info(f"OPCUAClient: Successfully wrote {value} with type {alt_type.name} to {node_identifier}")
+                            logger.info(f"OPCUAClient: Successfully wrote {value} with alternative type {alt_type.name} to {node_identifier}")
                             return True
+                        except ua.UaStatusCodeError as alt_type_error:
+                            if "BadTypeMismatch" in str(alt_type_error):
+                                logger.debug(f"OPCUAClient: Type {alt_type.name} also mismatched for {node_identifier}: {alt_type_error}")
+                            else: 
+                                logger.warning(f"OPCUAClient: Non-mismatch OPC UA error with alt type {alt_type.name} for {node_identifier}: {alt_type_error}")
+                                # break # Optionally stop if it's not a type mismatch
                         except Exception as alt_error:
-                            logger.debug(f"OPCUAClient: Type {alt_type.name} failed for {node_identifier}: {alt_error}")
-                            continue
+                            logger.debug(f"OPCUAClient: Other error trying alt type {alt_type.name} for {node_identifier}: {alt_error}")
                     
-                    logger.error(f"OPCUAClient: All alternative types failed for {node_identifier}")
+                    logger.error(f"OPCUAClient: All alternative integer types failed for {node_identifier}. Initial type was {initial_type_used_for_write_attempt.name}. Last error: {type_error}")
+                    return False 
+                else: 
+                    # This branch is for:
+                    # 1. "BadTypeMismatch" for an Eco node where Int64 was already tried (should be rare, indicates PLC expects something else entirely).
+                    # 2. "BadTypeMismatch" for non-integer values.
+                    # 3. Other UaStatusCodeErrors (not "BadTypeMismatch").
+                    logger.error(f"OPCUAClient: Unhandled OPC UA Error for {node_identifier} (Value: {value}, Type attempted: {initial_type_used_for_write_attempt.name}): {type_error}")
                     return False
-                else:
-                    # Re-raise the original error if it's not a type mismatch or not an integer
-                    raise
         except ua.UaStatusCodeError as e:
             logger.error(f"OPCUAClient: OPC UA Error writing node {node_identifier} with value {value}: {e} (Code: {e.code})")
             return False

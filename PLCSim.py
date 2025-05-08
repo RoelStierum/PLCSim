@@ -284,17 +284,15 @@ class PLCSimulator_DualLift_ST:
 
     async def _set_error(self, lift_id, code, short_desc, message, solution="Reset PLC and clear error.", cycle=888):
         """Put a specific lift into an error state."""
-        # (Similar to before, ensure state variables match new names)
         logger.error(f"[{lift_id}] ERROR SET (Cycle {cycle}): Code={code}, Desc={short_desc}, Msg={message}")
         state = self.lift_state[lift_id]
         state['_current_job_valid'] = False # Invalidate job
 
+        # Set error information in the PLC state (will be transmitted via OPC UA)
         await self._update_opc_value(lift_id, "iErrorCode", code)
         await self._update_opc_value(lift_id, "sShortAlarmDescription", short_desc)
         await self._update_opc_value(lift_id, "sAlarmMessage", message)
         await self._update_opc_value(lift_id, "sAlarmSolution", solution)
-        # await self._update_opc_value(lift_id, "iStatus", 888) # Status isn't directly used like this
-        # await self._update_opc_value(lift_id, "iStationStatus", 888) # Status isn't directly used like this
         await self._update_opc_value(lift_id, "sSeq_Step_comment", f"ERROR: {short_desc}")
         await self._update_opc_value(lift_id, "iCycle", cycle) # Go to specific error cycle
 
@@ -360,20 +358,32 @@ class PLCSimulator_DualLift_ST:
         return reserved_low, reserved_high
 
     def _calculate_reach(self, lift_id):
-        """Calculate the potential reach for the current active job based on PLC logic."""
         state = self.lift_state[lift_id]
         # Use ActiveElevatorAssignment which is set after validation
         origin = state["ActiveElevatorAssignment_iOrigination"]
         destination = state["ActiveElevatorAssignment_iDestination"]
         current_pos = state["iElevatorRowLocation"]
         task_type = state["ActiveElevatorAssignment_iTaskType"]
+        service_locations = [-2, 100] # Define service locations
 
         # If no valid job, reach is just current position
         if task_type == 0 or not state["_current_job_valid"]:
              state["q_iActiveReachLow"] = current_pos
              state["q_iActiveReachHigh"] = current_pos
+             # logger.debug(f"[{lift_id}] Calculated Reach (No Job/Invalid): Current({current_pos}) -> Reach({current_pos}-{current_pos})")
              return
         
+        # Handle MoveToAssignment to service locations specially
+        if task_type == MoveToAssignment and destination in service_locations:
+            # For a move to a service location, the "reach" is the path from current_pos to the service destination.
+            # This reach is used for collision checks with the other lift's active reach during validation (cycle 25).
+            path_points = sorted([current_pos, destination])
+            state["q_iActiveReachLow"] = path_points[0]
+            state["q_iActiveReachHigh"] = path_points[1]
+            
+            logger.debug(f"[{lift_id}] Calculated Reach (MoveTo Service Loc {destination}): Current({current_pos}) -> Reach({state['q_iActiveReachLow']}-{state['q_iActiveReachHigh']})")
+            return
+
         # Roep het gesimuleerde GetReservedLocations functieblok aan
         # Dit komt overeen met de PLC code: "GetReservedLocations"(i_iActiveAssignmentOrigin:= ...
         reserved_low, reserved_high = self._get_reserved_locations(
@@ -396,107 +406,95 @@ class PLCSimulator_DualLift_ST:
         
         logger.debug(f"[{lift_id}] Calculated Reach: Job({origin}({display_origin})->{destination}({display_dest})), Current({current_pos}({display_pos})) -> Reach({reserved_low}({display_low})-{reserved_high}({display_high}))")
 
-    def _check_collision_potential(self, lift_id, target_pos):
-        """Check if moving to target position would cause a collision with the other lift"""
+    def _check_collision_potential(self, lift_id, target_pos_current_lift): # Argument renamed for clarity
+        """Check if moving to target position would cause a collision with the other lift,
+           considering both lifts' current intended movement segments."""
         other_lift_id = LIFT2_ID if lift_id == LIFT1_ID else LIFT1_ID
-        other_pos = self.lift_state[other_lift_id]["iElevatorRowLocation"]
-        other_cycle = self.lift_state[other_lift_id]["iCycle"]
-        current_pos = self.lift_state[lift_id]["iElevatorRowLocation"]
         
-        # Zet alle posities om naar fysieke posities (1-50 voor operator, 1-49 voor robot)
-        physical_current = self.to_physical_pos(current_pos)
-        physical_target = self.to_physical_pos(target_pos)
-        physical_other = self.to_physical_pos(other_pos)
+        state_current_lift = self.lift_state[lift_id]
+        state_other_lift = self.lift_state[other_lift_id]
+
+        current_pos_current_lift = state_current_lift["iElevatorRowLocation"]
+        # target_pos_current_lift is an argument
+
+        # Define the movement range for the current lift's intended move segment
+        # Ensure start <= end for the range representation [min_pos, max_pos]
+        cl_path_positions = sorted([current_pos_current_lift, target_pos_current_lift])
+        cl_start, cl_end = cl_path_positions[0], cl_path_positions[1]
+
+        current_pos_other_lift = state_other_lift["iElevatorRowLocation"]
         
-        # Bepaal aan welke kant elke positie zich bevindt
-        current_side = self.get_side(current_pos)
-        target_side = self.get_side(target_pos)
-        other_side = self.get_side(other_pos)
+        # Define the movement range for the other lift
+        ol_path_positions = []
+        if state_other_lift["_sub_engine_moving"]:
+            # If the other lift is actively moving as part of a sub-movement
+            ol_path_positions = sorted([current_pos_other_lift, state_other_lift["_move_target_pos"]])
+        else:
+            # Other lift is static or its movement is not part of an active engine sub-movement
+            ol_path_positions = sorted([current_pos_other_lift, current_pos_other_lift]) # Range is just its current position
         
-        logger.info(f"[BLOCKING] {lift_id}: Beweging van {current_pos}({physical_current}/{current_side}) naar {target_pos}({physical_target}/{target_side})")
-        logger.info(f"[BLOCKING] {other_lift_id} staat op positie {other_pos}({physical_other}/{other_side}), cycle={other_cycle}")
+        ol_start, ol_end = ol_path_positions[0], ol_path_positions[1]
+
+        # Logging for context
+        physical_current_lift_curr = self.to_physical_pos(current_pos_current_lift)
+        physical_current_lift_target = self.to_physical_pos(target_pos_current_lift)
+        side_current_lift_curr = self.get_side(current_pos_current_lift)
+        side_current_lift_target = self.get_side(target_pos_current_lift)
+
+        physical_other_lift_curr = self.to_physical_pos(current_pos_other_lift)
+        side_other_lift_curr = self.get_side(current_pos_other_lift)
+        cycle_other_lift = state_other_lift["iCycle"]
+
+        logger.info(f"[COLLISION_CHECK_ENHANCED] {lift_id}: Evaluating move from {current_pos_current_lift}({physical_current_lift_curr}/{side_current_lift_curr}) to {target_pos_current_lift}({physical_current_lift_target}/{side_current_lift_target})")
+        logger.info(f"[COLLISION_CHECK_ENHANCED] {lift_id} intended path segment: [{cl_start}, {cl_end}]")
+        logger.info(f"[COLLISION_CHECK_ENHANCED] {other_lift_id}: At {current_pos_other_lift}({physical_other_lift_curr}/{side_other_lift_curr}), Cycle={cycle_other_lift}, MovingEngine={state_other_lift['_sub_engine_moving']}")
+        if state_other_lift["_sub_engine_moving"]:
+            logger.info(f"[COLLISION_CHECK_ENHANCED] {other_lift_id} intended path segment: [{ol_start}, {ol_end}] (moving towards {state_other_lift['_move_target_pos']})")
+        else:
+            logger.info(f"[COLLISION_CHECK_ENHANCED] {other_lift_id} static, path segment: [{ol_start}, {ol_end}]")
+
+        # Check for overlap using the logic: not (range1_end < range2_start or range2_end < range1_start)
+        # This means overlap = max(range1_start, range2_start) <= min(range1_end, range2_end)
         
-        # Als de andere lift inactief is (cycle 0 of 10) en niet op de doelpositie staat, geen probleem
-        if (other_cycle == 0 or other_cycle == 10) and other_pos != target_pos:
-            logger.info(f"[BLOCKING] Geen blokkering: {other_lift_id} is inactief en niet op doelpositie")
-            return False
-        
-        # Check 1: Exacte positie bezet?
-        if target_pos == other_pos:
-            logger.warning(f"[BLOCKING] Blokkering gedetecteerd: Doelpositie {target_pos} is bezet door {other_lift_id}")
+        # No movement for current lift, so no collision caused by *its* move.
+        # (Its own _check_collision_potential will be called if it tries to move into current lift's static spot)
+        if cl_start == cl_end and current_pos_current_lift == target_pos_current_lift :
+             # If current lift is not moving, it cannot cause a collision by this "move".
+             # However, if the other lift is moving into its spot, that's a collision for the other lift.
+             # This check is from the perspective of `lift_id`.
+             # If they are both at the same spot and `lift_id` isn't moving, it's not `lift_id` causing a new collision.
+             # The only case is if they are already at the same spot.
+             if cl_start == ol_start and cl_end == ol_end: # Both static at the same spot
+                 # This situation should ideally be caught by job validation or previous state.
+                 # logger.warning(f"[COLLISION_CHECK_ENHANCED] Both lifts static at the same position: {cl_start}. This might indicate a prior issue.")
+                 # Not returning True here as lift_id is not initiating a move that creates a *new* collision.
+                 # The job validation should prevent tasks leading to this if both are static.
+                 # If one is moving to this spot, its check will catch it.
+                 pass # Let the general overlap check proceed. If they are at the same spot, overlap will be true.
+
+        overlap = not (cl_end < ol_start or cl_end < cl_start)
+
+        if overlap:
+            # If current lift is not moving (cl_start == cl_end), an overlap means the other lift's path
+            # includes the current lift's static position.
+            if cl_start == cl_end:
+                # If lift_id is static at P, and other_lift's path [Os, Oe] overlaps P (Os <= P <= Oe).
+                # This is a collision if other_lift is actually moving through P.
+                # If other_lift is also static at P (Os=Oe=P), then they are at the same spot.
+                if cl_start == ol_start and cl_end == ol_end: # Both static at the same position
+                     logger.warning(f"[COLLISION_DETECTED_ENHANCED] {lift_id} (static) and {other_lift_id} (static) are at the same position: {cl_start}.")
+                     # This is a static conflict, not necessarily caused by this specific move check if lift_id isn't moving.
+                     # However, it's a collision state.
+                     return True 
+                # If lift_id is static and other_lift is moving through lift_id's position
+                logger.warning(f"[COLLISION_DETECTED_ENHANCED] {lift_id} (static at {cl_start}) is in the path [{ol_start}-{ol_end}] of {other_lift_id}.")
+                return True
+
+            logger.warning(f"[COLLISION_DETECTED_ENHANCED] Path overlap detected for {lift_id} moving to {target_pos_current_lift}.")
+            logger.error(f"[BOTSING_DETAIL_ENHANCED] Reden: Overlappende paden. Lift {lift_id} pad: [{cl_start}-{cl_end}]. Lift {other_lift_id} pad: [{ol_start}-{ol_end}]")
             return True
         
-        # Als we van zijde wisselen (kruis beweging), controleer of de doelpositie
-        # het pad van de andere lift kruist (als deze actief is)
-        if current_side != target_side and other_cycle not in [0, 10]:
-            # Bereken het pad van deze lift
-            my_origin = self.lift_state[lift_id]["ActiveElevatorAssignment_iOrigination"]
-            my_destination = self.lift_state[lift_id]["ActiveElevatorAssignment_iDestination"]
-            
-            # Als we het pad van de andere lift kruisen, is er mogelijk een blokkering
-            other_origin = self.lift_state[other_lift_id]["ActiveElevatorAssignment_iOrigination"]
-            other_destination = self.lift_state[other_lift_id]["ActiveElevatorAssignment_iDestination"]
-            
-            # Zet alle paden om naar fysieke posities
-            physical_my_origin = self.to_physical_pos(my_origin)
-            physical_my_dest = self.to_physical_pos(my_destination)
-            physical_other_origin = self.to_physical_pos(other_origin)
-            physical_other_dest = self.to_physical_pos(other_destination)
-            
-            logger.info(f"[BLOCKING] Pad controle voor kruisbeweging: {lift_id} pad {physical_my_origin}-{physical_my_dest} vs {other_lift_id} pad {physical_other_origin}-{physical_other_dest}")
-            
-            # Als de andere lift ook een kruis beweging maakt, check of de fysieke posities overlappen
-            if self.get_side(other_origin) != self.get_side(other_destination):
-                if (min(physical_my_origin, physical_my_dest) <= physical_other) and (physical_other <= max(physical_my_origin, physical_my_dest)):
-                    logger.warning(f"[BLOCKING] Blokkering gedetecteerd: Kruisende paden tussen {lift_id} en {other_lift_id}")
-                    return True
-        
-        # Als beide liften op dezelfde zijde bewegen, check of het pad geblokkeerd is
-        if target_side == other_side:
-            # Bepaal of de andere lift tussen huidige positie en doelpositie staat
-            if ((physical_current < physical_other < physical_target) or 
-                (physical_current > physical_other > physical_target)):
-                logger.warning(f"[BLOCKING] Blokkering gedetecteerd: Pad van {current_pos} naar {target_pos} wordt geblokkeerd door {other_lift_id} op positie {other_pos}")
-                return True
-            
-            logger.info(f"[BLOCKING] Pad is vrij van {current_pos} naar {target_pos} op {target_side} zijde")
-        else:
-            logger.info(f"[BLOCKING] Liften op verschillende zijden, geen direct blokkeringsrisico")
-        
-        # Als de andere lift actief is, controleer of het volledige pad vrij is
-        if other_cycle not in [0, 10]:
-            # Bereken het complete pad dat deze lift zal afleggen
-            if self.lift_state[lift_id]["ActiveElevatorAssignment_iTaskType"] != 0:
-                # Haal origin en destination op uit de actieve job
-                job_origin = self.lift_state[lift_id]["ActiveElevatorAssignment_iOrigination"] 
-                job_dest = self.lift_state[lift_id]["ActiveElevatorAssignment_iDestination"]
-                
-                # Zet om naar fysieke posities
-                physical_job_origin = self.to_physical_pos(job_origin)
-                physical_job_dest = self.to_physical_pos(job_dest)
-                
-                # Bereken het pad van de andere lift
-                other_job_origin = self.lift_state[other_lift_id]["ActiveElevatorAssignment_iOrigination"]
-                other_job_dest = self.lift_state[other_lift_id]["ActiveElevatorAssignment_iDestination"]
-                
-                # Zet om naar fysieke posities
-                physical_other_origin = self.to_physical_pos(other_job_origin)
-                physical_other_dest = self.to_physical_pos(other_job_dest)
-                
-                logger.info(f"[BLOCKING] Volledig pad controle: {lift_id} pad {physical_job_origin}-{physical_job_dest} vs {other_lift_id} pad {physical_other_origin}-{physical_other_dest}")
-                
-                # Als paden elkaar kruisen op dezelfde fysieke rijnummers, is er een blokkering
-                # Bereken het bereik van elke lift
-                my_range = range(min(physical_job_origin, physical_job_dest), max(physical_job_origin, physical_job_dest) + 1)
-                other_range = range(min(physical_other_origin, physical_other_dest), max(physical_other_origin, physical_other_dest) + 1)
-                
-                # Controleer op overlap in de paden
-                if (self.get_side(job_origin) == self.get_side(other_job_origin) and 
-                    any(pos in other_range for pos in my_range)):
-                    logger.warning(f"[BLOCKING] Blokkering gedetecteerd: Padoverlap op dezelfde zijde")
-                    return True
-        
-        logger.info(f"[BLOCKING] RESULTAAT: Geen blokkering gedetecteerd voor {lift_id} beweging naar {target_pos}")
+        logger.info(f"[COLLISION_CHECK_ENHANCED] RESULTAAT: Geen botsingsrisico gedetecteerd voor {lift_id} beweging naar {target_pos_current_lift}")
         return False
 
     async def _simulate_sub_movement(self, lift_id):
@@ -512,6 +510,10 @@ class PLCSimulator_DualLift_ST:
                      logger.error(f"[{lift_id}] Movement stopped: Collision detected with other lift when moving to {state['_move_target_pos']}")
                      state["_sub_engine_moving"] = False
                      state["iToEnginGoToLoc"] = 0  # Clear trigger
+                     # Genereer een botsing-foutmelding
+                     await self._set_error(lift_id, 2001, "COLLISION_RISK", 
+                                          "Beweging gestopt: Botsingsrisico gedetecteerd met andere lift",
+                                          "Controleer of de andere lift vrij is en probeer opnieuw. Mogelijk moet de andere lift eerst verplaatst worden.")
                      return False  # Beweging gestopt vanwege botsingsrisico
                  
              if now - state["_move_start_time"] >= self._task_duration:
@@ -637,6 +639,22 @@ class PLCSimulator_DualLift_ST:
 
             # Check for new job request from EcoSystem
             if eco_task_type > 0:
+                # Log de huidige status van beide liften voordat de job start
+                lift1_pos = self.lift_state[LIFT1_ID]['iElevatorRowLocation']
+                lift2_pos = self.lift_state[LIFT2_ID]['iElevatorRowLocation']
+                lift1_side = self.get_side(lift1_pos)
+                lift2_side = self.get_side(lift2_pos)
+                lift1_phys = self.to_physical_pos(lift1_pos)
+                lift2_phys = self.to_physical_pos(lift2_pos)
+                lift1_cycle = self.lift_state[LIFT1_ID]['iCycle']
+                lift2_cycle = self.lift_state[LIFT2_ID]['iCycle']
+                
+                logger.info("="*80)
+                logger.info(f"[JOB_START] Huidige status van beide liften voor nieuwe job op {lift_id}:")
+                logger.info(f"[JOB_START] Lift1: Positie={lift1_pos}({lift1_phys}/{lift1_side}), Cycle={lift1_cycle}, TrayInElevator={self.lift_state[LIFT1_ID]['xTrayInElevator']}")
+                logger.info(f"[JOB_START] Lift2: Positie={lift2_pos}({lift2_phys}/{lift2_side}), Cycle={lift2_cycle}, TrayInElevator={self.lift_state[LIFT2_ID]['xTrayInElevator']}")
+                logger.info("="*80)
+                
                 # --- DIRECT DEBUG JOB RECEIVE ---
                 # Print values that were directly read, not from state dictionary
                 direct_eco_task_type = await self._direct_read_node_value(f"{lift_id}/Eco_iTaskType")
@@ -701,6 +719,9 @@ class PLCSimulator_DualLift_ST:
             cancel_reason = 0
             error_msg = ""
 
+            # --- Define service locations ---
+            service_locations = [-2, 100]
+
             # --- Perform Reach Calculation for this lift ---
             state["_current_job_valid"] = True # Tentatively valid for reach calc
             self._calculate_reach(lift_id)
@@ -730,7 +751,10 @@ class PLCSimulator_DualLift_ST:
             # ELSIF #i_iReachOtherLiftHigh = #q_iActiveReachLow OR #i_iReachOtherLiftLow = #q_iActiveReachHigh THEN
             equal_boundaries = (other_reach_high == my_reach_low) or (other_reach_low == my_reach_high)
             
-            if (cross_check_plc or equal_boundaries) and valid:
+            # Skip collision/reach checks if it's a MoveToAssignment to a service location
+            is_move_to_service_loc = (task_type == MoveToAssignment and destination in service_locations)
+
+            if not is_move_to_service_loc and (cross_check_plc or equal_boundaries) and valid:
                 # Check if the other lift is actually IDLE or at home position. If so, overlap might be acceptable.
                 if other_state["iCycle"] != 0 and other_state["iCycle"] != 10: # Als andere lift actief is
                     logger.warning(f"[{lift_id}] Potential Collision Detected! MyReach({my_reach_low}-{my_reach_high}), OtherReach({other_reach_low}-{other_reach_high})")
@@ -739,63 +763,116 @@ class PLCSimulator_DualLift_ST:
                     error_msg = f"Validation Error - Lifts cross each other (overlap in reach: {my_reach_low}-{my_reach_high} vs {other_reach_low}-{other_reach_high})"
                     logger.error(f"[{lift_id}] {error_msg}")
 
+            # NIEUWE CHECK: Controleer op botsingsgevaar in het volledige bewegingstraject
+            # Check of de beweging van origin naar destination door de andere lift zou gaan
+            if valid and not is_move_to_service_loc: # Skip for service locations on MoveTo
+                if task_type == FullAssignment:
+                    # Controleer of beweging van huidige positie naar origin veilig is
+                    if self._check_collision_potential(lift_id, origin):
+                        valid = False
+                        cancel_reason = 5
+                        error_msg = f"Validation Error - Movement to origin {origin} would cause collision with other lift"
+                        logger.error(f"[{lift_id}] {error_msg}")
+                    
+                    # Controleer of beweging van origin naar destination veilig is
+                    if valid and self._check_collision_potential(lift_id, destination):
+                        valid = False
+                        cancel_reason = 5
+                        error_msg = f"Validation Error - Movement to destination {destination} would cause collision with other lift"
+                        logger.error(f"[{lift_id}] {error_msg}")
+                
+                # Voor MoveTo opdrachten (niet naar service loc), controleer direct de beweging naar de bestemmingslocatie
+                elif task_type == MoveToAssignment: # Implicitly not is_move_to_service_loc due to outer if
+                    if self._check_collision_potential(lift_id, destination):
+                        valid = False
+                        cancel_reason = 5
+                        error_msg = f"Validation Error - MoveTo destination {destination} would cause collision with other lift"
+                        logger.error(f"[{lift_id}] {error_msg}")
+
             # Check 2: Zero Origin/Destination for Full Move (Task 1)
             if valid and task_type == FullAssignment and (destination == 0 or origin == 0):
-                valid = False
-                cancel_reason = 4
-                error_msg = "Validation Error - Dest/Origin cannot be 0 for Full Assignment"
+                # Allow destination 0 if it's a service location for MoveTo, but not for FullAssignment
+                if not (task_type == MoveToAssignment and destination in service_locations):
+                    valid = False
+                    cancel_reason = 4
+                    error_msg = "Validation Error - Dest/Origin cannot be 0 for Full Assignment unless service loc for MoveTo"
+                    logger.error(f"[{lift_id}] {error_msg}")
+
 
             # Check 3: Zero Origin for Move/Prepare (Task 2 or 3)
-            if valid and (task_type == MoveToAssignment or task_type == PreparePickUp) and origin == 0:
-                 valid = False
-                 cancel_reason = 4
-                 error_msg = "Validation Error - Origin cannot be 0 for Move/Prepare Task"
+            # For MoveToAssignment, origin can be 0 if destination is a service point (e.g. move from undefined to service)
+            # For PreparePickUp, origin cannot be 0.
+            if valid and origin == 0:
+                if task_type == PreparePickUp:
+                    valid = False
+                    cancel_reason = 4
+                    error_msg = "Validation Error - Origin cannot be 0 for PreparePickUp Task"
+                    logger.error(f"[{lift_id}] {error_msg}")
+                elif task_type == MoveToAssignment and not (destination in service_locations):
+                    # If it's a MoveTo, and destination is NOT a service location, origin 0 is invalid.
+                    # If destination IS a service location, origin 0 might be conceptually okay (e.g. "move from current unknown to service point 100")
+                    # However, the PLC logic might still require a valid known current position to calculate path, so this might need more thought.
+                    # For now, let's assume if dest is service, origin 0 is okay for MoveTo.
+                    pass # Allowed for MoveTo to service location
 
             # Check 4: Pickup job while tray is already on forks
             if valid and (task_type == FullAssignment or task_type == PreparePickUp) and state["xTrayInElevator"]:
                 valid = False
                 cancel_reason = 1
                 error_msg = "Validation Error - Pickup requested but tray already on forks"
-
-            # Check 5: Destination is out of reach for this lift
-            # We already calculated the reach, so now check if the destination is outside this lift's range
-            # For this check we just use the presence of the other lift as the constraint
-            lift1_pos = self.lift_state[LIFT1_ID]['iElevatorRowLocation']
-            lift2_pos = self.lift_state[LIFT2_ID]['iElevatorRowLocation']
-            
-            # Now use the PLC's calculated reach to determine if the job is valid
-            # A destination is unreachable if it equals the other lift's position
-            if valid and task_type == FullAssignment:
-                if lift_id == LIFT1_ID and destination == lift2_pos:
-                    valid = False
-                    cancel_reason = 5 # Lifts cross/reach problem
-                    error_msg = f"Validation Error - Destination {destination} not reachable by {lift_id} (conflict with Lift2 at position {lift2_pos})"
-                    logger.error(f"[{lift_id}] {error_msg}")
-                elif lift_id == LIFT2_ID and destination == lift1_pos:
-                    valid = False
-                    cancel_reason = 5 # Lifts cross/reach problem
-                    error_msg = f"Validation Error - Destination {destination} not reachable by {lift_id} (conflict with Lift1 at position {lift1_pos})"
-                    logger.error(f"[{lift_id}] {error_msg}")
-
-            # Check 6: Positive destination
-            if valid and task_type == FullAssignment and destination <= 0:
-                valid = False
-                cancel_reason = 4
-                error_msg = f"Validation Error - Invalid destination {destination} (must be > 0)"
                 logger.error(f"[{lift_id}] {error_msg}")
 
-            # Check for valid origin (also based on reach)
-            if valid and (task_type == FullAssignment or task_type == PreparePickUp or task_type == MoveToAssignment):
-                if lift_id == LIFT1_ID and origin == lift2_pos:
-                    valid = False
-                    cancel_reason = 5 # Lifts cross/reach problem
-                    error_msg = f"Validation Error - Origin {origin} not reachable by {lift_id} (conflict with Lift2 at position {lift2_pos})"
-                    logger.error(f"[{lift_id}] {error_msg}")
-                elif lift_id == LIFT2_ID and origin == lift1_pos:
-                    valid = False
-                    cancel_reason = 5 # Lifts cross/reach problem
-                    error_msg = f"Validation Error - Origin {origin} not reachable by {lift_id} (conflict with Lift1 at position {lift1_pos})"
-                    logger.error(f"[{lift_id}] {error_msg}")
+            # Check 5: Destination is out of reach for this lift (This check might be too simplistic)
+            # This check is now refined by the general collision and reach checks above.
+            # However, we need to ensure service locations are not improperly flagged.
+            if valid and not is_move_to_service_loc: # Skip if moving to a service location
+                lift1_pos = self.lift_state[LIFT1_ID]['iElevatorRowLocation']
+                lift2_pos = self.lift_state[LIFT2_ID]['iElevatorRowLocation']
+                
+                if task_type == FullAssignment: # Only for FullAssignment, MoveTo handled by collision
+                    if lift_id == LIFT1_ID and destination == lift2_pos:
+                        valid = False
+                        cancel_reason = 5 
+                        error_msg = f"Validation Error - Destination {destination} not reachable by {lift_id} (conflict with Lift2 at position {lift2_pos})"
+                        logger.error(f"[{lift_id}] {error_msg}")
+                    elif lift_id == LIFT2_ID and destination == lift1_pos:
+                        valid = False
+                        cancel_reason = 5 
+                        error_msg = f"Validation Error - Destination {destination} not reachable by {lift_id} (conflict with Lift1 at position {lift1_pos})"
+                        logger.error(f"[{lift_id}] {error_msg}")
+
+            # Check 6: Positive destination (except for service locations -2)
+            if valid and task_type == FullAssignment and destination <= 0 and destination not in service_locations:
+                valid = False
+                cancel_reason = 4
+                error_msg = f"Validation Error - Invalid destination {destination} (must be > 0 or a valid service location)"
+                logger.error(f"[{lift_id}] {error_msg}")
+            
+            # For MoveToAssignment, destination can be -2 or 100.
+            if valid and task_type == MoveToAssignment and not (destination > 0 or destination in service_locations):
+                 valid = False
+                 cancel_reason = 4
+                 error_msg = f"Validation Error - Invalid destination {destination} for MoveTo (must be > 0 or a service location {-2, 100})"
+                 logger.error(f"[{lift_id}] {error_msg}")
+
+
+            # Check for valid origin (also based on reach) - skip if moving to service location
+            if valid and not is_move_to_service_loc:
+                if (task_type == FullAssignment or task_type == PreparePickUp or task_type == MoveToAssignment):
+                    # If origin is a service location, it might be a special case (e.g. starting from service)
+                    # This needs careful consideration if service locations can be origins for standard tasks.
+                    # For now, apply standard checks if not moving TO a service location.
+                    if origin not in service_locations: # Only apply if origin is not a service point itself
+                        if lift_id == LIFT1_ID and origin == other_state['iElevatorRowLocation']:
+                            valid = False
+                            cancel_reason = 5 
+                            error_msg = f"Validation Error - Origin {origin} not reachable by {lift_id} (conflict with Lift2 at position {other_state['iElevatorRowLocation']})"
+                            logger.error(f"[{lift_id}] {error_msg}")
+                        elif lift_id == LIFT2_ID and origin == other_state['iElevatorRowLocation']:
+                            valid = False
+                            cancel_reason = 5 
+                            error_msg = f"Validation Error - Origin {origin} not reachable by {lift_id} (conflict with Lift1 at position {other_state['iElevatorRowLocation']})"
+                            logger.error(f"[{lift_id}] {error_msg}")
 
             # --- Outcome ---
             if valid:
@@ -895,7 +972,6 @@ class PLCSimulator_DualLift_ST:
                  state["_move_start_time"] = time.time()
                  state["_sub_engine_moving"] = True
                  # Stay in 102 until move complete (handled by _simulate_sub_movement)
-                 # Next cycle determined when _sub_engine_moving becomes false
                  next_cycle = 105 # Set the target cycle for after movement
 
         elif current_cycle == 105: # Arrived at Origin Row
@@ -1077,23 +1153,90 @@ class PLCSimulator_DualLift_ST:
 
         elif current_cycle == 300: # Start MoveTo Task
              step_comment = "Starting MoveTo Task"
-             # Need to move directly to Destination
-             # Reuse the move logic, but the target is destination
-             # Need a state like REQ_MOVE_TO_DEST_DIRECT
              target_loc = state["ActiveElevatorAssignment_iDestination"]
-             logger.info(f"[{lift_id}] Starting MoveTo: Current={state['iElevatorRowLocation']} -> Target={target_loc}")
-             if state["iElevatorRowLocation"] == target_loc:
+             origin_loc = state["ActiveElevatorAssignment_iOrigination"] # Nodig voor correcte reach calc
+             current_pos = state["iElevatorRowLocation"]
+             service_locations = [-2, 100]
+
+             logger.info(f"[{lift_id}] Starting MoveTo: Current={current_pos} -> Target={target_loc}, Origin={origin_loc}")
+
+             if current_pos == target_loc:
                  logger.info(f"[{lift_id}] Already at MoveTo Destination {target_loc}.")
                  next_cycle = 399 # Already there
              else:
-                 # Need to request shaft access first
-                 state["_current_job_valid"] = True # Mark job as valid for reach calc/move
-                 self._calculate_reach(lift_id) # Calculate reach for the move
-                 await self._update_opc_value(lift_id, "q_iActiveReachLow", state["q_iActiveReachLow"])
-                 await self._update_opc_value(lift_id, "q_iActiveReachHigh", state["q_iActiveReachHigh"])
-                 # Use the existing REQ_MOVE_TO_DEST logic, which handles shaft lock
-                 next_cycle = "REQ_MOVE_TO_DEST" # Jump to shared logic state
+                 # For MoveTo, the "origin" for reach calculation should be the current position,
+                 # as we are moving from where we are to the destination.
+                 # The Eco_iOrigination might be 0 or a service point itself, which is fine for MoveTo.
+                 state["_current_job_valid"] = True 
 
+                 # Override origin for reach calculation if it's a MoveTo task to ensure
+                 # reach is calculated from current position to destination.
+                 # This is crucial if the original Eco_iOrigination was 0 or a service point.
+                 # The ActiveElevatorAssignment_iOrigination is kept as is for logging/tracking.
+                 
+                 # Create a temporary assignment for reach calculation for MoveTo
+                 temp_assignment_for_reach = {
+                     "origin": current_pos, # Start reach from current physical location
+                     "destination": target_loc,
+                     "task_type": MoveToAssignment 
+                 }
+                 
+                 # Calculate reach based on this temporary assignment
+                 # The _calculate_reach method uses ActiveElevatorAssignment, so we need to update it temporarily
+                 # or pass parameters directly if the method is refactored.
+                 # For now, let's ensure _calculate_reach uses the correct values for MoveTo.
+                 # We can adjust ActiveElevatorAssignment_iOrigination for the scope of this cycle's logic if needed,
+                 # or better, make _calculate_reach more flexible.
+
+                 # For simplicity in this step, we'll ensure the _calculate_reach uses current_pos as the starting point
+                 # for its internal logic when it's a MoveTo task.
+                 # The existing _calculate_reach uses state["ActiveElevatorAssignment_iOrigination"].
+                 # We need to ensure this is appropriate or adjust.
+                 # Let's assume _calculate_reach is smart enough or we adjust it later.
+                 # For now, the validation in cycle 25 should have already set _current_job_valid correctly.
+
+                 # The crucial part is that _check_collision_potential should be aware of service locations.
+                 # If moving TO a service location, collision check might be less strict or different.
+                 # However, the path TO it must still be clear.
+
+                 is_moving_to_service_loc = target_loc in service_locations
+
+                 # Perform collision check before initiating movement
+                 # The _check_collision_potential should ideally handle service locations correctly,
+                 # meaning it should not prevent movement to them if the path is clear.
+                 # If target_loc is a service location, the collision check should still ensure
+                 # the path to it doesn't cross the other active lift in a dangerous way.
+                 # The previous cycle 25 validation should have already handled high-level conflicts.
+                 
+                 collision_risk = False
+                 if not is_moving_to_service_loc: # Standard collision check if not moving to service loc
+                     collision_risk = self._check_collision_potential(lift_id, target_loc)
+                 else:
+                     # For service locations, we might have different rules, but basic path clearing is still needed.
+                     # For now, assume standard check is okay, as service locations are at extremes.
+                     # If a lift is AT -2 or 100, it's out of the main path.
+                     # The movement TO -2 or 100 still needs to be safe.
+                     collision_risk = self._check_collision_potential(lift_id, target_loc)
+
+
+                 if collision_risk:
+                     logger.error(f"[{lift_id}] MoveTo Task to {target_loc} aborted due to collision risk.")
+                     await self._set_error(lift_id, 2001, "COLLISION_MOVE", f"MoveTo to {target_loc} unsafe.")
+                     next_cycle = 888 # Error state
+                 else:
+                     logger.info(f"[{lift_id}] MoveTo Task to {target_loc} is safe. Initiating move.")
+                     state["iToEnginGoToLoc"] = target_loc
+                     state["xLiftAddPickupOffset"] = False # No offset for direct MoveTo
+                     state["_move_target_pos"] = target_loc
+                     state["_move_start_time"] = time.time()
+                     state["_sub_engine_moving"] = True
+                     # The sub_movement simulation will handle completion and then
+                     # the logic should proceed to 399.
+                     # We need to ensure that after the move, it goes to 399.
+                     # This is typically handled by the main loop checking _sub_engine_moving
+                     # and then processing the *next* intended cycle.
+                     # So, we set next_cycle to what it should be AFTER the move.
+                     next_cycle = 399 # Target cycle after successful move
         elif current_cycle == 399: # MoveTo Job Done
              step_comment = f"Task {MoveToAssignment} Done - Waiting EcoSystem Clear Task"
              if eco_task_type == 0:
@@ -1356,6 +1499,7 @@ class PLCSimulator_DualLift_ST:
                    await self._update_opc_value(lift_id, "iCycle", next_cycle)
                    # Clear internal step if we jumped based on numeric cycle
                    await self._update_opc_value(lift_id, "_Internal_Job_Step", "IDLE")
+
     async def _write_value(self, path, value, datatype=None):
         """Helper to write a value to an OPC UA node based on its path."""
         if not self.server or not self.namespace_idx:
@@ -1415,14 +1559,112 @@ class PLCSimulator_DualLift_ST:
             logger.error(f"Error during direct node read for {path}: {e}")
             return None
 
+    async def start(self):
+        """Start the PLC simulator and run until stopped."""
+        # Setup predefined error descriptions voor testen
+        self.predefined_errors = {
+            1001: {
+                "short_desc": "EMG_STOP_PRESSED", 
+                "message": "Noodstop is ingedrukt. Systeem onmiddellijk gestopt.",
+                "solution": "Draai de noodstop om te ontgrendelen, controleer of alle apparatuur veilig is, en reset het systeem."
+            },
+            2001: {
+                "short_desc": "COLLISION_RISK",
+                "message": "Beweging gestopt: Botsingsrisico gedetecteerd met andere lift",
+                "solution": "Controleer of de andere lift vrij is en probeer opnieuw. Mogelijk moet de andere lift eerst verplaatst worden."
+            },
+            3001: {
+                "short_desc": "FORK_SENSOR_FAILURE",
+                "message": "Fout in vorksensor gedetecteerd. Positie van vorken onzeker.",
+                "solution": "Controleer de vorksensoren en reset het systeem. Neem contact op met onderhoud als het probleem aanhoudt."
+            },
+            4001: {
+                "short_desc": "TRAY_MISSING",
+                "message": "Geen tray gedetecteerd op verwachte positie tijdens ophaalactie.",
+                "solution": "Controleer of de tray aanwezig is op de opgegeven positie en probeer opnieuw."
+            },
+            5001: {
+                "short_desc": "MOTOR_OVERLOAD",
+                "message": "Motoroverbelasting gedetecteerd tijdens liftbeweging.",
+                "solution": "Controleer of de lift niet overbelast is en of er geen mechanische blokkades zijn. Reset het systeem na controle."
+            }
+        }
+        
+        try:
+            await self._initialize_server()
+        except PermissionError as e:
+             logger.error(f"#############################################################")
+             logger.error(f"PERMISSION ERROR starting server: {e}")
+             logger.error(f"This often means port {self.endpoint.split(':')[-1].split('/')[0]} is already in use.")
+             logger.error(f"Check using 'netstat -ano | findstr \"{self.endpoint.split(':')[-1].split('/')[0]}\"' (Windows)")
+             logger.error(f"Or try changing the port number in plcsim.py and ecosystemsim.py")
+             logger.error(f"#############################################################")
+             return # Stop execution
+        except Exception as e:
+             logger.error(f"Failed to initialize server: {e}")
+             return
 
-# --- Main Execution Setup (remains the same) ---
-if __name__ == "__main__":
+        async with self.server:
+            logger.info("Dual Lift PLC Simulator Server Started (ST Logic).")
+            self.running = True
+            while self.running:
+                try:
+                    # Toggle watchdogs independently
+                    await self._toggle_watchdog(LIFT1_ID)
+                    await self._toggle_watchdog(LIFT2_ID)
+
+                    # Process logic for both lifts
+                    await self._process_lift_logic(LIFT1_ID)
+                    await self._process_lift_logic(LIFT2_ID)
+
+                except Exception as e:
+                     logger.exception(f"Error in main processing loop: {e}")
+                     # Attempt to put both lifts in error? Or just log and continue? Log for now.
+                     # Consider adding robust error handling here if needed
+
+                await asyncio.sleep(0.2) # PLC cycle time
+
+    async def trigger_test_error(self, lift_id, error_code):
+        """Trigger een testfout met een specifieke foutcode om de foutafhandeling te testen."""
+        if error_code not in self.predefined_errors:
+            logger.error(f"[{lift_id}] Onbekende foutcode voor test: {error_code}")
+            return False
+            
+        error = self.predefined_errors[error_code]
+        logger.info(f"[{lift_id}] Test fout geactiveerd: {error_code} - {error['short_desc']}")
+        
+        await self._set_error(
+            lift_id, 
+            error_code,
+            error['short_desc'],
+            error['message'],
+            error['solution']
+        )
+        return True
+
+async def main():
+    """Main functie om de PLCSimulator te starten."""
     simulator = PLCSimulator_DualLift_ST()
     try:
-        # asyncio.run(simulator.run(), debug=True) # Enable debug if needed
-        asyncio.run(simulator.run())
+        logger.info("Starting PLC Simulator...")
+        await simulator.start()
+    except asyncio.CancelledError:
+        logger.info("PLC Simulator cancelled.")
     except KeyboardInterrupt:
-        logger.info("Keyboard interrupt received.")
+        logger.info("PLC Simulator interrupted by user (Ctrl+C).")
+    except Exception as e:
+        logger.exception(f"Unexpected error in PLC Simulator: {e}")
     finally:
-        logger.info("Dual Lift PLC Simulator Finished.")
+        if getattr(simulator, 'running', False):
+            logger.info("Stopping PLC Simulator...")
+            await simulator.stop()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("PLC Simulator terminated by keyboard interrupt.")
+    except Exception as e:
+        logger.exception(f"Unexpected error: {e}")
+    finally:
+        logger.info("PLC Simulator exited.")

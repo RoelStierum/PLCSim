@@ -7,6 +7,7 @@ import time
 from asyncua import ua
 from opcua_client import OPCUAClient
 from lift_visualization import LiftVisualizationManager, LIFT1_ID, LIFT2_ID, LIFTS # Import new manager and constants
+from auto_mode import add_auto_mode_to_gui  # Import de auto mode functie
 
 # Zorg dat de logs map bestaat
 logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
@@ -69,6 +70,9 @@ class EcoSystemGUI_DualLift_ST:
         
         # Initialize LiftVisualizationManager after canvas is created in _setup_gui_layout
         self.lift_vis_manager = LiftVisualizationManager(self.root, self.shared_canvas, LIFTS)
+
+        # Add auto mode functionality to the GUI
+        self.auto_mode_manager = add_auto_mode_to_gui(self)
 
     def _setup_gui_layout(self):
         """Creates the main GUI layout, frames, and widgets."""
@@ -200,10 +204,37 @@ class EcoSystemGUI_DualLift_ST:
         error_frame = ttk.LabelFrame(parent_frame, text=f"{lift_id} Error Control", padding=10)
         error_frame.pack(fill=tk.X, pady=5)
         err_ctrls = {}
-        err_ctrls['clear_error_button'] = ttk.Button(error_frame, text="Clear Error", command=lambda l=lift_id: self.clear_error(l), state=tk.DISABLED)
+        
+        # Boven sectie met knop en status
+        top_frame = ttk.Frame(error_frame)
+        top_frame.pack(fill=tk.X, pady=5)
+        
+        err_ctrls['clear_error_button'] = ttk.Button(top_frame, text="Clear Error", command=lambda l=lift_id: self.clear_error(l), state=tk.DISABLED)
         err_ctrls['clear_error_button'].pack(side=tk.LEFT, padx=10)
-        err_ctrls['error_status_label'] = ttk.Label(error_frame, text="PLC Error State: No", foreground="green")
+        err_ctrls['error_status_label'] = ttk.Label(top_frame, text="PLC Error State: No", foreground="green")
         err_ctrls['error_status_label'].pack(side=tk.LEFT, padx=10)
+        
+        # Error details sectie toevoegen
+        details_frame = ttk.Frame(error_frame)
+        details_frame.pack(fill=tk.X, pady=5)
+        
+        # Korte beschrijving
+        ttk.Label(details_frame, text="Korte beschrijving:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        err_ctrls['short_description'] = ttk.Label(details_frame, text="None", foreground="gray")
+        err_ctrls['short_description'].grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
+        
+        # Uitgebreide foutmelding
+        ttk.Label(details_frame, text="Foutmelding:").grid(row=1, column=0, sticky=tk.NW, padx=5, pady=2)
+        err_ctrls['message'] = tk.Text(details_frame, height=2, width=50, borderwidth=1, relief="groove")
+        err_ctrls['message'].grid(row=1, column=1, sticky=tk.W, padx=5, pady=2)
+        err_ctrls['message'].config(state=tk.DISABLED)
+        
+        # Oplossing
+        ttk.Label(details_frame, text="Oplossing:").grid(row=2, column=0, sticky=tk.NW, padx=5, pady=2)
+        err_ctrls['solution'] = tk.Text(details_frame, height=2, width=50, borderwidth=1, relief="groove")
+        err_ctrls['solution'].grid(row=2, column=1, sticky=tk.W, padx=5, pady=2)
+        err_ctrls['solution'].config(state=tk.DISABLED)
+        
         self.error_controls[lift_id] = err_ctrls
 
     # --- GUI Layout and Element Creation End, Business Logic Methods Below ---
@@ -263,9 +294,60 @@ class EcoSystemGUI_DualLift_ST:
         error_button_state = tk.DISABLED
         error_label_color = "green"
         if is_error and self.is_connected:
-             error_info_text = f"PLC Error State: YES (Code: {error_code})"
-             error_button_state = tk.NORMAL
-             error_label_color = "red"
+            error_info_text = f"PLC Error State: YES (Code: {error_code})"
+            error_button_state = tk.NORMAL
+            error_label_color = "red"
+            
+            # Vul de error details secties
+            if lift_id in self.error_controls:
+                # Haal de foutbeschrijvingen op uit de PLC data
+                short_desc = plc_data.get("sShortAlarmDescription", "")
+                if isinstance(short_desc, bytes):
+                    short_desc = short_desc.decode('utf-8', 'ignore').strip()
+                
+                error_msg = plc_data.get("sAlarmMessage", "")
+                if isinstance(error_msg, bytes):
+                    error_msg = error_msg.decode('utf-8', 'ignore').strip()
+                    
+                solution = plc_data.get("sAlarmSolution", "")
+                if isinstance(solution, bytes):
+                    solution = solution.decode('utf-8', 'ignore').strip()
+                
+                # Vul de error details widgets
+                self.error_controls[lift_id]['short_description'].config(text=short_desc or "Unknown error", foreground="red")
+                
+                # Bijwerken van de message textbox
+                msg_widget = self.error_controls[lift_id]['message']
+                msg_widget.config(state=tk.NORMAL)
+                msg_widget.delete("1.0", tk.END)
+                msg_widget.insert("1.0", error_msg or "Geen details beschikbaar")
+                msg_widget.config(state=tk.DISABLED)
+                
+                # Bijwerken van de solution textbox
+                sol_widget = self.error_controls[lift_id]['solution']
+                sol_widget.config(state=tk.NORMAL)
+                sol_widget.delete("1.0", tk.END)
+                sol_widget.insert("1.0", solution or "Geen oplossing beschikbaar")
+                sol_widget.config(state=tk.DISABLED)
+        else:
+            # Reset error details als er geen fout is
+            if lift_id in self.error_controls:
+                self.error_controls[lift_id]['short_description'].config(text="None", foreground="gray")
+                
+                # Reset message textbox
+                msg_widget = self.error_controls[lift_id]['message']
+                msg_widget.config(state=tk.NORMAL)
+                msg_widget.delete("1.0", tk.END)
+                msg_widget.insert("1.0", "")
+                msg_widget.config(state=tk.DISABLED)
+                
+                # Reset solution textbox
+                sol_widget = self.error_controls[lift_id]['solution']
+                sol_widget.config(state=tk.NORMAL)
+                sol_widget.delete("1.0", tk.END)
+                sol_widget.insert("1.0", "")
+                sol_widget.config(state=tk.DISABLED)
+                
         if lift_id in self.error_controls:
              self.error_controls[lift_id]['error_status_label'].config(text=error_info_text, foreground=error_label_color)
              self.error_controls[lift_id]['clear_error_button'].config(state=error_button_state)
@@ -475,9 +557,10 @@ class EcoSystemGUI_DualLift_ST:
         destination = controls['destination_var'].get()
         logger.info(f"Sending Job to {lift_id}: Type={task_type}, Origin={origin}, Dest={destination}")
         async def job_write_sequence():
-            await self.opcua_client.write_value(f"{lift_id}/Eco_iTaskType", task_type, ua.VariantType.Int16)
-            await self.opcua_client.write_value(f"{lift_id}/Eco_iOrigination", origin, ua.VariantType.Int16)
-            await self.opcua_client.write_value(f"{lift_id}/Eco_iDestination", destination, ua.VariantType.Int16)
+            # Gebruik Int32 in plaats van Int16 zoals aangegeven in de logs
+            await self.opcua_client.write_value(f"{lift_id}/Eco_iTaskType", task_type, ua.VariantType.Int32)
+            await self.opcua_client.write_value(f"{lift_id}/Eco_iOrigination", origin, ua.VariantType.Int32)
+            await self.opcua_client.write_value(f"{lift_id}/Eco_iDestination", destination, ua.VariantType.Int32)
             # Verwijderd: Eco_xJobRequest bestaat niet in de PLC en is niet nodig
             # await self.opcua_client.write_value(f"{lift_id}/Eco_xJobRequest", True, ua.VariantType.Boolean)
         asyncio.create_task(job_write_sequence())
@@ -508,7 +591,8 @@ class EcoSystemGUI_DualLift_ST:
             return
         logger.info(f"Stuur Clear Task (TaskType=0) naar {lift_id}")
         async def clear_task_sequence():
-            success_type = await self.opcua_client.write_value(f"{lift_id}/Eco_iTaskType", 0, ua.VariantType.Int16)
+            # Gebruik Int32 in plaats van Int16
+            success_type = await self.opcua_client.write_value(f"{lift_id}/Eco_iTaskType", 0, ua.VariantType.Int32)
             if not success_type:
                 messagebox.showerror("OPC UA Error", f"Failed to set TaskType to 0 for {lift_id}.")
                 return

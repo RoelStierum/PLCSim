@@ -10,7 +10,10 @@ CANVAS_HEIGHT = 600
 CANVAS_WIDTH = 650
 MAX_ROWS_LEFT = 50
 MAX_ROWS_RIGHT = 49
-MIN_ROW = -2
+MIN_ROW = -2 # Used for logical row calculations, can be a service point
+SERVICE_ROW_TOP = 100 # Logical row number for top service point
+SERVICE_ROW_BOTTOM = -2 # Logical row number for bottom service point
+
 LIFT_WIDTH_VIS = 50 
 LIFT_HEIGHT_RATIO = 0.013
 LIFT1_COLOR = 'blue'
@@ -22,6 +25,11 @@ BOTTOM_MARGIN = 50
 LIFT1_ID = 'Lift1'
 LIFT2_ID = 'Lift2'
 LIFTS = (LIFT1_ID, LIFT2_ID)
+
+# Fork Side Constants (mirroring PLCSim.py for clarity in this module)
+MiddenLocation = 0
+RobotSide = 1      # Visualized as forks to the left (corresponds to PLC's OpperatorSide)
+OpperatorSide = 2  # Visualized as forks to the right (corresponds to PLC's RobotSide)
 
 class LiftVisualizationManager:
     def __init__(self, root, canvas, lift_ids):
@@ -55,30 +63,40 @@ class LiftVisualizationManager:
         row_height_left = usable_height / MAX_ROWS_LEFT
         row_height_right = usable_height / MAX_ROWS_RIGHT
 
-        # Left Rack
+        # --- Define Zone Colors ---
+        operator_zone_color = "#FFDDC1" # Light orange/peach for Operator Zone
+        robot_zone_color = "#D1E8FF"    # Light blue for Robot Zone
+        shaft_color = '#F0F0F0'
+        service_area_color = '#E6E6FA' # Light purple/lavender for service areas
+
+        # --- Draw Zones ---
+        # Operator Zone (Left)
         left_rack_x1 = center_x - shaft_width/2 - 40 - rack_width
         left_rack_x2 = center_x - shaft_width/2 - 40
         self.canvas.create_rectangle(
             left_rack_x1, TOP_MARGIN, left_rack_x2, CANVAS_HEIGHT - BOTTOM_MARGIN,
-            outline='black', width=1, fill='#E0E0E0'
+            outline='black', width=1, fill=operator_zone_color, tags="operator_zone_bg"
         )
+        self.canvas.create_text(left_rack_x1 + rack_width/2, TOP_MARGIN - 15, text="Operator Zone (Rows 1-50)", font=("Arial", 9, "bold"))
+
+        # Robot Zone (Right)
+        right_rack_x1 = center_x + shaft_width/2 + 40
+        right_rack_x2 = center_x + shaft_width/2 + 40 + rack_width
+        self.canvas.create_rectangle(
+            right_rack_x1, TOP_MARGIN, right_rack_x2, CANVAS_HEIGHT - BOTTOM_MARGIN,
+            outline='black', width=1, fill=robot_zone_color, tags="robot_zone_bg"
+        )
+        self.canvas.create_text(right_rack_x1 + rack_width/2, TOP_MARGIN - 15, text="Robot Zone (Rows 51-99)", font=("Arial", 9, "bold"))
 
         # Lift Shaft
         shaft_x1 = center_x - shaft_width/2
         shaft_x2 = center_x + shaft_width/2
         self.canvas.create_rectangle(
             shaft_x1, 0, shaft_x2, CANVAS_HEIGHT,
-            outline='black', width=2, fill='#F0F0F0'
+            outline='black', width=2, fill=shaft_color
         )
 
-        # Right Rack
-        right_rack_x1 = center_x + shaft_width/2 + 40
-        right_rack_x2 = center_x + shaft_width/2 + 40 + rack_width
-        self.canvas.create_rectangle(
-            right_rack_x1, TOP_MARGIN, right_rack_x2, CANVAS_HEIGHT - BOTTOM_MARGIN,
-            outline='black', width=1, fill='#E0E0E0'
-        )
-
+        # --- Draw Rack Slots (over the zones) ---
         grid_height_left = usable_height / MAX_ROWS_LEFT
         slot_height = grid_height_left * 0.7
 
@@ -87,40 +105,49 @@ class LiftVisualizationManager:
             self.canvas.create_rectangle(
                 left_rack_x1 + 5, y_pos - slot_height/2,
                 left_rack_x2 - 5, y_pos + slot_height/2,
-                outline='gray', width=1, fill='#8fbc8f', tags=f"rack_left_{row}"
+                outline='gray', width=1, fill='#C8E6C8', tags=f"rack_left_{row}" # Light green slots
             )
             if row == 1 or row % 5 == 0:
                 self.canvas.create_text(left_rack_x1 - 10, y_pos, text=str(row), font=("Arial", 7), anchor="e")
 
         grid_height_right = usable_height / MAX_ROWS_RIGHT
         for i in range(MAX_ROWS_RIGHT):
-            row = i + 51
-            y_pos = CANVAS_HEIGHT - BOTTOM_MARGIN - (i * grid_height_right) - (grid_height_right/2)
+            row = i + 51 # Logical row number for right side
+            # y_pos calculation for right side should be similar to left, but using right side's row index `i`
+            y_pos = CANVAS_HEIGHT - BOTTOM_MARGIN - (i * grid_height_right) - (grid_height_right / 2) 
             self.canvas.create_rectangle(
                 right_rack_x1 + 5, y_pos - slot_height/2,
                 right_rack_x2 - 5, y_pos + slot_height/2,
-                outline='gray', width=1, fill='#8fbc8f', tags=f"rack_right_{row}"
+                outline='gray', width=1, fill='#C8E6C8', tags=f"rack_right_{row}" # Light green slots
             )
-            if row == 51 or row % 5 == 0:
+            if row == 51 or row % 5 == 0 or row == (50 + MAX_ROWS_RIGHT): # Label first, every 5th, and last
                  self.canvas.create_text(right_rack_x2 + 10, y_pos, text=str(row), font=("Arial", 7), anchor="w")
 
-        # Service locations
-        service_100_y = TOP_MARGIN / 2
-        self.canvas.create_text(center_x, service_100_y - 15, text="Service 100", font=("Arial", 8))
-        self.canvas.create_rectangle(center_x - 30, service_100_y - 5, center_x + 30, service_100_y + 5, outline='blue', width=1, fill='lightblue', tags="service_100")
+        # --- Service Locations Visualization ---
+        service_area_height = TOP_MARGIN * 0.8 # Visual height for service areas
 
-        service_neg2_y = CANVAS_HEIGHT - BOTTOM_MARGIN / 2
-        self.canvas.create_text(center_x, service_neg2_y - 15, text="Service -2", font=("Arial", 8))
-        self.canvas.create_rectangle(center_x - 30, service_neg2_y - 5, center_x + 30, service_neg2_y + 5, outline='blue', width=1, fill='lightblue', tags="service_neg2")
+        # Service Location 100 (Top)
+        service_100_y_center = TOP_MARGIN / 2
+        self.canvas.create_rectangle(shaft_x1, service_100_y_center - service_area_height/2, 
+                                     shaft_x2, service_100_y_center + service_area_height/2, 
+                                     fill=service_area_color, outline='darkblue', width=1, tags="service_100_bg")
+        self.canvas.create_text(center_x, service_100_y_center, text=f"Service {SERVICE_ROW_TOP}", font=("Arial", 9, "bold"), fill="darkblue")
 
-        self.canvas.create_text(left_rack_x1 + rack_width/2, CANVAS_HEIGHT - 15, text="← Operator Side", font=("Arial", 8))
-        self.canvas.create_text(right_rack_x1 + rack_width/2, CANVAS_HEIGHT - 15, text="Robot Side →", font=("Arial", 8))
+        # Service Location -2 (Bottom)
+        service_neg2_y_center = CANVAS_HEIGHT - (BOTTOM_MARGIN / 2)
+        self.canvas.create_rectangle(shaft_x1, service_neg2_y_center - service_area_height/2, 
+                                     shaft_x2, service_neg2_y_center + service_area_height/2, 
+                                     fill=service_area_color, outline='darkblue', width=1, tags="service_-2_bg")
+        self.canvas.create_text(center_x, service_neg2_y_center, text=f"Service {SERVICE_ROW_BOTTOM}", font=("Arial", 9, "bold"), fill="darkblue")
 
-        # Store rack_info
+        # Store rack_info (ensure y-positions for service areas are center points for lift calculations)
         self.rack_info = {
-            'left': {'x1': left_rack_x1, 'x2': left_rack_x2, 'y_start': CANVAS_HEIGHT - BOTTOM_MARGIN, 'y_end': TOP_MARGIN, 'row_height': row_height_left, 'max_rows': MAX_ROWS_LEFT},
-            'right': {'x1': right_rack_x1, 'x2': right_rack_x2, 'y_start': CANVAS_HEIGHT - BOTTOM_MARGIN, 'y_end': TOP_MARGIN, 'row_height': row_height_right, 'max_rows': MAX_ROWS_RIGHT},
-            'service': {'100': {'y': service_100_y}, '-2': {'y': service_neg2_y}}
+            'left': {'x1': left_rack_x1, 'x2': left_rack_x2, 'y_start_canvas': CANVAS_HEIGHT - BOTTOM_MARGIN, 'y_end_canvas': TOP_MARGIN, 'row_height_canvas': row_height_left, 'max_rows': MAX_ROWS_LEFT},
+            'right': {'x1': right_rack_x1, 'x2': right_rack_x2, 'y_start_canvas': CANVAS_HEIGHT - BOTTOM_MARGIN, 'y_end_canvas': TOP_MARGIN, 'row_height_canvas': row_height_right, 'max_rows': MAX_ROWS_RIGHT},
+            'service': {
+                str(SERVICE_ROW_TOP): {'y_center_canvas': service_100_y_center},
+                str(SERVICE_ROW_BOTTOM): {'y_center_canvas': service_neg2_y_center}
+            }
         }
 
         # Lift parameters
@@ -167,19 +194,35 @@ class LiftVisualizationManager:
     def _calculate_y_position(self, row):
         if not self.rack_info:
             logger.error("Rack info not initialized before calculating y position.")
-            return CANVAS_HEIGHT / 2
+            return CANVAS_HEIGHT / 2 # Default to center if not initialized
 
-        if row == -2: return self.rack_info['service']['-2']['y']
-        if row == 100: return self.rack_info['service']['100']['y']
+        # Handle service locations first using their stored y_center_canvas
+        if row == SERVICE_ROW_BOTTOM: 
+            return self.rack_info['service'][str(SERVICE_ROW_BOTTOM)]['y_center_canvas']
+        if row == SERVICE_ROW_TOP: 
+            return self.rack_info['service'][str(SERVICE_ROW_TOP)]['y_center_canvas']
         
-        side = 'left' if 1 <= row <= MAX_ROWS_LEFT else 'right' if 51 <= row <= (50 + MAX_ROWS_RIGHT) else None
-        if not side:
-            logger.warning(f"Invalid row {row} for y-position calculation. Defaulting.")
+        # Determine side and calculate position for regular rack rows
+        side = None
+        row_index_on_side = 0
+
+        if 1 <= row <= MAX_ROWS_LEFT: # Operator side (left)
+            side = 'left'
+            row_index_on_side = row - 1 # 0-indexed for calculation from bottom of rack area
+        elif (MAX_ROWS_LEFT + 1) <= row <= (MAX_ROWS_LEFT + MAX_ROWS_RIGHT): # Robot side (right)
+            # Assuming rows 51-99 map to MAX_ROWS_LEFT + 1 to MAX_ROWS_LEFT + MAX_ROWS_RIGHT
+            # Example: If MAX_ROWS_LEFT is 50, then row 51 is the 0th index on the right side.
+            side = 'right'
+            row_index_on_side = row - (MAX_ROWS_LEFT + 1) # 0-indexed for calculation from bottom of rack area
+        else:
+            logger.warning(f"Invalid row {row} for y-position calculation. Defaulting to center of canvas.")
             return CANVAS_HEIGHT / 2
 
         rack = self.rack_info[side]
-        row_index = (row - 1) if side == 'left' else (row - 51)
-        position = rack['y_start'] - (row_index * rack['row_height']) - (rack['row_height'] / 2)
+        # y_start_canvas is the bottom of the rack drawing area (higher y-value)
+        # We subtract because row 1 (or 51) is at the bottom of the visual rack, and higher rows go up (lower y-value)
+        # The row_index_on_side increases as we go up the rack.
+        position = rack['y_start_canvas'] - (row_index_on_side * rack['row_height_canvas']) - (rack['row_height_canvas'] / 2)
         return position
 
     def animate_lift_movement(self, lift_id, target_row):
@@ -209,10 +252,10 @@ class LiftVisualizationManager:
                 self.last_position[lift_id] = target_row
                 # Update de label om de nieuwe positie te tonen
                 self.canvas.itemconfig(vis_data['location_label'], text=f"{lift_id}: Row {target_row}")
-                logger.info(f"Lift {lift_id} already at target row {target_row} (visual check). Logical position updated.")
+                # logger.info(f"Lift {lift_id} already at target row {target_row} (visual check). Logical position updated.")
             return
 
-        logger.info(f"Lift {lift_id} moving from row {current_logical_row} (Y: {current_center_y_canvas:.2f}) to {target_row} (Y: {target_center_y_canvas:.2f})")
+        # logger.info(f"Lift {lift_id} moving from row {current_logical_row} (Y: {current_center_y_canvas:.2f}) to {target_row} (Y: {target_center_y_canvas:.2f})")
 
         # Start de animatie met behulp van Tkinter's after-mechanisme
         # Dit is volledig thread-veilig omdat het op de hoofdthread draait
@@ -259,7 +302,7 @@ class LiftVisualizationManager:
             vis_data = self.lift_visuals[lift_id]
             self.canvas.itemconfig(vis_data['location_label'], text=f"{lift_id}: Row {target_row}")
             
-            logger.info(f"Lift {lift_id} animation completed at row {target_row}")
+            # logger.info(f"Lift {lift_id} animation completed at row {target_row}")
         else:
             # Anders plan de volgende animatiestap
             next_step = current_step + 1
@@ -334,8 +377,40 @@ class LiftVisualizationManager:
         # Update visual state to show the correct fork position and tray visibility
         self.update_lift_visual_state(lift_id, self.last_position[lift_id], tray_visible, fork_side_val, False)
 
-    def update_lift_visual_state(self, lift_id, current_row, has_tray, fork_side_val, is_error):
-        # fork_side_val: 0=middle, 1=robot side (right), 2=operator side (left)
+    def update_lift_visual_state(self, lift_id, current_row, has_tray, fork_side_from_plc, is_error):
+        if self.canvas is None:
+            logger.error("Canvas not initialized in LiftVisualizationManager.")
+            return
+
+        # Calculate y-coordinate based on current_row
+        y_pos = self._calculate_y_position(current_row)
+
+        # Determine the visual orientation of the forks based on current_row (target job location)
+        # Visual constants: RobotSide = 1 (visual left), OpperatorSide = 2 (visual right), MiddenLocation = 0
+
+        if current_row == SERVICE_ROW_BOTTOM or current_row == SERVICE_ROW_TOP:
+            visual_fork_orientation = MiddenLocation
+            # logger.debug(f"Lift {lift_id} at service row {current_row}. Visual forks set to Midden.")
+        elif current_row >= 1 and current_row <= MAX_ROWS_LEFT:  # Rows for "Operator Side" (visual left)
+            visual_fork_orientation = RobotSide      # RobotSide (1) is visual left
+            # logger.debug(f"Lift {lift_id} target row {current_row} (1-50). Visual forks to RobotSide (left).")
+        elif current_row >= (MAX_ROWS_LEFT + 1) and current_row <= (MAX_ROWS_LEFT + MAX_ROWS_RIGHT):  # Rows for "Robot Side" (visual right)
+            visual_fork_orientation = OpperatorSide  # OpperatorSide (2) is visual right
+            # logger.debug(f"Lift {lift_id} target row {current_row} ({MAX_ROWS_LEFT + 1}-{MAX_ROWS_LEFT + MAX_ROWS_RIGHT}). Visual forks to OpperatorSide (right).")
+        else:  # Default (e.g., row 0, or unexpected). Fallback to PLC's actual fork side.
+            if fork_side_from_plc == 1:  # PLC RobotSide (fysiek rechts)
+                visual_fork_orientation = OpperatorSide # Visual OpperatorSide (vorken naar rechts)
+            elif fork_side_from_plc == 2:  # PLC OpperatorSide (fysiek links)
+                visual_fork_orientation = RobotSide     # Visual RobotSide (vorken naar links)
+            else:  # PLC Midden (0) or unknown
+                visual_fork_orientation = MiddenLocation
+            # logger.debug(f"Lift {lift_id} target row {current_row} (neutral/other). Visual forks based on PLC state {fork_side_from_plc} -> {visual_fork_orientation}.")
+
+        # Fallback if something went wrong, ensure it's a valid value.
+        if visual_fork_orientation not in [MiddenLocation, RobotSide, OpperatorSide]:
+            logger.error(f"Lift {lift_id}: Invalid visual_fork_orientation calculated: {visual_fork_orientation}. Defaulting to Midden.")
+            visual_fork_orientation = MiddenLocation
+
         if lift_id not in self.lift_visuals: return
 
         vis_data = self.lift_visuals[lift_id]
@@ -357,20 +432,20 @@ class LiftVisualizationManager:
 
         # Update fork side (lateral movement) and tags
         fork_x_offset = 0
-        current_fork_tags = self.canvas.gettags(fork_rect)
+        current_fork_tags = self.canvas.gettags(fork_rect) 
         new_fork_tags = [tag for tag in current_fork_tags if not tag.startswith("side_")]
 
-        # Verhoogde offset om vorken verder in de stelling te laten gaan
-        fork_extension_factor = 8.0  # Verhoogd naar 8.0 voor betere visualisatie in de stelling
+        fork_extension_factor = 8.0  # Define fork_extension_factor before use
         
-        if fork_side_val == 1: # Right (Robot)
+        # Gebruik visual_fork_orientation (afgeleid van PLC) om de vorkpositie te bepalen
+        if visual_fork_orientation == OpperatorSide: # OpperatorSide (waarde 2) is visueel naar rechts
             fork_x_offset = (vis_data['lift_width'] / 2) + (vis_data['fork_width'] / 2) * fork_extension_factor
             new_fork_tags.append("side_right")
-        elif fork_side_val == 2: # Left (Operator)
+        elif visual_fork_orientation == RobotSide: # RobotSide (waarde 1) is visueel naar links
             fork_x_offset = -((vis_data['lift_width'] / 2) + (vis_data['fork_width'] / 2) * fork_extension_factor)
             new_fork_tags.append("side_left")
-        else: # Middle
-            new_fork_tags.append("side_middle") # Default or 0
+        else: # MiddenLocation (waarde 0) or default
+            new_fork_tags.append("side_middle")
         
         self.canvas.itemconfig(fork_rect, tags=tuple(new_fork_tags))
 
@@ -433,21 +508,30 @@ class LiftVisualizationManager:
     def _calculate_logical_row(self, y_position):
         """Determine the logical row based on the lift's Y position"""
         # Check service positions first
-        for special_row, pos_data in self.rack_info['service'].items():
-            if abs(y_position - pos_data['y']) < 20:  # Reasonable proximity
-                return int(special_row)  # Convert '-2' to -2
+        if abs(y_position - self.rack_info['service'][str(SERVICE_ROW_TOP)]['y_center_canvas']) < 20:  # Proximity to top service
+            return SERVICE_ROW_TOP
+        if abs(y_position - self.rack_info['service'][str(SERVICE_ROW_BOTTOM)]['y_center_canvas']) < 20: # Proximity to bottom service
+            return SERVICE_ROW_BOTTOM
                 
-        # Check left rack positions
-        for row in range(1, MAX_ROWS_LEFT + 1):
-            row_center_y = self._calculate_y_position(row)
-            if abs(y_position - row_center_y) < 10:  # Reasonable proximity threshold
-                return row
+        # Check left rack positions (Operator Zone)
+        rack_left = self.rack_info['left']
+        # Iterate from logical row 1 to MAX_ROWS_LEFT
+        for i in range(MAX_ROWS_LEFT):
+            logical_row = i + 1
+            # Calculate center y of this logical row on the canvas
+            # y_start_canvas is bottom of rack, so subtract to go upwards
+            row_center_y_canvas = rack_left['y_start_canvas'] - (i * rack_left['row_height_canvas']) - (rack_left['row_height_canvas'] / 2)
+            if abs(y_position - row_center_y_canvas) < (rack_left['row_height_canvas'] / 2):
+                return logical_row
                 
-        # Check right rack positions
-        for row in range(51, 51 + MAX_ROWS_RIGHT):
-            row_center_y = self._calculate_y_position(row)
-            if abs(y_position - row_center_y) < 10:
-                return row
+        # Check right rack positions (Robot Zone)
+        rack_right = self.rack_info['right']
+        # Iterate for MAX_ROWS_RIGHT
+        for i in range(MAX_ROWS_RIGHT):
+            logical_row = MAX_ROWS_LEFT + 1 + i # e.g., 50 + 1 + 0 = 51 for the first row on the right
+            row_center_y_canvas = rack_right['y_start_canvas'] - (i * rack_right['row_height_canvas']) - (rack_right['row_height_canvas'] / 2)
+            if abs(y_position - row_center_y_canvas) < (rack_right['row_height_canvas'] / 2):
+                return logical_row
                 
-        # Default to row 1 if no match found
-        return 1
+        logger.warning(f"Could not determine logical row for Y={y_position:.2f}. Defaulting to {MIN_ROW}.")
+        return MIN_ROW # Default if no specific match
