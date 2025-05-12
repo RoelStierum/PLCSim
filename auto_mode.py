@@ -7,7 +7,6 @@ import time
 from asyncua import ua
 from lift_visualization import LIFT1_ID, LIFT2_ID, LIFTS, MAX_ROWS_LEFT, MAX_ROWS_RIGHT
 
-# Stel de logger in
 logger = logging.getLogger("AutoMode")
 
 class AutoModeManager:
@@ -25,8 +24,8 @@ class AutoModeManager:
         
         # Zones voor elke lift om botsingen te voorkomen
         self.lift_zones = {
-            LIFT1_ID: {'origin_range': (1, 99), 'dest_range': (1, 99)},  # Lift1 werkt met lagere nummers
-            LIFT2_ID: {'origin_range': (1, 99), 'dest_range': (1, 99)}  # Lift2 werkt met hogere nummers
+            LIFT1_ID: {'origin_range': (1, 99), 'dest_range': (1, 99)},
+            LIFT2_ID: {'origin_range': (1, 99), 'dest_range': (1, 99)}
         }
         
         # Voeg de GUI-elementen toe
@@ -157,9 +156,8 @@ class AutoModeManager:
         logger.info("Beide liften gereset")
         self.show_status("Liften gereset", "blue")
         
-        # Reset na 2 seconden weer terug naar normale status
-        await asyncio.sleep(2.0)
-        self.show_status("Auto-modus gestopt", "red")
+        await asyncio.sleep(2.0) # Wacht tot status update zichtbaar is
+        self.show_status("Auto-modus gestopt", "red") # Terug naar standaard status als auto-modus niet herstart
     
     async def _check_and_acknowledge(self):
         """Controleer of er acknowledgements nodig zijn en voer ze uit"""
@@ -343,7 +341,7 @@ class AutoModeManager:
             if self._is_gui_available() and hasattr(self, 'status_label'):
                 self.status_label.config(text=f"Status: {message}", foreground=color)
         except Exception as e:
-            # Stille fout-afhandeling bij GUI-operaties
+            # Stille fout-afhandeling bij GUI-operaties om te voorkomen dat de auto-modus crasht
             logger.debug(f"Kon status niet updaten: {e}")
             pass
 

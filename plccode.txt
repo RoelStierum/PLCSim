@@ -1,4 +1,3 @@
-
 REGION Functionblock Documentation
     
 (*  Gibas Automation B.V.
@@ -918,22 +917,7 @@ REGION HMI states
     #iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[1].sStep_comment := #sSubStationStepCommentSub1;
     #iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[2].iState_Cycle := #iSubstationCycleSub2;
     #iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[2].sStep_comment := #sSubStationStepCommentSub2;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[3].iState_Cycle := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[3].sStep_comment := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[4].iState_Cycle := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[4].sStep_comment := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[5].iState_Cycle := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[5].sStep_comment := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[6].iState_Cycle := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[6].sStep_comment := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[7].iState_Cycle := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[7].sStep_comment := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[8].iState_Cycle := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[8].sStep_comment := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[9].iState_Cycle := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[9].sStep_comment := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[10].iState_Cycle := ;
-    //#iq_HMI_Stat_State.HMI_States.Sub_Dev_State_Cycle[10].sStep_comment := ;
+
     
     // Functionblock for state(s) to HMI
     #FB_HMI_State(i_xStation_Not_used := #iq_Settings_Station.xStation_Not_Used OR #FB_Station_Cntrl.q_xNot_Actived,

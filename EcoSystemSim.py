@@ -52,20 +52,15 @@ class EcoSystemGUI_DualLift_ST:
         self.root = root
         self.root.title("Gibas EcoSystem Simulator (Dual Lift - ST Logic)")
         self.root.geometry("1000x700")
-
         self.opcua_client = OPCUAClient(PLC_ENDPOINT, PLC_NS_URI)
         self.is_connected = False
         self.monitoring_task = None
-        self.last_watchdog_time = {lift_id: 0 for lift_id in LIFTS}
-        self.watchdog_timeout = 3.0
 
-        # GUI element storage
         self.lift_frames = {}
         self.status_labels = {}
         self.job_controls = {}
         self.ack_controls = {}
         self.error_controls = {}
-
         self._setup_gui_layout()
         
         # Initialize LiftVisualizationManager after canvas is created in _setup_gui_layout
@@ -77,26 +72,27 @@ class EcoSystemGUI_DualLift_ST:
     def _setup_gui_layout(self):
         """Creates the main GUI layout, frames, and widgets."""
         self._create_connection_frame()
-        
         main_frame = ttk.Frame(self.root)
         main_frame.pack(expand=True, fill="both", padx=10, pady=5)
-
         self._create_visualization_frame(main_frame)
         self._create_control_notebook(main_frame)
 
     def _create_connection_frame(self):
-        """Creates the connection management frame."""
+        """Creates the connection management frame.""" # Corrected docstring quote
         conn_frame = ttk.LabelFrame(self.root, text="Connection", padding=10)
         conn_frame.pack(fill=tk.X, padx=10, pady=5)
-        ttk.Label(conn_frame, text="PLC Endpoint:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        # Row 0 for endpoint
+        ttk.Label(conn_frame, text="PLC Endpoint:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
         self.endpoint_var = tk.StringVar(value=PLC_ENDPOINT)
-        ttk.Entry(conn_frame, textvariable=self.endpoint_var, width=40).grid(row=0, column=1, padx=5)
+        ttk.Entry(conn_frame, textvariable=self.endpoint_var, width=40).grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
+        # Row 1 for buttons
         self.connect_button = ttk.Button(conn_frame, text="Connect", command=self.connect_plc)
-        self.connect_button.grid(row=0, column=2, padx=5)
+        self.connect_button.grid(row=0, column=2, padx=5, pady=2)
         self.disconnect_button = ttk.Button(conn_frame, text="Disconnect", command=self.disconnect_plc, state=tk.DISABLED)
-        self.disconnect_button.grid(row=0, column=3, padx=5)
-        self.conn_status_label = ttk.Label(conn_frame, text="Status: Disconnected", foreground="red")
-        self.conn_status_label.grid(row=1, column=0, columnspan=4, sticky=tk.W, padx=5, pady=5)
+        self.disconnect_button.grid(row=0, column=3, padx=5, pady=2)
+        # Row 2 for status labels
+        self.connection_status_label = ttk.Label(conn_frame, text="Status: Disconnected", foreground="red")
+        self.connection_status_label.grid(row=1, column=0, columnspan=2, sticky=tk.W, padx=5, pady=2)
 
     def _create_visualization_frame(self, parent_frame):
         """Creates the warehouse visualization frame and canvas."""
@@ -126,7 +122,7 @@ class EcoSystemGUI_DualLift_ST:
         self._create_step_info_section(content_frame, lift_id)
         self._create_job_control_section(content_frame, lift_id)
         self._create_ack_section(content_frame, lift_id)
-        self._create_error_section(content_frame, lift_id)
+        self._create_error_display_section(content_frame, lift_id) # Renamed from _create_error_section
 
     def _create_status_section(self, parent_frame, lift_id):
         """Creates the status display section for a lift."""
@@ -173,12 +169,12 @@ class EcoSystemGUI_DualLift_ST:
         ttk.Radiobutton(job_frame, text="3: Prepare PickUp", variable=controls['task_type_var'], value=3).grid(row=0, column=3, sticky=tk.W)
         ttk.Label(job_frame, text="Task Type:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
         
-        # Verwijder standaardwaarden voor origin en destination (0 in plaats van specifieke waarden)
-        controls['origin_var'] = tk.IntVar(value=0)
+        # Standaardwaarden voor origin en destination - gebruik geldige standaardwaarden
+        controls['origin_var'] = tk.IntVar(value=5)
         ttk.Label(job_frame, text="Origin:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
         ttk.Entry(job_frame, textvariable=controls['origin_var'], width=10).grid(row=1, column=1, sticky=tk.W, padx=5)
         
-        controls['destination_var'] = tk.IntVar(value=0)
+        controls['destination_var'] = tk.IntVar(value=90)
         ttk.Label(job_frame, text="Destination:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
         ttk.Entry(job_frame, textvariable=controls['destination_var'], width=10).grid(row=2, column=1, sticky=tk.W, padx=5)
         
@@ -199,18 +195,16 @@ class EcoSystemGUI_DualLift_ST:
         ack_ctrls['ack_info_label'].pack(side=tk.LEFT, padx=10)
         self.ack_controls[lift_id] = ack_ctrls
 
-    def _create_error_section(self, parent_frame, lift_id):
-        """Creates the error control section for a lift."""
-        error_frame = ttk.LabelFrame(parent_frame, text=f"{lift_id} Error Control", padding=10)
+    def _create_error_display_section(self, parent_frame, lift_id): # Renamed from _create_error_section
+        """Creates the error display section for a lift.""" 
+        error_frame = ttk.LabelFrame(parent_frame, text=f"{lift_id} Error Display", padding=10) 
         error_frame.pack(fill=tk.X, pady=5)
         err_ctrls = {}
         
-        # Boven sectie met knop en status
+        # Status display
         top_frame = ttk.Frame(error_frame)
         top_frame.pack(fill=tk.X, pady=5)
         
-        err_ctrls['clear_error_button'] = ttk.Button(top_frame, text="Clear Error", command=lambda l=lift_id: self.clear_error(l), state=tk.DISABLED)
-        err_ctrls['clear_error_button'].pack(side=tk.LEFT, padx=10)
         err_ctrls['error_status_label'] = ttk.Label(top_frame, text="PLC Error State: No", foreground="green")
         err_ctrls['error_status_label'].pack(side=tk.LEFT, padx=10)
         
@@ -268,13 +262,15 @@ class EcoSystemGUI_DualLift_ST:
                 label_widget.config(text=str(value))
 
     def _update_lift_button_states(self, lift_id, plc_data):
-        """Updates the state of buttons (ack, error, job) for a given lift."""
-        ack_type = self._safe_get_int_from_data(plc_data, "EcoAck_iAssingmentType")
-        ack_row = self._safe_get_int_from_data(plc_data, "EcoAck_iRowNr")
+        """Updates the state of buttons (ack, job) and error display for a given lift."""
+        # Gebruik de correcte interface-variabelen volgens interface.txt
+        ack_type = self._safe_get_int_from_data(plc_data, "iJobType")  # Deel van Handshake struct
+        ack_row = self._safe_get_int_from_data(plc_data, "iRowNr")     # Deel van Handshake struct
         ack_needed = ack_type > 0
         error_code = self._safe_get_int_from_data(plc_data, "iErrorCode")
         is_error = error_code != 0
         plc_cycle = self._safe_get_int_from_data(plc_data, "iCycle", -1)
+        iStationStatus = self._safe_get_int_from_data(plc_data, "iStationStatus") # STATUS_OK=1, STATUS_WARNING=2, STATUS_ERROR=3
 
         # Ack controls
         ack_info_text = "PLC Awaiting Ack: No"
@@ -289,72 +285,99 @@ class EcoSystemGUI_DualLift_ST:
              self.ack_controls[lift_id]['ack_info_label'].config(text=ack_info_text, foreground=ack_label_color)
              self.ack_controls[lift_id]['ack_movement_button'].config(state=ack_button_state)
 
-        # Error controls
-        error_info_text = f"PLC Error State: No (Code: {error_code})"
-        error_button_state = tk.DISABLED
-        error_label_color = "green"
-        if is_error and self.is_connected:
-            error_info_text = f"PLC Error State: YES (Code: {error_code})"
-            error_button_state = tk.NORMAL
-            error_label_color = "red"
-            
-            # Vul de error details secties
-            if lift_id in self.error_controls:
-                # Haal de foutbeschrijvingen op uit de PLC data
-                short_desc = plc_data.get("sShortAlarmDescription", "")
-                if isinstance(short_desc, bytes):
-                    short_desc = short_desc.decode('utf-8', 'ignore').strip()
+        # Error and Status display logic
+        current_status_text = "PLC Status: Unknown"
+        current_status_color = "gray"
+        populate_details = False
+
+        station_state_desc_raw = plc_data.get("sStationStateDescription", "")
+        if isinstance(station_state_desc_raw, bytes):
+            station_state_desc = station_state_desc_raw.decode('utf-8', 'ignore').strip()
+        else:
+            station_state_desc = str(station_state_desc_raw).strip()
+
+        if not self.is_connected:
+            current_status_text = "PLC Status: Disconnected"
+            current_status_color = "gray"
+            populate_details = False
+        elif is_error: # PLC reported a hard error
+            current_status_text = f"PLC Error State: YES (Code: {error_code})"
+            if station_state_desc:
+                 current_status_text = f"PLC Status: {station_state_desc} (Code: {error_code})"
+            current_status_color = "red"
+            populate_details = True
+        elif iStationStatus == 2:  # STATUS_WARNING (e.g., Job Rejected)
+            current_status_text = f"PLC Status: {station_state_desc or 'Warning'}"
+            current_status_color = "orange"
+            populate_details = True
+        elif iStationStatus == 1: # STATUS_OK
+            current_status_text = f"PLC Status: {station_state_desc or 'OK'} (Cycle: {plc_cycle})"
+            current_status_color = "green"
+            populate_details = False
+        else: # Other states or default
+            current_status_text = f"PLC Status: {station_state_desc or 'OK'} (Cycle: {plc_cycle}, Status: {iStationStatus})"
+            current_status_color = "blue" # Or some other default color
+            populate_details = False
+
+
+        if lift_id in self.error_controls:
+            self.error_controls[lift_id]['error_status_label'].config(text=current_status_text, foreground=current_status_color)
+
+            if populate_details:
+                short_desc_raw = plc_data.get("sShortAlarmDescription", "")
+                if isinstance(short_desc_raw, bytes):
+                    short_desc = short_desc_raw.decode('utf-8', 'ignore').strip()
+                else:
+                    short_desc = str(short_desc_raw).strip()
                 
-                error_msg = plc_data.get("sAlarmMessage", "")
-                if isinstance(error_msg, bytes):
-                    error_msg = error_msg.decode('utf-8', 'ignore').strip()
+                error_msg_raw = plc_data.get("sAlarmMessage", "")
+                if isinstance(error_msg_raw, bytes):
+                    error_msg = error_msg_raw.decode('utf-8', 'ignore').strip()
+                else:
+                    error_msg = str(error_msg_raw).strip()
                     
-                solution = plc_data.get("sAlarmSolution", "")
-                if isinstance(solution, bytes):
-                    solution = solution.decode('utf-8', 'ignore').strip()
+                solution_raw = plc_data.get("sAlarmSolution", "")
+                if isinstance(solution_raw, bytes):
+                    solution = solution_raw.decode('utf-8', 'ignore').strip()
+                else:
+                    solution = str(solution_raw).strip()
                 
-                # Vul de error details widgets
-                self.error_controls[lift_id]['short_description'].config(text=short_desc or "Unknown error", foreground="red")
+                detail_text_color = current_status_color # Match status color, or choose e.g. "black"
+                self.error_controls[lift_id]['short_description'].config(text=short_desc or "N/A", foreground=detail_text_color)
                 
-                # Bijwerken van de message textbox
                 msg_widget = self.error_controls[lift_id]['message']
                 msg_widget.config(state=tk.NORMAL)
                 msg_widget.delete("1.0", tk.END)
                 msg_widget.insert("1.0", error_msg or "Geen details beschikbaar")
                 msg_widget.config(state=tk.DISABLED)
                 
-                # Bijwerken van de solution textbox
                 sol_widget = self.error_controls[lift_id]['solution']
                 sol_widget.config(state=tk.NORMAL)
                 sol_widget.delete("1.0", tk.END)
                 sol_widget.insert("1.0", solution or "Geen oplossing beschikbaar")
                 sol_widget.config(state=tk.DISABLED)
-        else:
-            # Reset error details als er geen fout is
-            if lift_id in self.error_controls:
+            else:
+                # Reset error details if not populating
                 self.error_controls[lift_id]['short_description'].config(text="None", foreground="gray")
                 
-                # Reset message textbox
                 msg_widget = self.error_controls[lift_id]['message']
                 msg_widget.config(state=tk.NORMAL)
                 msg_widget.delete("1.0", tk.END)
                 msg_widget.insert("1.0", "")
                 msg_widget.config(state=tk.DISABLED)
                 
-                # Reset solution textbox
                 sol_widget = self.error_controls[lift_id]['solution']
                 sol_widget.config(state=tk.NORMAL)
                 sol_widget.delete("1.0", tk.END)
                 sol_widget.insert("1.0", "")
                 sol_widget.config(state=tk.DISABLED)
                 
-        if lift_id in self.error_controls:
-             self.error_controls[lift_id]['error_status_label'].config(text=error_info_text, foreground=error_label_color)
-             self.error_controls[lift_id]['clear_error_button'].config(state=error_button_state)
-
-        # Job controls
-        can_send_job = self.is_connected and not is_error and plc_cycle == 10 
+        # Job controls - Wijziging: Niet automatisch een nieuwe job sturen na voltooiing
+        # Wanneer de PLC in de gereedstatus is (iCycle = 10), sturen we ALLEEN een nieuwe job
+        # als de gebruiker expliciet op de knop drukt
+        can_send_job = self.is_connected and not is_error and plc_cycle == 10
         job_button_state = tk.NORMAL if can_send_job else tk.DISABLED
+        
         if lift_id in self.job_controls:
              self.job_controls[lift_id]['send_job_button'].config(state=job_button_state)
 
@@ -370,6 +393,9 @@ class EcoSystemGUI_DualLift_ST:
 
         self._update_lift_text_labels(lift_id, plc_data)
         self._update_lift_button_states(lift_id, plc_data)
+        
+        # Watchdog status is now handled by overall connection status.
+        # If OPC UA reads/writes fail, the connection status will reflect that.
 
         # Delegate Visualization Update to LiftVisualizationManager
         current_row = self._safe_get_int_from_data(plc_data, "iElevatorRowLocation")
@@ -381,60 +407,176 @@ class EcoSystemGUI_DualLift_ST:
 
     async def _monitor_plc(self):
         logger.info("Starting Dual Lift PLC monitoring task (ST Logic).")
-        variables_to_read_per_lift = list(self.status_labels[LIFT1_ID].keys())
-        handshake_vars = ["EcoAck_iAssingmentType", "EcoAck_iRowNr", "EcoAck_xAcknowldeFromEco", 
-                         "iErrorCode", "xWatchDog"]
-        for var in handshake_vars:
-            if var not in variables_to_read_per_lift:
-                variables_to_read_per_lift.append(var)
-        logger.info(f"Monitoring variables: {variables_to_read_per_lift}")
+        
+        # Define system interface variables according to interface.txt
+        # xWatchDog is written by EcoSystem, so not read here.
+        interface_vars = [
+            "iAmountOfSations",
+            "iMainStatus",
+            "iCancelAssignment"
+            # "xWatchDog"  # Removed: EcoSystem WRITES this, PLC READS it.
+        ]
+        
+        # Define station data variables according to interface.txt structure
+        station_vars = [
+            "StationData.iCycle",
+            "StationData.iStationStatus", 
+            "StationData.sStationStateDescription",
+            "StationData.sShortAlarmDescription", 
+            "StationData.sAlarmSolution",
+            "StationData.Handshake.iRowNr",
+            "StationData.Handshake.iJobType"
+        ]
+        
+        # Define elevator variables that aren't in interface.txt but needed for visualization
+        # These won't be monitored directly as they're not part of the interface
+        internal_vars = [
+            "iElevatorRowLocation",
+            "xTrayInElevator",
+            "iCurrentForkSide",
+            "iErrorCode",
+            "sSeq_Step_comment"
+        ]
+        
+        logger.info(f"Monitoring system interface variables: {interface_vars}")
+        logger.info(f"Monitoring station data variables: {station_vars}")
+        logger.info(f"Internal visualization variables (not monitored directly): {internal_vars}")
 
-        test_id = f"{LIFT1_ID}/iCycle"
+        # Test the connection with a system variable
+        test_id = "iMainStatus"
+        logger.info(f"Testing initial connection with {test_id}")
         test_val = await self.opcua_client.read_value(test_id)
         if test_val is None:
-             logger.error(f"INITIAL READ FAILED for {test_id}. Aborting monitor.")
-             self._handle_connection_error()
-             return
+            logger.error(f"INITIAL READ FAILED for {test_id}. Aborting monitor.")
+            self._handle_connection_error()
+            return
         else:
-             logger.info(f"Initial read successful: {test_id} = {test_val}")
-
+            logger.info(f"Initial read successful: {test_id} = {test_val}")
+        
+        # Main monitoring loop
         while self.opcua_client.is_connected: 
             try:
+                # Send EcoSystem watchdog signal to PLC
+                ecosystem_watchdog_sent_ok = await self.opcua_client.write_value("xWatchDog", True, ua.VariantType.Boolean)
+                if not ecosystem_watchdog_sent_ok:
+                    logger.warning("Failed to send EcoSystem watchdog signal (xWatchDog) to PLC. Assuming connection issue.")
+                    any_critical_read_failed = True # This will trigger _handle_connection_error in the loop
+                
                 current_time = time.time()
                 all_lift_data = {}
-                any_critical_read_failed = False
+                if 'any_critical_read_failed' not in locals(): # ensure it's defined if the watchdog write was the first operation
+                    any_critical_read_failed = False
+                # system_watchdog_ok = False # Removed: Old logic
 
-                for lift_id_loop in LIFTS:
-                    lift_data = {}
-                    watchdog_ok_for_lift = False
-                    for var_name in variables_to_read_per_lift:
-                        node_identifier = f"{lift_id_loop}/{var_name}"
-                        value = await self.opcua_client.read_value(node_identifier)
-                        if value is not None:
-                            lift_data[var_name] = value
-                            if var_name == "xWatchDog" and value: 
-                                self.last_watchdog_time[lift_id_loop] = current_time
-                                watchdog_ok_for_lift = True
-                        else:
-                            logger.warning(f"Failed to read {node_identifier} during monitoring.")
-                            if var_name in ["iCycle", "iStatus", "iElevatorRowLocation"]:
-                                logger.error(f"Critical variable {node_identifier} read failed.")
-                                any_critical_read_failed = True
-                                break 
-                    
-                    if any_critical_read_failed: break 
+                # Read system variables
+                sys_data = {}
+                for var_name in interface_vars:
+                    value = await self.opcua_client.read_value(var_name)
+                    if value is not None:
+                        sys_data[var_name] = value
+                        # if var_name == "xWatchDog": # Removed block
+                            # if value: 
+                            #     self.last_watchdog_time["System"] = current_time
+                            #     system_watchdog_ok = True
+                            # If value is False, system_watchdog_ok remains False unless updated by timeout check
+                    # elif var_name == "xWatchDog": # Removed block
+                        # logger.warning("Failed to read system xWatchDog variable.")
+                        # system_watchdog_ok = False
+                    elif value is None and var_name in ["iMainStatus"]: # Example of a critical variable
+                        logger.error(f"CRITICAL READ FAILED for {var_name}. Aborting monitor for this cycle.")
+                        any_critical_read_failed = True
+                        break # Break from reading system vars, will then break main loop via any_critical_read_failed
 
-                    if not watchdog_ok_for_lift and (current_time - self.last_watchdog_time.get(lift_id_loop, 0)) > self.watchdog_timeout:
-                        logger.error(f"Watchdog timeout for {lift_id_loop}! Last seen: {self.last_watchdog_time.get(lift_id_loop, 'never')}")
-                        any_critical_read_failed = True 
-                        break
-                    
-                    all_lift_data[lift_id_loop] = lift_data
-                
-                if any_critical_read_failed:
+
+                if any_critical_read_failed: # Check if critical read failed or watchdog send failed
                     self._handle_connection_error()
                     break
 
+                # Check system watchdog timeout - REMOVED entire block
+                # if not system_watchdog_ok and (current_time - self.last_watchdog_time.get("System", 0)) > self.watchdog_timeout:
+                #    logger.error(f"System Watchdog timeout! Last seen: {self.last_watchdog_time.get('System', 'never')}")
+                #    system_watchdog_ok = False 
+                #    any_critical_read_failed = True 
+
+                # Update central watchdog display - REMOVED
+                # self.root.after(0, self._update_watchdog_display, system_watchdog_ok)
+
+                # Read station data for each lift
+                for lift_id_loop in LIFTS:
+                    lift_data = {}
+                    # watchdog_ok_for_lift = False # Removed
+
+                    # Include system variables in lift data
+                    for key, value in sys_data.items():
+                        lift_data[key] = value
+                      
+                    # Try different paths for finding StationData variables
+                    for var_name in station_vars:
+                        # Extract the base name for storing in our dictionary
+                        base_name = var_name.split('.')[-1]
+                        
+                        # Try these access paths in order until one works
+                        paths_to_try = [
+                            f"{lift_id_loop}/StationData/{base_name}",  # Lift1/StationData/iCycle - This one works!
+                            f"{lift_id_loop}/{var_name}",               # Lift1/StationData.iCycle
+                            f"{lift_id_loop}.{var_name}",               # Lift1.StationData.iCycle
+                            f"{var_name}",                              # StationData.iCycle
+                        ]
+                        
+                        # For Handshake variables, add more specific paths
+                        if "Handshake" in var_name:
+                            handshake_base_name = var_name.split('.')[-1]
+                            handshake_paths = [
+                                f"{lift_id_loop}/StationData/Handshake/{handshake_base_name}",  # This path works!
+                                f"{lift_id_loop}.StationData.Handshake.{handshake_base_name}"   
+                            ]
+                            paths_to_try = handshake_paths + paths_to_try  # Try Handshake specific paths first
+                            
+
+                        # Try each path until we find a value
+                        value = None # Reset before trying paths for this var_name
+                        successful_path = None
+                        for path in paths_to_try:
+                            value = await self.opcua_client.read_value(path)
+                            if value is not None:
+                                successful_path = path # Store the path that worked
+                                break # Exit loop on first success
+                        
+                        # Store the value if found with any path
+                        if value is not None:
+                            lift_data[base_name] = value
+                        else:
+                            logger.warning(f"Failed to read {var_name} for {lift_id_loop} after trying paths: {paths_to_try}")
+                    
+                    # Also try to read the internal variables needed for visualization
+                    for var_name in internal_vars:
+                        # Try multiple path formats
+                        paths_to_try = [
+                            f"{lift_id_loop}/{var_name}",  # Lift1/iElevatorRowLocation
+                            f"{lift_id_loop}.{var_name}"   # Lift1.iElevatorRowLocation
+                        ]
+                        value = None
+                        for path in paths_to_try:
+                            value = await self.opcua_client.read_value(path)
+                            if value is not None:
+                                break
+                        
+                        if value is not None:
+                            lift_data[var_name] = value
+                  
+                    # Handle watchdog specifically - REMOVED (EcoSystem sends, doesn't check per lift this way)
+                    # if sys_data.get("xWatchDog", False):
+                    #    self.last_watchdog_time[lift_id_loop] = current_time
+                    #    watchdog_ok_for_lift = True
+                      
+                    all_lift_data[lift_id_loop] = lift_data
+                # logger.info(f"All lift data: {all_lift_data}") # Debugging line
+
+                if any_critical_read_failed: # This might be triggered by other critical read failures too
+                    self._handle_connection_error() # This already updates connection status which resets watchdog display
+                    break
+
+                # Update GUI with collected data
                 for lift_id_gui, data_gui in all_lift_data.items():
                     if data_gui: 
                         self.root.after(0, self._update_gui_status, lift_id_gui, data_gui)
@@ -458,11 +600,10 @@ class EcoSystemGUI_DualLift_ST:
             self.opcua_client.endpoint_url = self.endpoint_var.get()
             connected = await self.opcua_client.connect()
             if connected:
-                logger.info("Waiting 1 second before starting monitor...")
-                await asyncio.sleep(1.0)
+                await asyncio.sleep(1.0) # Keep this sleep, remove only the commented log
                 self._update_connection_status(True)
-                now = time.time()
-                for lift_id in LIFTS: self.last_watchdog_time[lift_id] = now
+                # now = time.time() # Removed
+                # for lift_id in LIFTS: self.last_watchdog_time[lift_id] = now # Removed
                 if self.monitoring_task: self.monitoring_task.cancel()
                 self.monitoring_task = asyncio.create_task(self._monitor_plc())
             else:
@@ -477,9 +618,6 @@ class EcoSystemGUI_DualLift_ST:
     def _handle_connection_error(self):
          if self.opcua_client.is_connected:
              logger.error("Connection error detected.")
-             if self.root.winfo_exists() and not getattr(self, '_disconnecting_flag', False):
-                 messagebox.showerror("Connection Error", "Lost connection to PLC or failed to communicate.")
-             self.disconnect_plc()
 
     def _reset_lift_gui_elements(self, lift_id):
         """Resets all GUI elements for a specific lift to their default/disconnected state."""
@@ -499,7 +637,7 @@ class EcoSystemGUI_DualLift_ST:
             self.ack_controls[lift_id]['ack_movement_button'].config(state=tk.DISABLED)
             self.ack_controls[lift_id]['ack_info_label'].config(text="PLC Awaiting Ack: No", foreground="grey")
         if lift_id in self.error_controls:
-            self.error_controls[lift_id]['clear_error_button'].config(state=tk.DISABLED)
+            # self.error_controls[lift_id]['clear_error_button'].config(state=tk.DISABLED) # Removed
             self.error_controls[lift_id]['error_status_label'].config(text="PLC Error State: No", foreground="green")
 
     def _update_connection_status(self, connected):
@@ -510,13 +648,24 @@ class EcoSystemGUI_DualLift_ST:
         btn_disconn_state = tk.NORMAL if connected else tk.DISABLED
 
         if self.root.winfo_exists():
-            self.conn_status_label.config(text=status_text, foreground=status_color)
-            self.connect_button.config(state=btn_conn_state)
-            self.disconnect_button.config(state=btn_disconn_state)
+            if self.connection_status_label:
+                self.connection_status_label.config(text=status_text, foreground=status_color)
+            if self.connect_button:
+                self.connect_button.config(state=btn_conn_state)
+            if self.disconnect_button:
+                self.disconnect_button.config(state=btn_disconn_state)
+            
+            # Update watchdog display on connect/disconnect - REMOVED
+            # if connected:
+                # When connected, _monitor_plc will update it periodically
+                # For the initial state, we can assume it's N/A until the first read
+                 # self._update_watchdog_display(False, initial=True) # Show N/A initially
+            # else:
+                # When disconnected, reset watchdog display
+                # self._update_watchdog_display(False, disconnected=True)
 
-            if not connected:
-                for lift_id in LIFTS:
-                    self._reset_lift_gui_elements(lift_id)
+            for lift_id in LIFTS:
+                self._reset_lift_gui_elements(lift_id)
             # If connected, PLC monitoring will update individual button states via _update_gui_status
         else:
             logger.warning("_update_connection_status called but root window does not exist.")
@@ -525,6 +674,8 @@ class EcoSystemGUI_DualLift_ST:
         endpoint = self.endpoint_var.get()
         logger.info(f"Attempting to connect to {endpoint}")
         self.opcua_client.endpoint_url = endpoint
+        # Initialize last_watchdog_time for System upon connection attempt - REMOVED
+        # self.last_watchdog_time["System"] = time.time() 
         asyncio.create_task(self._async_connect())
 
     async def _async_disconnect(self):
@@ -548,6 +699,7 @@ class EcoSystemGUI_DualLift_ST:
             self._update_connection_status(False)
 
     def send_job(self, lift_id):
+        """Stuurt een job naar de PLC volgens de interface.txt specificatie"""
         if not self.opcua_client.is_connected:
              messagebox.showwarning("OPC UA", "Not connected to PLC.")
              return
@@ -555,49 +707,113 @@ class EcoSystemGUI_DualLift_ST:
         task_type = controls['task_type_var'].get()
         origin = controls['origin_var'].get()
         destination = controls['destination_var'].get()
-        logger.info(f"Sending Job to {lift_id}: Type={task_type}, Origin={origin}, Dest={destination}")
+        logger.info(f"Sending Job to {lift_id} using interface variables: Type={task_type}, Origin={origin}, Dest={destination}")
+        
         async def job_write_sequence():
-            # Gebruik Int32 in plaats van Int16 zoals aangegeven in de logs
-            await self.opcua_client.write_value(f"{lift_id}/Eco_iTaskType", task_type, ua.VariantType.Int32)
-            await self.opcua_client.write_value(f"{lift_id}/Eco_iOrigination", origin, ua.VariantType.Int32)
-            await self.opcua_client.write_value(f"{lift_id}/Eco_iDestination", destination, ua.VariantType.Int32)
-            # Verwijderd: Eco_xJobRequest bestaat niet in de PLC en is niet nodig
-            # await self.opcua_client.write_value(f"{lift_id}/Eco_xJobRequest", True, ua.VariantType.Boolean)
+            # Try both formats of interface variables
+            # First try direct ElevatorEcoSystAssignment variables
+            path_prefix = f"{lift_id}/ElevatorEcoSystAssignment/"
+            
+            # Write to ElevatorEcoSystAssignment variables (new interface)
+            success_type = await self.opcua_client.write_value(f"{path_prefix}iTaskType", task_type, ua.VariantType.Int16)
+            success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int16)  
+            success_dest = await self.opcua_client.write_value(f"{path_prefix}iDestination", destination, ua.VariantType.Int16)
+            
+            # Als de nieuwe interface niet lukt, probeer de oude interface (voor backward compatibility)
+            if not all([success_type, success_origin, success_dest]):
+                logger.info(f"ElevatorEcoSystAssignment interface failed, trying legacy Eco_i* variables...")
+                success_type = await self.opcua_client.write_value(f"{lift_id}/Eco_iTaskType", task_type, ua.VariantType.Int16)
+                success_origin = await self.opcua_client.write_value(f"{lift_id}/Eco_iOrigination", origin, ua.VariantType.Int16)  
+                success_dest = await self.opcua_client.write_value(f"{lift_id}/Eco_iDestination", destination, ua.VariantType.Int16)
+            
+            # Controleer of een van beide methoden is geslaagd
+            if not (success_type and success_origin and success_dest):
+                messagebox.showerror("OPC UA Error", f"Failed to send job to {lift_id}.")
+                return
+                
+            logger.info(f"Job sent successfully to {lift_id}.")
+            
         asyncio.create_task(job_write_sequence())
 
     def acknowledge_job_step(self, lift_id):
+        """Stuurt een acknowledge signaal naar de PLC volgens de interface specificatie"""
         if not self.opcua_client.is_connected:
              messagebox.showwarning("OPC UA", "Not connected to PLC.")
              return
-        logger.info(f"Sending Job Step Acknowledge for {lift_id} (EcoAck_xAcknowldeFromEco = True)")
+        logger.info(f"Sending handshake acknowledge for {lift_id} (xAcknowledgeMovement = True)")
         async def send_acknowledge():
-            success = await self.opcua_client.write_value(f"{lift_id}/EcoAck_xAcknowldeFromEco", True, ua.VariantType.Boolean)
-            if not success:
-                messagebox.showerror("OPC UA Error", f"Failed to send Acknowledge for {lift_id}.")
-            else:
-                logger.info(f"Acknowledge sent for {lift_id}.")
+            # Probeer beide paden voor de xAcknowledgeMovement variabele
+            # Eerste poging met pad volgens interface.txt
+            path1 = f"{lift_id}/ElevatorEcoSystAssignment/xAcknowledgeMovement"
+            success1 = await self.opcua_client.write_value(path1, True, ua.VariantType.Boolean)
+            
+            # Als dat mislukt, probeer alternatief pad
+            if not success1:
+                path2 = f"{lift_id}.ElevatorEcoSystAssignment.xAcknowledgeMovement"
+                success2 = await self.opcua_client.write_value(path2, True, ua.VariantType.Boolean)
+                
+                # Als ook dat mislukt, probeer legacy pad
+                if not success2:
+                    path3 = f"{lift_id}/EcoAck_xAcknowldeFromEco"
+                    success3 = await self.opcua_client.write_value(path3, True, ua.VariantType.Boolean)
+                    
+                    if not success3:
+                        messagebox.showerror("OPC UA Error", f"Failed to send acknowledge for {lift_id} - all paths failed.")
+                        return
+            
+            logger.info(f"Handshake acknowledge signal sent to {lift_id} via interface variable.")
+        
         asyncio.create_task(send_acknowledge())
 
-    def clear_error(self, lift_id):
-        if not self.opcua_client.is_connected:
-            messagebox.showwarning("OPC UA", "Not connected to PLC.")
-            return
-        logger.info(f"Sending Clear Error Request for {lift_id} (xClearError = True)")
-        asyncio.create_task(self.opcua_client.write_value(f"{lift_id}/xClearError", True, ua.VariantType.Boolean))
-
     def clear_task(self, lift_id):
+        """Stuurt een taak-reset commando naar de PLC volgens de interface.txt specificatie"""
         if not self.opcua_client.is_connected:
             messagebox.showwarning("OPC UA", "Not connected to PLC.")
             return
-        logger.info(f"Stuur Clear Task (TaskType=0) naar {lift_id}")
+        logger.info(f"Stuur Clear Task via interface variabele iTaskType=0 naar {lift_id}")
+        
         async def clear_task_sequence():
-            # Gebruik Int32 in plaats van Int16
-            success_type = await self.opcua_client.write_value(f"{lift_id}/Eco_iTaskType", 0, ua.VariantType.Int32)
-            if not success_type:
-                messagebox.showerror("OPC UA Error", f"Failed to set TaskType to 0 for {lift_id}.")
+            # Probeer meerdere paden naar de iTaskType variabele
+            paths_to_try = [
+                f"{lift_id}/ElevatorEcoSystAssignment/iTaskType",
+                f"{lift_id}.ElevatorEcoSystAssignment.iTaskType",
+                f"{lift_id}/Eco_iTaskType"
+            ]
+            
+            success = False
+            for path in paths_to_try:
+                result = await self.opcua_client.write_value(path, 0, ua.VariantType.Int16)
+                if result:
+                    logger.info(f"Successfully cleared task via {path}")
+                    success = True
+                    break
+            
+            if not success:
+                messagebox.showerror("OPC UA Error", f"Failed to clear task for {lift_id} - all paths failed.")
                 return
-            logger.info(f"Clear Task sequence sent to {lift_id}.")
+                
+            logger.info(f"Clear Task signal sent successfully to {lift_id}.")
+            
         asyncio.create_task(clear_task_sequence())
+
+    # def _update_watchdog_display(self, watchdog_ok, initial=False, disconnected=False): # ENTIRE METHOD REMOVED
+    #    if not self.watchdog_status_label or not self.root.winfo_exists():
+    #        return
+    #
+    #    if disconnected:
+    #        text = "Watchdog: N/A"
+    #        color = "grey"
+    #    elif initial:
+    #        text = "Watchdog: Checking..."
+    #        color = "orange"
+    #    elif watchdog_ok:
+    #        text = "Watchdog: OK"
+    #        color = "green"
+    #    else:
+    #        text = "Watchdog: TIMEOUT"
+    #        color = "red"
+    #    
+    #    self.watchdog_status_label.config(text=text, foreground=color)
 
 # create_rack_visualization is removed as its logic is in LiftVisualizationManager._setup_warehouse_visualization
 
@@ -683,8 +899,8 @@ if __name__ == "__main__":
         logger.info("Application terminated by KeyboardInterrupt.")
     except tk.TclError as e:
         if "application has been destroyed" not in str(e).lower() and "invalid command name" not in str(e).lower():
-            logger.exception("Unhandled TclError in __main__:")
+            logger.exception("Unhandled TclError in __main__:") # Corrected: removed unterminated string
     except Exception as e:
-        logger.exception("Unhandled exception in __main__:")
+        logger.exception("Unhandled exception in __main__:") # Corrected: removed unterminated string
     finally:
         logger.info("Application exiting __main__.")

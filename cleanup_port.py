@@ -21,8 +21,12 @@ def find_process_using_port(port):
             if f':{port}' in line and 'LISTENING' in line:
                 # Extract the PID
                 parts = line.strip().split()
-                if len(parts) >= 5:
+                if len(parts) >= 5: # Ensure PID is present
                     return parts[-1]
+    except FileNotFoundError:
+        logger.error("netstat command not found. Make sure it is in your PATH.")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error executing netstat: {e}")
     except Exception as e:
         logger.error(f"Error finding process: {e}")
     return None
@@ -51,7 +55,7 @@ def main():
                 if not is_port_in_use(port):
                     logger.info("Port is now free")
                 else:
-                    logger.error("Port is still in use")
+                    logger.error(f"Port {port} is still in use after attempting to kill process {pid}.")
             else:
                 logger.error("Failed to free up port")
         else:

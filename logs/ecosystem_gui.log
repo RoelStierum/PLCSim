@@ -1,36 +1,55 @@
-2025-05-08 13:28:38,942 - EcoSystemSim_DualLift_ST - INFO - Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
-2025-05-08 13:28:38,943 - opcua_client - INFO - OPCUAClient: Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
-2025-05-08 13:28:38,951 - opcua_client - INFO - OPCUAClient: Connected to opc.tcp://127.0.0.1:4860/gibas/plc/. Namespace Index: 2
-2025-05-08 13:28:38,951 - EcoSystemSim_DualLift_ST - INFO - Waiting 1 second before starting monitor...
-2025-05-08 13:28:39,951 - EcoSystemSim_DualLift_ST - INFO - Starting Dual Lift PLC monitoring task (ST Logic).
-2025-05-08 13:28:39,952 - EcoSystemSim_DualLift_ST - INFO - Monitoring variables: ['iCycle', 'iStatus', 'iElevatorRowLocation', 'xTrayInElevator', 'iCurrentForkSide', 'ActiveElevatorAssignment_iTaskType', 'ActiveElevatorAssignment_iOrigination', 'ActiveElevatorAssignment_iDestination', 'sSeq_Step_comment', 'EcoAck_iAssingmentType', 'EcoAck_iRowNr', 'EcoAck_xAcknowldeFromEco', 'iErrorCode', 'xWatchDog']
-2025-05-08 13:28:39,957 - EcoSystemSim_DualLift_ST - INFO - Initial read successful: Lift1/iCycle = 10
-2025-05-08 13:28:47,491 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1: Type=1, Origin=10, Dest=14
-2025-05-08 13:28:47,495 - opcua_client - INFO - OPCUAClient: Using provided datatype Int32 for Lift1/Eco_iTaskType (value: 1).
-2025-05-08 13:28:47,496 - opcua_client - INFO - OPCUAClient: Attempting to write value: 1 (Final UA Variant: Variant(Value=1, VariantType=<VariantType.Int32: 6>, Dimensions=None, is_array=False)) to Lift1/Eco_iTaskType
-2025-05-08 13:28:47,497 - opcua_client - INFO - OPCUAClient: Type mismatch for Lift1/Eco_iTaskType with type Int32. Trying alternative integer types.
-2025-05-08 13:28:47,497 - opcua_client - INFO - OPCUAClient: Retrying with type Int16 for Lift1/Eco_iTaskType
-2025-05-08 13:28:47,497 - opcua_client - INFO - OPCUAClient: Retrying with type Int64 for Lift1/Eco_iTaskType
-2025-05-08 13:28:47,498 - opcua_client - INFO - OPCUAClient: Successfully wrote 1 with alternative type Int64 to Lift1/Eco_iTaskType
-2025-05-08 13:28:47,500 - opcua_client - INFO - OPCUAClient: Using provided datatype Int32 for Lift1/Eco_iOrigination (value: 10).
-2025-05-08 13:28:47,500 - opcua_client - INFO - OPCUAClient: Attempting to write value: 10 (Final UA Variant: Variant(Value=10, VariantType=<VariantType.Int32: 6>, Dimensions=None, is_array=False)) to Lift1/Eco_iOrigination
-2025-05-08 13:28:47,501 - opcua_client - INFO - OPCUAClient: Type mismatch for Lift1/Eco_iOrigination with type Int32. Trying alternative integer types.
-2025-05-08 13:28:47,501 - opcua_client - INFO - OPCUAClient: Retrying with type Int16 for Lift1/Eco_iOrigination
-2025-05-08 13:28:47,502 - opcua_client - INFO - OPCUAClient: Retrying with type Int64 for Lift1/Eco_iOrigination
-2025-05-08 13:28:47,502 - opcua_client - INFO - OPCUAClient: Successfully wrote 10 with alternative type Int64 to Lift1/Eco_iOrigination
-2025-05-08 13:28:47,504 - opcua_client - INFO - OPCUAClient: Using provided datatype Int32 for Lift1/Eco_iDestination (value: 14).
-2025-05-08 13:28:47,504 - opcua_client - INFO - OPCUAClient: Attempting to write value: 14 (Final UA Variant: Variant(Value=14, VariantType=<VariantType.Int32: 6>, Dimensions=None, is_array=False)) to Lift1/Eco_iDestination
-2025-05-08 13:28:47,505 - opcua_client - INFO - OPCUAClient: Type mismatch for Lift1/Eco_iDestination with type Int32. Trying alternative integer types.
-2025-05-08 13:28:47,505 - opcua_client - INFO - OPCUAClient: Retrying with type Int16 for Lift1/Eco_iDestination
-2025-05-08 13:28:47,506 - opcua_client - INFO - OPCUAClient: Retrying with type Int64 for Lift1/Eco_iDestination
-2025-05-08 13:28:47,507 - opcua_client - INFO - OPCUAClient: Successfully wrote 14 with alternative type Int64 to Lift1/Eco_iDestination
-2025-05-08 13:28:49,590 - EcoSystemSim_DualLift_ST - INFO - Sending Job Step Acknowledge for Lift1 (EcoAck_xAcknowldeFromEco = True)
-2025-05-08 13:28:49,593 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Lift1/EcoAck_xAcknowldeFromEco (value: True).
-2025-05-08 13:28:49,593 - opcua_client - INFO - OPCUAClient: Attempting to write value: True (Final UA Variant: Variant(Value=True, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Lift1/EcoAck_xAcknowldeFromEco
-2025-05-08 13:28:49,594 - EcoSystemSim_DualLift_ST - INFO - Acknowledge sent for Lift1.
-2025-05-08 13:28:57,967 - EcoSystemSim_DualLift_ST - INFO - Sending Job Step Acknowledge for Lift1 (EcoAck_xAcknowldeFromEco = True)
-2025-05-08 13:28:57,972 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Lift1/EcoAck_xAcknowldeFromEco (value: True).
-2025-05-08 13:28:57,972 - opcua_client - INFO - OPCUAClient: Attempting to write value: True (Final UA Variant: Variant(Value=True, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Lift1/EcoAck_xAcknowldeFromEco
-2025-05-08 13:28:57,973 - EcoSystemSim_DualLift_ST - INFO - Acknowledge sent for Lift1.
-2025-05-08 13:30:21,361 - EcoSystemSim_DualLift_ST - ERROR - Watchdog timeout for Lift1! Last seen: 1746703818.228845
-2025-05-08 13:30:21,362 - EcoSystemSim_DualLift_ST - ERROR - Connection error detected.
+2025-05-12 14:45:34,098 - EcoSystemSim_DualLift_ST - INFO - Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-12 14:45:34,099 - opcua_client - INFO - OPCUAClient: Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-12 14:45:34,105 - opcua_client - INFO - OPCUAClient: Connected to opc.tcp://127.0.0.1:4860/gibas/plc/. Namespace Index: 2
+2025-05-12 14:45:35,106 - EcoSystemSim_DualLift_ST - INFO - Starting Dual Lift PLC monitoring task (ST Logic).
+2025-05-12 14:45:35,107 - EcoSystemSim_DualLift_ST - INFO - Monitoring system interface variables: ['iAmountOfSations', 'iMainStatus', 'iCancelAssignment']
+2025-05-12 14:45:35,107 - EcoSystemSim_DualLift_ST - INFO - Monitoring station data variables: ['StationData.iCycle', 'StationData.iStationStatus', 'StationData.sStationStateDescription', 'StationData.sShortAlarmDescription', 'StationData.sAlarmSolution', 'StationData.Handshake.iRowNr', 'StationData.Handshake.iJobType']
+2025-05-12 14:45:35,107 - EcoSystemSim_DualLift_ST - INFO - Internal visualization variables (not monitored directly): ['iElevatorRowLocation', 'xTrayInElevator', 'iCurrentForkSide', 'iErrorCode', 'sSeq_Step_comment']
+2025-05-12 14:45:35,107 - EcoSystemSim_DualLift_ST - INFO - Testing initial connection with iMainStatus
+2025-05-12 14:45:35,118 - EcoSystemSim_DualLift_ST - INFO - Initial read successful: iMainStatus = 1
+2025-05-12 14:45:40,211 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1 using interface variables: Type=1, Origin=5, Dest=90
+2025-05-12 14:45:40,213 - opcua_client - INFO - OPCUAClient: Mapped interface path Lift1/ElevatorEcoSystAssignment/iTaskType to PLC path Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-12 14:45:40,216 - opcua_client - INFO - OPCUAClient: Using provided datatype Int16 for Lift1/ElevatorEcoSystAssignment/iTaskType (value: 1).
+2025-05-12 14:45:40,216 - opcua_client - INFO - OPCUAClient: Attempting to write value: 1 (Final UA Variant: Variant(Value=1, VariantType=<VariantType.Int16: 4>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-12 14:45:40,217 - opcua_client - INFO - OPCUAClient: Type mismatch for Lift1/ElevatorEcoSystAssignment/iTaskType with type Int16. Trying alternative integer types.
+2025-05-12 14:45:40,217 - opcua_client - INFO - OPCUAClient: Retrying with type Int32 for Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-12 14:45:40,219 - opcua_client - INFO - OPCUAClient: Retrying with type Int64 for Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-12 14:45:40,220 - opcua_client - INFO - OPCUAClient: Successfully wrote 1 with alternative type Int64 to Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-12 14:45:40,220 - opcua_client - INFO - OPCUAClient: Mapped interface path Lift1/ElevatorEcoSystAssignment/iOrigination to PLC path Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-12 14:45:40,223 - opcua_client - INFO - OPCUAClient: Using provided datatype Int16 for Lift1/ElevatorEcoSystAssignment/iOrigination (value: 5).
+2025-05-12 14:45:40,223 - opcua_client - INFO - OPCUAClient: Attempting to write value: 5 (Final UA Variant: Variant(Value=5, VariantType=<VariantType.Int16: 4>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-12 14:45:40,224 - opcua_client - INFO - OPCUAClient: Type mismatch for Lift1/ElevatorEcoSystAssignment/iOrigination with type Int16. Trying alternative integer types.
+2025-05-12 14:45:40,224 - opcua_client - INFO - OPCUAClient: Retrying with type Int32 for Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-12 14:45:40,224 - opcua_client - INFO - OPCUAClient: Retrying with type Int64 for Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-12 14:45:40,225 - opcua_client - INFO - OPCUAClient: Successfully wrote 5 with alternative type Int64 to Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-12 14:45:40,225 - opcua_client - INFO - OPCUAClient: Mapped interface path Lift1/ElevatorEcoSystAssignment/iDestination to PLC path Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-12 14:45:40,230 - opcua_client - INFO - OPCUAClient: Using provided datatype Int16 for Lift1/ElevatorEcoSystAssignment/iDestination (value: 90).
+2025-05-12 14:45:40,231 - opcua_client - INFO - OPCUAClient: Attempting to write value: 90 (Final UA Variant: Variant(Value=90, VariantType=<VariantType.Int16: 4>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-12 14:45:40,233 - opcua_client - INFO - OPCUAClient: Type mismatch for Lift1/ElevatorEcoSystAssignment/iDestination with type Int16. Trying alternative integer types.
+2025-05-12 14:45:40,234 - opcua_client - INFO - OPCUAClient: Retrying with type Int32 for Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-12 14:45:40,235 - opcua_client - INFO - OPCUAClient: Retrying with type Int64 for Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-12 14:45:40,236 - opcua_client - INFO - OPCUAClient: Successfully wrote 90 with alternative type Int64 to Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-12 14:45:40,236 - EcoSystemSim_DualLift_ST - INFO - Job sent successfully to Lift1.
+2025-05-12 14:45:48,102 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1 using interface variables: Type=1, Origin=5, Dest=90
+2025-05-12 14:45:48,103 - opcua_client - INFO - OPCUAClient: Mapped interface path Lift1/ElevatorEcoSystAssignment/iTaskType to PLC path Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-12 14:45:48,115 - opcua_client - INFO - OPCUAClient: Using provided datatype Int16 for Lift1/ElevatorEcoSystAssignment/iTaskType (value: 1).
+2025-05-12 14:45:48,115 - opcua_client - INFO - OPCUAClient: Attempting to write value: 1 (Final UA Variant: Variant(Value=1, VariantType=<VariantType.Int16: 4>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-12 14:45:48,116 - opcua_client - INFO - OPCUAClient: Type mismatch for Lift1/ElevatorEcoSystAssignment/iTaskType with type Int16. Trying alternative integer types.
+2025-05-12 14:45:48,116 - opcua_client - INFO - OPCUAClient: Retrying with type Int32 for Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-12 14:45:48,117 - opcua_client - INFO - OPCUAClient: Retrying with type Int64 for Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-12 14:45:48,118 - opcua_client - INFO - OPCUAClient: Successfully wrote 1 with alternative type Int64 to Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-12 14:45:48,118 - opcua_client - INFO - OPCUAClient: Mapped interface path Lift1/ElevatorEcoSystAssignment/iOrigination to PLC path Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-12 14:45:48,121 - opcua_client - INFO - OPCUAClient: Using provided datatype Int16 for Lift1/ElevatorEcoSystAssignment/iOrigination (value: 5).
+2025-05-12 14:45:48,121 - opcua_client - INFO - OPCUAClient: Attempting to write value: 5 (Final UA Variant: Variant(Value=5, VariantType=<VariantType.Int16: 4>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-12 14:45:48,122 - opcua_client - INFO - OPCUAClient: Type mismatch for Lift1/ElevatorEcoSystAssignment/iOrigination with type Int16. Trying alternative integer types.
+2025-05-12 14:45:48,122 - opcua_client - INFO - OPCUAClient: Retrying with type Int32 for Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-12 14:45:48,123 - opcua_client - INFO - OPCUAClient: Retrying with type Int64 for Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-12 14:45:48,123 - opcua_client - INFO - OPCUAClient: Successfully wrote 5 with alternative type Int64 to Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-12 14:45:48,124 - opcua_client - INFO - OPCUAClient: Mapped interface path Lift1/ElevatorEcoSystAssignment/iDestination to PLC path Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-12 14:45:48,127 - opcua_client - INFO - OPCUAClient: Using provided datatype Int16 for Lift1/ElevatorEcoSystAssignment/iDestination (value: 90).
+2025-05-12 14:45:48,127 - opcua_client - INFO - OPCUAClient: Attempting to write value: 90 (Final UA Variant: Variant(Value=90, VariantType=<VariantType.Int16: 4>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-12 14:45:48,128 - opcua_client - INFO - OPCUAClient: Type mismatch for Lift1/ElevatorEcoSystAssignment/iDestination with type Int16. Trying alternative integer types.
+2025-05-12 14:45:48,128 - opcua_client - INFO - OPCUAClient: Retrying with type Int32 for Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-12 14:45:48,130 - opcua_client - INFO - OPCUAClient: Retrying with type Int64 for Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-12 14:45:48,130 - opcua_client - INFO - OPCUAClient: Successfully wrote 90 with alternative type Int64 to Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-12 14:45:48,130 - EcoSystemSim_DualLift_ST - INFO - Job sent successfully to Lift1.

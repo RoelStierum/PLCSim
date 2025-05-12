@@ -1,0 +1,56 @@
+Here are the main variables extracted from the file:
+
+From PlcToEco (PLC to EcoSystem):
+
+iAmountOfSations - Integer indicating the number of stations
+iMainStatus - Integer for main system status
+StationData (Array with 3 elements) - Contains data for each station:
+    iCycle - Current cycle number of the station
+    sStationStateDescription - String describing the station state
+    sShortAlarmDescription - Short description of any alarm
+    sAlarmSolution - String with solution for the alarm
+    iStationStatus - Integer for station status
+    Handshake - structs with:
+        iRowNr - Row number
+        iJobType - Type of job
+iCancelAssignment - Integer for canceling assignment: 
+1 = Pickup assignment while tray is on forks
+2 = Destination out of reach
+3 = Origin out of reach
+4 = Destination and origin can’t be zero with a full move operation / Origin can’t be zero with a prepare or move operation
+5 = Lifts cross each other
+6 = Invalid assignment
+
+From EcoToPlc (EcoSystem to PLC):
+
+xWatchDog - Boolean watchdog variable
+Elevator1 and Elevator2 structs with:
+ElevatorEcoSystAssignment - structs with:
+iTaskType - Type of task
+iOrigination - Origin location
+iDestination - Destination location
+xAcknowledgeMovement - Boolean to acknowledge movement
+iCancelAssignment - Integer for canceling assignment: 
+1 = Pickup assignment while tray is on forks
+2 = Destination out of reach
+3 = Origin out of reach
+4 = Destination and origin can’t be zero with a full move operation / Origin can’t be zero with a prepare or move operation
+5 = Lifts cross each other
+6 = Invalid assignment
+
+
+Array van StationDataToEco bevat alle statusdata van de stations, statussen:
+iStationStatus:
+0 = Not Applicable
+1= OK
+2 = Notification
+3 = Warning
+4 = Error
+5 = Device is booting
+6 = Device is offline
+7 = Semi-Auto mode
+8= Teach mode
+9 = Hand mode
+10 = Home mode
+11 = Stop
+

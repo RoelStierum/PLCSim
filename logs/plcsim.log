@@ -1,68 +1,107 @@
-2025-05-08 13:28:34,318 - PLCSim_DualLift_ST - INFO - Starting PLC Simulator...
-2025-05-08 13:28:34,318 - PLCSim_DualLift_ST - INFO - Setting up dual-lift server on endpoint: opc.tcp://127.0.0.1:4860/gibas/plc/
-2025-05-08 13:28:37,611 - PLCSim_DualLift_ST - INFO - Server initialized with basic setup, now adding namespaces and nodes...
-2025-05-08 13:28:37,611 - PLCSim_DualLift_ST - INFO - Registered namespace with index: 2
-2025-05-08 13:28:38,125 - PLCSim_DualLift_ST - INFO - Created LiftSystem object node
-2025-05-08 13:28:38,125 - PLCSim_DualLift_ST - INFO - Creating variables for Lift1
-2025-05-08 13:28:38,133 - PLCSim_DualLift_ST - INFO - Creating variables for Lift2
-2025-05-08 13:28:38,140 - PLCSim_DualLift_ST - INFO - OPC UA Server Variables Initialized
-2025-05-08 13:28:38,141 - PLCSim_DualLift_ST - INFO - Dual Lift PLC Simulator Server Started (ST Logic).
-2025-05-08 13:28:47,666 - PLCSim_DualLift_ST - INFO - ================================================================================
-2025-05-08 13:28:47,666 - PLCSim_DualLift_ST - INFO - [JOB_START] Huidige status van beide liften voor nieuwe job op Lift1:
-2025-05-08 13:28:47,666 - PLCSim_DualLift_ST - INFO - [JOB_START] Lift1: Positie=5(5/operator), Cycle=10, TrayInElevator=False
-2025-05-08 13:28:47,666 - PLCSim_DualLift_ST - INFO - [JOB_START] Lift2: Positie=90(40/robot), Cycle=10, TrayInElevator=False
-2025-05-08 13:28:47,666 - PLCSim_DualLift_ST - INFO - ================================================================================
-2025-05-08 13:28:47,667 - PLCSim_DualLift_ST - INFO - ******* JOB RECEIVED DEBUG *******
-2025-05-08 13:28:47,667 - PLCSim_DualLift_ST - INFO - [Lift1] Read method returned: Type=1, Origin=10, Dest=14
-2025-05-08 13:28:47,667 - PLCSim_DualLift_ST - INFO - [Lift1] Direct node read: Type=1, Origin=10, Dest=14
-2025-05-08 13:28:47,667 - PLCSim_DualLift_ST - INFO - [Lift1] Node datatypes: Type=4, Origin=4, Dest=4
-2025-05-08 13:28:47,667 - PLCSim_DualLift_ST - INFO - [Lift1] State dictionary: Type=1, Origin=10, Dest=14
-2025-05-08 13:28:47,667 - PLCSim_DualLift_ST - INFO - ********************************
-2025-05-08 13:28:47,667 - PLCSim_DualLift_ST - ERROR - Error writing to OPC path Lift1/Eco_iTaskType: The value supplied for the attribute is not of the same type as the attribute"s value.(BadTypeMismatch)
-2025-05-08 13:28:47,667 - PLCSim_DualLift_ST - INFO - [Lift1] Received Job Request: Type=1, Origin=10, Dest=14
-2025-05-08 13:28:47,668 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 10 -> 25
-2025-05-08 13:28:47,879 - PLCSim_DualLift_ST - INFO - [Lift1] Validating job: Type=1, Origin=10, Dest=14
-2025-05-08 13:28:47,880 - PLCSim_DualLift_ST - INFO - [COLLISION_CHECK_ENHANCED] Lift1: Evaluating move from 5(5/operator) to 10(10/operator)
-2025-05-08 13:28:47,880 - PLCSim_DualLift_ST - INFO - [COLLISION_CHECK_ENHANCED] Lift1 intended path segment: [5, 10]
-2025-05-08 13:28:47,880 - PLCSim_DualLift_ST - INFO - [COLLISION_CHECK_ENHANCED] Lift2: At 90(40/robot), Cycle=10, MovingEngine=False
-2025-05-08 13:28:47,880 - PLCSim_DualLift_ST - INFO - [COLLISION_CHECK_ENHANCED] Lift2 static, path segment: [90, 90]
-2025-05-08 13:28:47,880 - PLCSim_DualLift_ST - INFO - [COLLISION_CHECK_ENHANCED] RESULTAAT: Geen botsingsrisico gedetecteerd voor Lift1 beweging naar 10
-2025-05-08 13:28:47,881 - PLCSim_DualLift_ST - INFO - [COLLISION_CHECK_ENHANCED] Lift1: Evaluating move from 5(5/operator) to 14(14/operator)
-2025-05-08 13:28:47,881 - PLCSim_DualLift_ST - INFO - [COLLISION_CHECK_ENHANCED] Lift1 intended path segment: [5, 14]
-2025-05-08 13:28:47,881 - PLCSim_DualLift_ST - INFO - [COLLISION_CHECK_ENHANCED] Lift2: At 90(40/robot), Cycle=10, MovingEngine=False
-2025-05-08 13:28:47,882 - PLCSim_DualLift_ST - INFO - [COLLISION_CHECK_ENHANCED] Lift2 static, path segment: [90, 90]
-2025-05-08 13:28:47,882 - PLCSim_DualLift_ST - INFO - [COLLISION_CHECK_ENHANCED] RESULTAAT: Geen botsingsrisico gedetecteerd voor Lift1 beweging naar 14
-2025-05-08 13:28:47,883 - PLCSim_DualLift_ST - INFO - [Lift1] Assignment Validated Successfully.
-2025-05-08 13:28:47,883 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 25 -> 30
-2025-05-08 13:28:48,093 - PLCSim_DualLift_ST - INFO - [Lift1] Processing Accepted Job: Type=1, Origin=10, Dest=14
-2025-05-08 13:28:48,093 - PLCSim_DualLift_ST - INFO - [Lift1] Current Position: Pos=5, Fork=0
-2025-05-08 13:28:48,094 - PLCSim_DualLift_ST - INFO - [Lift1] Need to move to origin, proceeding to handshake
-2025-05-08 13:28:48,094 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 30 -> 100
-2025-05-08 13:28:49,740 - PLCSim_DualLift_ST - INFO - [Lift1] Handshake Ack received for GetTray.
-2025-05-08 13:28:49,741 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 100 -> 101
-2025-05-08 13:28:49,917 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 101 -> 102
-2025-05-08 13:28:52,134 - PLCSim_DualLift_ST - INFO - [Lift1] Engine movement finished. Reached: 10
-2025-05-08 13:28:52,135 - PLCSim_DualLift_ST - INFO - [Lift1] Already at Origin 10.
-2025-05-08 13:28:52,136 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 102 -> 105
-2025-05-08 13:28:52,361 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 105 -> 150
-2025-05-08 13:28:52,564 - PLCSim_DualLift_ST - INFO - [Lift1] Moving forks to 1 for pickup at 10
-2025-05-08 13:28:53,153 - PLCSim_DualLift_ST - INFO - [Lift1] Fork movement finished. Reached: 1
-2025-05-08 13:28:53,154 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 153 -> 155
-2025-05-08 13:28:55,385 - PLCSim_DualLift_ST - INFO - [Lift1] Engine movement finished. Reached: 10
-2025-05-08 13:28:55,386 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 156 -> 160
-2025-05-08 13:28:56,213 - PLCSim_DualLift_ST - INFO - [Lift1] Fork movement finished. Reached: 0
-2025-05-08 13:28:56,214 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 163 -> 199
-2025-05-08 13:28:56,435 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 199 -> 201
-2025-05-08 13:28:58,029 - PLCSim_DualLift_ST - INFO - [Lift1] Handshake Ack received for SetTray.
-2025-05-08 13:28:58,029 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 201 -> 202
-2025-05-08 13:29:00,407 - PLCSim_DualLift_ST - INFO - [Lift1] Engine movement finished. Reached: 14
-2025-05-08 13:29:00,409 - PLCSim_DualLift_ST - INFO - [Lift1] Already at Destination 14 (unexpected?).
-2025-05-08 13:29:00,409 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 202 -> 205
-2025-05-08 13:29:00,612 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 205 -> 250
-2025-05-08 13:29:00,791 - PLCSim_DualLift_ST - INFO - [Lift1] Moving forks to 1 for place at 14
-2025-05-08 13:29:01,384 - PLCSim_DualLift_ST - INFO - [Lift1] Fork movement finished. Reached: 1
-2025-05-08 13:29:01,385 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 253 -> 255
-2025-05-08 13:29:03,760 - PLCSim_DualLift_ST - INFO - [Lift1] Engine movement finished. Reached: 14
-2025-05-08 13:29:03,760 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 256 -> 260
-2025-05-08 13:29:04,557 - PLCSim_DualLift_ST - INFO - [Lift1] Fork movement finished. Reached: 0
-2025-05-08 13:29:04,557 - PLCSim_DualLift_ST - INFO - [Lift1] Cycle transition: 263 -> 299
+2025-05-12 14:45:29,511 - PLCSim_DualLift - INFO - Starting PLC Simulator (Dual Lift)
+2025-05-12 14:45:29,512 - PLCSim_DualLift - INFO - Setting up dual-lift server on endpoint: opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-12 14:45:31,785 - PLCSim_DualLift - INFO - Registered namespace with index: 2
+2025-05-12 14:45:32,297 - PLCSim_DualLift - INFO - Created LiftSystem object node
+2025-05-12 14:45:32,298 - PLCSim_DualLift - INFO - Creating system-level variables
+2025-05-12 14:45:32,298 - PLCSim_DualLift - INFO -   Created system variable iAmountOfSations (Int16) with value 2
+2025-05-12 14:45:32,298 - PLCSim_DualLift - INFO -   Created system variable iMainStatus (Int16) with value 1
+2025-05-12 14:45:32,298 - PLCSim_DualLift - INFO -   Created system variable iCancelAssignment (Int16) with value 0
+2025-05-12 14:45:32,299 - PLCSim_DualLift - INFO -   Created system variable xWatchDog (Boolean) with value False
+2025-05-12 14:45:32,300 - PLCSim_DualLift - INFO - Creating variables for Lift1
+2025-05-12 14:45:32,300 - PLCSim_DualLift - INFO - Created StationData object for Lift1
+2025-05-12 14:45:32,300 - PLCSim_DualLift - INFO - Created Handshake object for Lift1
+2025-05-12 14:45:32,300 - PLCSim_DualLift - INFO -   Created variable iMainStatus (Int16) for Lift1
+2025-05-12 14:45:32,301 - PLCSim_DualLift - INFO -   Created variable iCancelAssignmentReson (String) for Lift1
+2025-05-12 14:45:32,301 - PLCSim_DualLift - INFO -   Created variable iElevatorRowLocation (Int16) for Lift1
+2025-05-12 14:45:32,302 - PLCSim_DualLift - INFO -   Created variable xTrayInElevator (Boolean) for Lift1
+2025-05-12 14:45:32,302 - PLCSim_DualLift - INFO -   Created variable iCurrentForkSide (Int16) for Lift1
+2025-05-12 14:45:32,303 - PLCSim_DualLift - INFO -   Created variable iErrorCode (Int16) for Lift1
+2025-05-12 14:45:32,303 - PLCSim_DualLift - INFO -   Created variable xClearError (Boolean) for Lift1
+2025-05-12 14:45:32,304 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iTaskType (Int16) for Lift1
+2025-05-12 14:45:32,304 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iOrigination (Int16) for Lift1
+2025-05-12 14:45:32,304 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iDestination (Int16) for Lift1
+2025-05-12 14:45:32,305 - PLCSim_DualLift - INFO -   Created variable sSeq_Step_comment (String) for Lift1
+2025-05-12 14:45:32,305 - PLCSim_DualLift - INFO -   Created variable StationData.iCycle (Int16) for Lift1
+2025-05-12 14:45:32,306 - PLCSim_DualLift - INFO -   Created variable StationData.iStationStatus (Int16) for Lift1
+2025-05-12 14:45:32,306 - PLCSim_DualLift - INFO -   Created variable StationData.sStationStateDescription (String) for Lift1
+2025-05-12 14:45:32,306 - PLCSim_DualLift - INFO -   Created variable StationData.sShortAlarmDescription (String) for Lift1
+2025-05-12 14:45:32,307 - PLCSim_DualLift - INFO -   Created variable StationData.sAlarmSolution (String) for Lift1
+2025-05-12 14:45:32,307 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iRowNr (Int16) for Lift1
+2025-05-12 14:45:32,307 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iJobType (Int16) for Lift1
+2025-05-12 14:45:32,308 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iTaskType (Int16) for Lift1
+2025-05-12 14:45:32,308 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iOrigination (Int16) for Lift1
+2025-05-12 14:45:32,308 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iDestination (Int16) for Lift1
+2025-05-12 14:45:32,309 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.xAcknowledgeMovement (Boolean) for Lift1
+2025-05-12 14:45:32,309 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iCancelAssignment (Int16) for Lift1
+2025-05-12 14:45:32,310 - PLCSim_DualLift - INFO - Creating variables for Lift2
+2025-05-12 14:45:32,310 - PLCSim_DualLift - INFO - Created StationData object for Lift2
+2025-05-12 14:45:32,310 - PLCSim_DualLift - INFO - Created Handshake object for Lift2
+2025-05-12 14:45:32,310 - PLCSim_DualLift - INFO -   Created variable iMainStatus (Int16) for Lift2
+2025-05-12 14:45:32,311 - PLCSim_DualLift - INFO -   Created variable iCancelAssignmentReson (String) for Lift2
+2025-05-12 14:45:32,311 - PLCSim_DualLift - INFO -   Created variable iElevatorRowLocation (Int16) for Lift2
+2025-05-12 14:45:32,311 - PLCSim_DualLift - INFO -   Created variable xTrayInElevator (Boolean) for Lift2
+2025-05-12 14:45:32,311 - PLCSim_DualLift - INFO -   Created variable iCurrentForkSide (Int16) for Lift2
+2025-05-12 14:45:32,311 - PLCSim_DualLift - INFO -   Created variable iErrorCode (Int16) for Lift2
+2025-05-12 14:45:32,312 - PLCSim_DualLift - INFO -   Created variable xClearError (Boolean) for Lift2
+2025-05-12 14:45:32,312 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iTaskType (Int16) for Lift2
+2025-05-12 14:45:32,312 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iOrigination (Int16) for Lift2
+2025-05-12 14:45:32,313 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iDestination (Int16) for Lift2
+2025-05-12 14:45:32,313 - PLCSim_DualLift - INFO -   Created variable sSeq_Step_comment (String) for Lift2
+2025-05-12 14:45:32,313 - PLCSim_DualLift - INFO -   Created variable StationData.iCycle (Int16) for Lift2
+2025-05-12 14:45:32,313 - PLCSim_DualLift - INFO -   Created variable StationData.iStationStatus (Int16) for Lift2
+2025-05-12 14:45:32,314 - PLCSim_DualLift - INFO -   Created variable StationData.sStationStateDescription (String) for Lift2
+2025-05-12 14:45:32,314 - PLCSim_DualLift - INFO -   Created variable StationData.sShortAlarmDescription (String) for Lift2
+2025-05-12 14:45:32,314 - PLCSim_DualLift - INFO -   Created variable StationData.sAlarmSolution (String) for Lift2
+2025-05-12 14:45:32,314 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iRowNr (Int16) for Lift2
+2025-05-12 14:45:32,315 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iJobType (Int16) for Lift2
+2025-05-12 14:45:32,315 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iTaskType (Int16) for Lift2
+2025-05-12 14:45:32,316 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iOrigination (Int16) for Lift2
+2025-05-12 14:45:32,316 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iDestination (Int16) for Lift2
+2025-05-12 14:45:32,316 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.xAcknowledgeMovement (Boolean) for Lift2
+2025-05-12 14:45:32,317 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iCancelAssignment (Int16) for Lift2
+2025-05-12 14:45:32,317 - PLCSim_DualLift - INFO - OPC UA Server Variables Initialized
+2025-05-12 14:45:32,317 - PLCSim_DualLift - INFO - Dual Lift PLC Simulator Server Started.
+2025-05-12 14:45:32,318 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:32,318 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:32,531 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:32,532 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:32,733 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:32,733 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:32,937 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:32,937 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:33,152 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:33,153 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:33,354 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:33,354 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:33,569 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:33,570 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:33,784 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:33,784 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:33,988 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:33,989 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:34,192 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:34,193 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:34,395 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:34,395 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:34,610 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:34,611 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:34,827 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:34,828 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:35,042 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:35,043 - PLCSim_DualLift - INFO - [PLC-SIM] Received EcoSystem xWatchDog status: False
+2025-05-12 14:45:40,275 - PLCSim_DualLift - INFO - [Lift1] Clearing job request from OPC: TaskType, Origination, Destination
+2025-05-12 14:45:40,276 - PLCSim_DualLift - INFO - [JOB_START] New job for Lift1:
+2025-05-12 14:45:40,276 - PLCSim_DualLift - INFO - [JOB_START] Lift1: Position=5, Lift2: Position=90
+2025-05-12 14:45:40,276 - PLCSim_DualLift - INFO - [Lift1] Received Job: Type=1, Origin=5, Dest=90
+2025-05-12 14:45:40,276 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 10 -> 25
+2025-05-12 14:45:40,466 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (90, 90).
+2025-05-12 14:45:40,467 - PLCSim_DualLift - ERROR - [Lift1] Validation failed: Collision risk with Lift2. My path (5, 90), Other\'s path/pos (90, 90).
+2025-05-12 14:45:40,467 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 25 -> 10
+2025-05-12 14:45:48,189 - PLCSim_DualLift - INFO - [Lift1] Clearing job request from OPC: TaskType, Origination, Destination
+2025-05-12 14:45:48,190 - PLCSim_DualLift - INFO - [JOB_START] New job for Lift1:
+2025-05-12 14:45:48,191 - PLCSim_DualLift - INFO - [JOB_START] Lift1: Position=5, Lift2: Position=90
+2025-05-12 14:45:48,191 - PLCSim_DualLift - INFO - [Lift1] Received Job: Type=1, Origin=5, Dest=90
+2025-05-12 14:45:48,192 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 10 -> 25
+2025-05-12 14:45:48,391 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (90, 90).
+2025-05-12 14:45:48,391 - PLCSim_DualLift - ERROR - [Lift1] Validation failed: Collision risk with Lift2. My path (5, 90), Other\'s path/pos (90, 90).
+2025-05-12 14:45:48,392 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 25 -> 10
