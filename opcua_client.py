@@ -110,7 +110,7 @@ class OPCUAClient:
         if "ElevatorEcoSystAssignment" in node_path_str:
             # Try to map the interface name to the PLC implementation name
             plc_path = VariableMapping.get_plc_name(node_path_str)
-            logger.info(f"OPCUAClient: Mapped interface path {node_path_str} to PLC path {plc_path}")
+            logger.debug(f"OPCUAClient: Mapped interface path {node_path_str} to PLC path {plc_path}")
             node_path_str = plc_path  # Use the mapped name for searching
 
         # Original get_node code continues below

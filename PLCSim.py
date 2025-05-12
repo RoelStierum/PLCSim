@@ -142,7 +142,7 @@ class PLCSimulator_DualLift:
         self.system_state = {
             "iAmountOfSations": 2,
             "iMainStatus": 1,
-            "iCancelAssignment": 0,
+            "iCancelAssignmentReason": 0, # Renamed from iCancelAssignment
             "xWatchDog": False  # EcoSystem status, written by EcoSystem, read by PLC
         }
 
@@ -290,11 +290,11 @@ class PLCSimulator_DualLift:
             # Add the ElevatorEcoSystAssignment object
             eco_assign_obj = await lift_obj.add_object(self.namespace_idx, "ElevatorEcoSystAssignment")
             eco_assign_vars = [
-                ("iTaskType", 0, ua.VariantType.Int16),
-                ("iOrigination", 0, ua.VariantType.Int16),
-                ("iDestination", 0, ua.VariantType.Int16),
+                ("iTaskType", 0, ua.VariantType.Int64),      # Changed to Int64
+                ("iOrigination", 0, ua.VariantType.Int64),   # Changed to Int64
+                ("iDestination", 0, ua.VariantType.Int64),   # Changed to Int64
                 ("xAcknowledgeMovement", False, ua.VariantType.Boolean),
-                ("iCancelAssignment", 0, ua.VariantType.Int16)
+                ("iCancelAssignmentReason", 0, ua.VariantType.Int16) # Corrected name
             ]
             
             for var_name, default_value, ua_type in eco_assign_vars:
@@ -638,43 +638,54 @@ class PLCSimulator_DualLift:
                 logger.info(f"[{lift_id}] Assignment Validated")
                 state["_current_job_valid"] = True
                 await self._update_opc_value(lift_id, "iErrorCode", 0) # Clear any previous error codes
-                await self._update_opc_value(lift_id, "StationData.sShortAlarmDescription", "") # Clear descriptions
-                await self._update_opc_value(lift_id, "StationData.sAlarmMessage", "") 
-                await self._update_opc_value(lift_id, "StationData.sAlarmSolution", "")
-                await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignment", 0) # Clear cancel reason
-                await self._update_opc_value('System', "iCancelAssignment", 0) # Clear system cancel reason
-                await self._update_opc_value(lift_id, "StationData.iStationStatus", STATUS_OK) # Set station to OK
+                await self._update_opc_value(lift_id, "sAlarmMessage", "") # Clear alarm message
+                await self._update_opc_value(lift_id, "sShortAlarmDescription", "") # Clear short description
+                await self._update_opc_value(lift_id, "sAlarmSolution", "") # Clear solution
+                await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason", 0) # Clear cancel reason
+                await self._update_opc_value('System', "iCancelAssignmentReason", 0) # Clear system cancel reason
                 next_cycle = 30  # Go to acceptance
             else:
                 logger.error(f"[{lift_id}] Validation failed: {error_msg}")
-                await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0) # Clear active job
-                await self._update_opc_value(lift_id, "iErrorCode", 0) # No hard PLC error for rejection
+                await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0) # Clear active task
+                await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iOrigination", 0)
+                await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iDestination", 0)
                 
-                # Determine cancel_reason (existing logic)
-                cancel_reason = CANCEL_INVALID_ASSIGNMENT # Default
+                await self._update_opc_value(lift_id, "sAlarmMessage", error_msg)
+                await self._update_opc_value(lift_id, "iErrorCode", 0) # Ensure error code is 0 for job rejection
+                
+                # Set the appropriate cancel reason based on the error
+                cancel_reason_code = CANCEL_INVALID_ASSIGNMENT # Default
+                reason_text = "Unknown validation error"
+
                 if "invalid task type" in error_msg.lower():
-                    cancel_reason = CANCEL_INVALID_ASSIGNMENT
-                elif "tray is on forks" in error_msg.lower(): 
-                    cancel_reason = CANCEL_PICKUP_WITH_TRAY
+                    cancel_reason_code = CANCEL_INVALID_ASSIGNMENT
+                    reason_text = "Invalid task type"
+                elif "tray is on forks" in error_msg.lower():
+                    cancel_reason_code = CANCEL_PICKUP_WITH_TRAY
+                    reason_text = "Cannot pickup, tray on forks"
                 elif "destination out of reach" in error_msg.lower():
-                    cancel_reason = CANCEL_DESTINATION_OUT_OF_REACH
+                    cancel_reason_code = CANCEL_DESTINATION_OUT_OF_REACH
+                    reason_text = "Destination out of reach"
                 elif "origin out of reach" in error_msg.lower():
-                    cancel_reason = CANCEL_ORIGIN_OUT_OF_REACH
+                    cancel_reason_code = CANCEL_ORIGIN_OUT_OF_REACH
+                    reason_text = "Origin out of reach"
                 elif "invalid destination or origin" in error_msg.lower() or "zero" in error_msg.lower():
-                    cancel_reason = CANCEL_INVALID_ZERO_POSITION
+                    cancel_reason_code = CANCEL_INVALID_ZERO_POSITION
+                    reason_text = "Invalid zero position for origin/destination"
                 elif "collision" in error_msg.lower() or "overlap" in error_msg.lower():
-                    cancel_reason = CANCEL_LIFTS_CROSS
+                    cancel_reason_code = CANCEL_LIFTS_CROSS
+                    reason_text = "Collision risk with other lift"
                 
-                # Update cancel reasons on OPC UA
-                await self._update_opc_value('System', "iCancelAssignment", cancel_reason)
-                await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignment", cancel_reason)
+                # Update StationData strings for GUI display
+                await self._update_opc_value(lift_id, "sShortAlarmDescription", f"Job Rejected: {reason_text}")
+                await self._update_opc_value(lift_id, "sAlarmSolution", "Check job parameters or wait for other lift. Reset job if needed.")
+
+                # Update both system and lift-specific cancel assignment reason
+                await self._update_opc_value('System', "iCancelAssignmentReason", cancel_reason_code)
+                await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason", cancel_reason_code)
                 
-                # Update StationData for EcoSystem display of rejection
-                await self._update_opc_value(lift_id, "StationData.sShortAlarmDescription", "Job Rejected")
-                await self._update_opc_value(lift_id, "StationData.sAlarmMessage", error_msg) # Detailed reason for rejection
-                await self._update_opc_value(lift_id, "StationData.sAlarmSolution", "Review job parameters or wait for other lift.")
-                await self._update_opc_value(lift_id, "StationData.iStationStatus", STATUS_WARNING) # Set station to warning
-                
+                # Update station status to warning
+                await self._update_opc_value(lift_id, "iStationStatus", STATUS_WARNING)
                 next_cycle = 10  # Go back to ready
                 
         elif current_cycle == 30:  # Assignment Accepted
@@ -813,10 +824,14 @@ class PLCSimulator_DualLift:
         elif current_cycle == 299:  # Job Complete
             step_comment = "Job Complete - Returning to Ready"
             # Reset any cancel assignment reasons
-            await self._update_opc_value('System', "iCancelAssignment", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignment", 0)
+            await self._update_opc_value('System', "iCancelAssignmentReason", 0)
+            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason", 0)
             # Set status back to OK
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
+            # Clear alarm messages
+            await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
+            await self._update_opc_value(lift_id, "sAlarmMessage", "")
+            await self._update_opc_value(lift_id, "sAlarmSolution", "")
             next_cycle = 10
             
         elif current_cycle == 300:  # Start MoveToAssignment

@@ -9,6 +9,18 @@ from opcua_client import OPCUAClient
 from lift_visualization import LiftVisualizationManager, LIFT1_ID, LIFT2_ID, LIFTS # Import new manager and constants
 from auto_mode import add_auto_mode_to_gui  # Import de auto mode functie
 
+# Define Cancel Reason Codes and Texts
+CANCEL_REASON_TEXTS = {
+    0: "No cancel reason",
+    1: "Pickup assignment while tray is on forks",
+    2: "Destination out of reach",
+    3: "Origin out of reach",
+    4: "Destination and origin can’t be zero with a full move operation / Origin can’t be zero with a prepare or move operation",
+    5: "Lifts cross each other",
+    6: "Invalid assignment"
+    # Add other reasons as they are defined in PLCSim or interface.txt
+}
+
 # Zorg dat de logs map bestaat
 logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
 if not os.path.exists(logs_dir):
@@ -122,7 +134,8 @@ class EcoSystemGUI_DualLift_ST:
         self._create_step_info_section(content_frame, lift_id)
         self._create_job_control_section(content_frame, lift_id)
         self._create_ack_section(content_frame, lift_id)
-        self._create_error_display_section(content_frame, lift_id) # Renamed from _create_error_section
+        self._create_error_display_section(content_frame, lift_id)
+        self._create_cancel_reason_section(content_frame, lift_id) # Added call
 
     def _create_status_section(self, parent_frame, lift_id):
         """Creates the status display section for a lift."""
@@ -231,6 +244,24 @@ class EcoSystemGUI_DualLift_ST:
         
         self.error_controls[lift_id] = err_ctrls
 
+    def _create_cancel_reason_section(self, parent_frame, lift_id):
+        """Creates the cancel reason display section for a lift."""
+        cancel_frame = ttk.LabelFrame(parent_frame, text=f"{lift_id} Job Cancel Reason", padding=10)
+        cancel_frame.pack(fill=tk.X, pady=5)
+        
+        if lift_id not in self.status_labels: # Ensure the main dict exists
+            self.status_labels[lift_id] = {}
+
+        ttk.Label(cancel_frame, text="Cancel Code:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        code_label = ttk.Label(cancel_frame, text="N/A", width=10)
+        code_label.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
+        self.status_labels[lift_id]["iCancelAssignmentReasonCode"] = code_label
+
+        ttk.Label(cancel_frame, text="Reason Text:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
+        text_label = ttk.Label(cancel_frame, text="N/A", width=40, wraplength=250, justify=tk.LEFT) # Added wraplength and justify
+        text_label.grid(row=1, column=1, sticky=tk.W, padx=5, pady=2)
+        self.status_labels[lift_id]["sCancelAssignmentReasonText"] = text_label
+
     # --- GUI Layout and Element Creation End, Business Logic Methods Below ---
 
     def _safe_get_int_from_data(self, plc_data, key, default=0):
@@ -246,6 +277,11 @@ class EcoSystemGUI_DualLift_ST:
     def _update_lift_text_labels(self, lift_id, plc_data):
         """Updates the text-based status labels for a given lift."""
         for name, label_widget in self.status_labels[lift_id].items():
+            # Special handling for the reason text label, as its content is derived,
+            # not directly from plc_data[name]. It's updated when iCancelAssignmentReasonCode is processed.
+            if name == "sCancelAssignmentReasonText":
+                continue  # Skip generic update for this label, it's handled below
+
             value = plc_data.get(name, "N/A")
             if name == "sSeq_Step_comment" and value == "": value = "(No comment)"
             elif name == "sSeq_Step_comment": value = str(value).strip()
@@ -253,6 +289,18 @@ class EcoSystemGUI_DualLift_ST:
                 value = value.decode('utf-8', 'ignore').strip()
             if isinstance(value, float): value = f"{value:.2f}"
             
+            # Handle cancel reason code and update corresponding text label
+            if name == "iCancelAssignmentReasonCode":
+                # The actual data from PLC is stored under "iCancelAssignmentReason" in plc_data
+                reason_code = self._safe_get_int_from_data(plc_data, "iCancelAssignmentReason", 0)
+                value = reason_code # This value (the code) will be set to the iCancelAssignmentReasonCode label
+                
+                # Update the separate sCancelAssignmentReasonText label
+                text_label_widget_for_reason = self.status_labels[lift_id].get("sCancelAssignmentReasonText")
+                if text_label_widget_for_reason:
+                    reason_text = CANCEL_REASON_TEXTS.get(reason_code, f"Unknown reason code ({reason_code})")
+                    text_label_widget_for_reason.config(text=reason_text)
+
             if isinstance(label_widget, tk.Text):
                 label_widget.config(state=tk.NORMAL)
                 label_widget.delete("1.0", tk.END)
@@ -270,7 +318,6 @@ class EcoSystemGUI_DualLift_ST:
         error_code = self._safe_get_int_from_data(plc_data, "iErrorCode")
         is_error = error_code != 0
         plc_cycle = self._safe_get_int_from_data(plc_data, "iCycle", -1)
-        iStationStatus = self._safe_get_int_from_data(plc_data, "iStationStatus") # STATUS_OK=1, STATUS_WARNING=2, STATUS_ERROR=3
 
         # Ack controls
         ack_info_text = "PLC Awaiting Ack: No"
@@ -285,93 +332,69 @@ class EcoSystemGUI_DualLift_ST:
              self.ack_controls[lift_id]['ack_info_label'].config(text=ack_info_text, foreground=ack_label_color)
              self.ack_controls[lift_id]['ack_movement_button'].config(state=ack_button_state)
 
-        # Error and Status display logic
-        current_status_text = "PLC Status: Unknown"
-        current_status_color = "gray"
-        populate_details = False
-
-        station_state_desc_raw = plc_data.get("sStationStateDescription", "")
-        if isinstance(station_state_desc_raw, bytes):
-            station_state_desc = station_state_desc_raw.decode('utf-8', 'ignore').strip()
-        else:
-            station_state_desc = str(station_state_desc_raw).strip()
-
-        if not self.is_connected:
-            current_status_text = "PLC Status: Disconnected"
-            current_status_color = "gray"
-            populate_details = False
-        elif is_error: # PLC reported a hard error
-            current_status_text = f"PLC Error State: YES (Code: {error_code})"
-            if station_state_desc:
-                 current_status_text = f"PLC Status: {station_state_desc} (Code: {error_code})"
-            current_status_color = "red"
-            populate_details = True
-        elif iStationStatus == 2:  # STATUS_WARNING (e.g., Job Rejected)
-            current_status_text = f"PLC Status: {station_state_desc or 'Warning'}"
-            current_status_color = "orange"
-            populate_details = True
-        elif iStationStatus == 1: # STATUS_OK
-            current_status_text = f"PLC Status: {station_state_desc or 'OK'} (Cycle: {plc_cycle})"
-            current_status_color = "green"
-            populate_details = False
-        else: # Other states or default
-            current_status_text = f"PLC Status: {station_state_desc or 'OK'} (Cycle: {plc_cycle}, Status: {iStationStatus})"
-            current_status_color = "blue" # Or some other default color
-            populate_details = False
-
-
-        if lift_id in self.error_controls:
-            self.error_controls[lift_id]['error_status_label'].config(text=current_status_text, foreground=current_status_color)
-
-            if populate_details:
-                short_desc_raw = plc_data.get("sShortAlarmDescription", "")
-                if isinstance(short_desc_raw, bytes):
-                    short_desc = short_desc_raw.decode('utf-8', 'ignore').strip()
-                else:
-                    short_desc = str(short_desc_raw).strip()
+        # Error controls
+        error_info_text = f"PLC Error State: No (Code: {error_code})"
+        # error_button_state = tk.DISABLED # Removed
+        error_label_color = "green"
+        if is_error and self.is_connected:
+            error_info_text = f"PLC Error State: YES (Code: {error_code})"
+            # error_button_state = tk.NORMAL # Removed
+            error_label_color = "red"
+            
+            # Vul de error details secties
+            if lift_id in self.error_controls:
+                # Haal de foutbeschrijvingen op uit de PLC data
+                short_desc = plc_data.get("sShortAlarmDescription", "")
+                if isinstance(short_desc, bytes):
+                    short_desc = short_desc.decode('utf-8', 'ignore').strip()
                 
-                error_msg_raw = plc_data.get("sAlarmMessage", "")
-                if isinstance(error_msg_raw, bytes):
-                    error_msg = error_msg_raw.decode('utf-8', 'ignore').strip()
-                else:
-                    error_msg = str(error_msg_raw).strip()
+                error_msg = plc_data.get("sAlarmMessage", "")
+                if isinstance(error_msg, bytes):
+                    error_msg = error_msg.decode('utf-8', 'ignore').strip()
                     
-                solution_raw = plc_data.get("sAlarmSolution", "")
-                if isinstance(solution_raw, bytes):
-                    solution = solution_raw.decode('utf-8', 'ignore').strip()
-                else:
-                    solution = str(solution_raw).strip()
+                solution = plc_data.get("sAlarmSolution", "")
+                if isinstance(solution, bytes):
+                    solution = solution.decode('utf-8', 'ignore').strip()
                 
-                detail_text_color = current_status_color # Match status color, or choose e.g. "black"
-                self.error_controls[lift_id]['short_description'].config(text=short_desc or "N/A", foreground=detail_text_color)
+                # Vul de error details widgets
+                self.error_controls[lift_id]['short_description'].config(text=short_desc or "Unknown error", foreground="red")
                 
+                # Bijwerken van de message textbox
                 msg_widget = self.error_controls[lift_id]['message']
                 msg_widget.config(state=tk.NORMAL)
                 msg_widget.delete("1.0", tk.END)
                 msg_widget.insert("1.0", error_msg or "Geen details beschikbaar")
                 msg_widget.config(state=tk.DISABLED)
                 
+                # Bijwerken van de solution textbox
                 sol_widget = self.error_controls[lift_id]['solution']
                 sol_widget.config(state=tk.NORMAL)
                 sol_widget.delete("1.0", tk.END)
                 sol_widget.insert("1.0", solution or "Geen oplossing beschikbaar")
                 sol_widget.config(state=tk.DISABLED)
-            else:
-                # Reset error details if not populating
+        else:
+            # Reset error details als er geen fout is
+            if lift_id in self.error_controls:
                 self.error_controls[lift_id]['short_description'].config(text="None", foreground="gray")
                 
+                # Reset message textbox
                 msg_widget = self.error_controls[lift_id]['message']
                 msg_widget.config(state=tk.NORMAL)
                 msg_widget.delete("1.0", tk.END)
                 msg_widget.insert("1.0", "")
                 msg_widget.config(state=tk.DISABLED)
                 
+                # Reset solution textbox
                 sol_widget = self.error_controls[lift_id]['solution']
                 sol_widget.config(state=tk.NORMAL)
                 sol_widget.delete("1.0", tk.END)
                 sol_widget.insert("1.0", "")
                 sol_widget.config(state=tk.DISABLED)
                 
+        if lift_id in self.error_controls:
+             self.error_controls[lift_id]['error_status_label'].config(text=error_info_text, foreground=error_label_color)
+             # self.error_controls[lift_id]['clear_error_button'].config(state=error_button_state) # Removed
+
         # Job controls - Wijziging: Niet automatisch een nieuwe job sturen na voltooiing
         # Wanneer de PLC in de gereedstatus is (iCycle = 10), sturen we ALLEEN een nieuwe job
         # als de gebruiker expliciet op de knop drukt
@@ -411,9 +434,9 @@ class EcoSystemGUI_DualLift_ST:
         # Define system interface variables according to interface.txt
         # xWatchDog is written by EcoSystem, so not read here.
         interface_vars = [
-            "iAmountOfSations",
+            "iAmountOfSations", # Corrected typo from iAmountOfStations if it was ever there
             "iMainStatus",
-            "iCancelAssignment"
+            "iCancelAssignmentReason" # Corrected from iCancelAssignment
             # "xWatchDog"  # Removed: EcoSystem WRITES this, PLC READS it.
         ]
         
@@ -436,10 +459,21 @@ class EcoSystemGUI_DualLift_ST:
             "iCurrentForkSide",
             "iErrorCode",
             "sSeq_Step_comment"
+            # "ElevatorEcoSystAssignment.iCancelAssignmentReason" # Will be read separately or added to a specific list
+        ]
+
+        # Variables from ElevatorEcoSystAssignment to be read per lift
+        eco_assignment_vars = [
+            "ElevatorEcoSystAssignment.iTaskType",
+            "ElevatorEcoSystAssignment.iOrigination",
+            "ElevatorEcoSystAssignment.iDestination",
+            "ElevatorEcoSystAssignment.xAcknowledgeMovement",
+            "ElevatorEcoSystAssignment.iCancelAssignmentReason"
         ]
         
         logger.info(f"Monitoring system interface variables: {interface_vars}")
         logger.info(f"Monitoring station data variables: {station_vars}")
+        logger.info(f"Monitoring EcoSystem assignment variables: {eco_assignment_vars}")
         logger.info(f"Internal visualization variables (not monitored directly): {internal_vars}")
 
         # Test the connection with a system variable
@@ -510,43 +544,30 @@ class EcoSystemGUI_DualLift_ST:
                     for key, value in sys_data.items():
                         lift_data[key] = value
                       
-                    # Try different paths for finding StationData variables
-                    for var_name in station_vars:
-                        # Extract the base name for storing in our dictionary
-                        base_name = var_name.split('.')[-1]
+                    # Read StationData variables
+                    for var_name_full_path in station_vars: # var_name_full_path is like "StationData.iCycle"
+                        base_name = var_name_full_path.split('.')[-1] # e.g. "iCycle"
+                        object_structure = var_name_full_path.rsplit('.', 1)[0] # e.g. "StationData" or "StationData.Handshake"
                         
-                        # Try these access paths in order until one works
-                        paths_to_try = [
-                            f"{lift_id_loop}/StationData/{base_name}",  # Lift1/StationData/iCycle - This one works!
-                            f"{lift_id_loop}/{var_name}",               # Lift1/StationData.iCycle
-                            f"{lift_id_loop}.{var_name}",               # Lift1.StationData.iCycle
-                            f"{var_name}",                              # StationData.iCycle
-                        ]
+                        path_to_try = f"{lift_id_loop}/{object_structure.replace('.', '/')}/{base_name}" # e.g. Lift1/StationData/iCycle or Lift1/StationData/Handshake/iJobType
                         
-                        # For Handshake variables, add more specific paths
-                        if "Handshake" in var_name:
-                            handshake_base_name = var_name.split('.')[-1]
-                            handshake_paths = [
-                                f"{lift_id_loop}/StationData/Handshake/{handshake_base_name}",  # This path works!
-                                f"{lift_id_loop}.StationData.Handshake.{handshake_base_name}"   
-                            ]
-                            paths_to_try = handshake_paths + paths_to_try  # Try Handshake specific paths first
-                            
-
-                        # Try each path until we find a value
-                        value = None # Reset before trying paths for this var_name
-                        successful_path = None
-                        for path in paths_to_try:
-                            value = await self.opcua_client.read_value(path)
-                            if value is not None:
-                                successful_path = path # Store the path that worked
-                                break # Exit loop on first success
-                        
-                        # Store the value if found with any path
+                        value = await self.opcua_client.read_value(path_to_try)
                         if value is not None:
                             lift_data[base_name] = value
                         else:
-                            logger.warning(f"Failed to read {var_name} for {lift_id_loop} after trying paths: {paths_to_try}")
+                            logger.warning(f"Failed to read {var_name_full_path} for {lift_id_loop} using path: {path_to_try}")
+
+                    # Read ElevatorEcoSystAssignment variables
+                    for var_name_full_path in eco_assignment_vars: # var_name_full_path is like "ElevatorEcoSystAssignment.iTaskType"
+                        base_name = var_name_full_path.split('.')[-1] # e.g. "iTaskType"
+                        # The object is directly under the lift, then ElevatorEcoSystAssignment, then the variable
+                        path_to_try = f"{lift_id_loop}/ElevatorEcoSystAssignment/{base_name}" # e.g. Lift1/ElevatorEcoSystAssignment/iTaskType
+                        
+                        value = await self.opcua_client.read_value(path_to_try)
+                        if value is not None:
+                            lift_data[base_name] = value # Store with base name, e.g., "iCancelAssignmentReason"
+                        else:
+                            logger.warning(f"Failed to read {var_name_full_path} for {lift_id_loop} using path: {path_to_try}")
                     
                     # Also try to read the internal variables needed for visualization
                     for var_name in internal_vars:
@@ -564,6 +585,7 @@ class EcoSystemGUI_DualLift_ST:
                         if value is not None:
                             lift_data[var_name] = value
                   
+
                     # Handle watchdog specifically - REMOVED (EcoSystem sends, doesn't check per lift this way)
                     # if sys_data.get("xWatchDog", False):
                     #    self.last_watchdog_time[lift_id_loop] = current_time
@@ -715,9 +737,10 @@ class EcoSystemGUI_DualLift_ST:
             path_prefix = f"{lift_id}/ElevatorEcoSystAssignment/"
             
             # Write to ElevatorEcoSystAssignment variables (new interface)
-            success_type = await self.opcua_client.write_value(f"{path_prefix}iTaskType", task_type, ua.VariantType.Int16)
-            success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int16)  
-            success_dest = await self.opcua_client.write_value(f"{path_prefix}iDestination", destination, ua.VariantType.Int16)
+            # Use Int64 for task, origin, destination as per PLCSim.py
+            success_type = await self.opcua_client.write_value(f"{path_prefix}iTaskType", task_type, ua.VariantType.Int64)
+            success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)  
+            success_dest = await self.opcua_client.write_value(f"{path_prefix}iDestination", destination, ua.VariantType.Int64)
             
             # Als de nieuwe interface niet lukt, probeer de oude interface (voor backward compatibility)
             if not all([success_type, success_origin, success_dest]):
@@ -782,7 +805,8 @@ class EcoSystemGUI_DualLift_ST:
             
             success = False
             for path in paths_to_try:
-                result = await self.opcua_client.write_value(path, 0, ua.VariantType.Int16)
+                # Use Int64 for task type reset as well, to be consistent
+                result = await self.opcua_client.write_value(path, 0, ua.VariantType.Int64)
                 if result:
                     logger.info(f"Successfully cleared task via {path}")
                     success = True
