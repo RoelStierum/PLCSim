@@ -142,8 +142,8 @@ class EcoSystemGUI_DualLift_ST:
         status_vars_to_display = [
             "iCycle", "iStatus", "iElevatorRowLocation", 
             "xTrayInElevator", "iCurrentForkSide",
-            "ActiveElevatorAssignment_iTaskType", "ActiveElevatorAssignment_iOrigination",
-            "ActiveElevatorAssignment_iDestination"
+            # Use base names, assuming they are read from ElevatorEcoSystAssignment
+            "iTaskType", "iOrigination", "iDestination" 
         ]
         status_frame = ttk.LabelFrame(parent_frame, text=f"{lift_id} Status", padding=10)
         status_frame.pack(fill=tk.X, pady=5)
@@ -452,17 +452,16 @@ class EcoSystemGUI_DualLift_ST:
         ]
         
         # Define elevator variables that aren't in interface.txt but needed for visualization
-        # These won't be monitored directly as they're not part of the interface
         internal_vars = [
             "iElevatorRowLocation",
             "xTrayInElevator",
             "iCurrentForkSide",
             "iErrorCode",
             "sSeq_Step_comment"
-            # "ElevatorEcoSystAssignment.iCancelAssignmentReason" # Will be read separately or added to a specific list
+            # ActiveElevatorAssignment_... are handled by active_job_vars_to_read_and_map
         ]
 
-        # Variables from ElevatorEcoSystAssignment to be read per lift
+        # Variables from ElevatorEcoSystAssignment to be read per lift (initial job request from GUI)
         eco_assignment_vars = [
             "ElevatorEcoSystAssignment.iTaskType",
             "ElevatorEcoSystAssignment.iOrigination",
@@ -470,6 +469,15 @@ class EcoSystemGUI_DualLift_ST:
             "ElevatorEcoSystAssignment.xAcknowledgeMovement",
             "ElevatorEcoSystAssignment.iCancelAssignmentReason"
         ]
+
+        # PLC's internal active job parameters to be read for persistent display in GUI status section
+        # The keys of this dictionary are the PLC variable names.
+        # The values are the keys used in lift_data and for GUI labels.
+        active_job_vars_to_read_and_map = {
+            "ActiveElevatorAssignment_iTaskType": "iTaskType",
+            "ActiveElevatorAssignment_iOrigination": "iOrigination",
+            "ActiveElevatorAssignment_iDestination": "iDestination"
+        }
         
         logger.info(f"Monitoring system interface variables: {interface_vars}")
         logger.info(f"Monitoring station data variables: {station_vars}")
@@ -569,7 +577,22 @@ class EcoSystemGUI_DualLift_ST:
                         else:
                             logger.warning(f"Failed to read {var_name_full_path} for {lift_id_loop} using path: {path_to_try}")
                     
-                    # Also try to read the internal variables needed for visualization
+                    # Read PLC's actual active job parameters for persistent display.
+                    # These will overwrite the initial request values in lift_data if they differ (e.g., after PLC clears the request).
+                    for plc_var_name, display_key in active_job_vars_to_read_and_map.items():
+                        # Path is typically LiftN/ActiveElevatorAssignment_iTaskType
+                        path_to_try = f"{lift_id_loop}/{plc_var_name}" 
+                        value = await self.opcua_client.read_value(path_to_try)
+                        if value is not None:
+                            lift_data[display_key] = value
+                        else:
+                            logger.warning(f"Failed to read PLC active job parameter {plc_var_name} for {lift_id_loop} (path: {path_to_try}). GUI might not show active job.")
+                            # If read fails, and the key wasn't set by eco_assignment_vars (e.g. request was already 0 or cleared)
+                            # ensure it defaults to 0 for consistent display of iTaskType, iOrigination, iDestination.
+                            if display_key not in lift_data or lift_data[display_key] is None:
+                                lift_data[display_key] = 0 
+
+                    # Also try to read the other internal variables needed for visualization
                     for var_name in internal_vars:
                         # Try multiple path formats
                         paths_to_try = [
@@ -819,27 +842,6 @@ class EcoSystemGUI_DualLift_ST:
             logger.info(f"Clear Task signal sent successfully to {lift_id}.")
             
         asyncio.create_task(clear_task_sequence())
-
-    # def _update_watchdog_display(self, watchdog_ok, initial=False, disconnected=False): # ENTIRE METHOD REMOVED
-    #    if not self.watchdog_status_label or not self.root.winfo_exists():
-    #        return
-    #
-    #    if disconnected:
-    #        text = "Watchdog: N/A"
-    #        color = "grey"
-    #    elif initial:
-    #        text = "Watchdog: Checking..."
-    #        color = "orange"
-    #    elif watchdog_ok:
-    #        text = "Watchdog: OK"
-    #        color = "green"
-    #    else:
-    #        text = "Watchdog: TIMEOUT"
-    #        color = "red"
-    #    
-    #    self.watchdog_status_label.config(text=text, foreground=color)
-
-# create_rack_visualization is removed as its logic is in LiftVisualizationManager._setup_warehouse_visualization
 
 async def run_gui(root):
     while True:

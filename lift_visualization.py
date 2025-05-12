@@ -382,30 +382,145 @@ class LiftVisualizationManager:
             logger.error("Canvas not initialized in LiftVisualizationManager.")
             return
 
-        # Calculate y-coordinate based on current_row
+        # Calculate y-coordinate based on current_row (for vertical lift positioning)
         y_pos = self._calculate_y_position(current_row)
 
-        # Determine the visual orientation of the forks based on current_row (target job location)
-        # Visual constants: RobotSide = 1 (visual left), OpperatorSide = 2 (visual right), MiddenLocation = 0
-
-        if current_row == SERVICE_ROW_BOTTOM or current_row == SERVICE_ROW_TOP:
+        # Determine the visual orientation of the forks based *directly* on the PLC's reported state.
+        # PLC fork_side_from_plc: 0 = Midden, 1 = RobotSide (physical right), 2 = OpperatorSide (physical left)
+        # Visual constants: MiddenLocation = 0, RobotSide = 1 (visual left), OpperatorSide = 2 (visual right)
+        
+        visual_fork_orientation = MiddenLocation # Default to Midden
+        if fork_side_from_plc == 1:  # PLC RobotSide (physical right) corresponds to iCurrentForkSide = 1
+            visual_fork_orientation = OpperatorSide # Visual OpperatorSide (forks to visual right)
+        elif fork_side_from_plc == 2:  # PLC OpperatorSide (physical left) corresponds to iCurrentForkSide = 2
+            visual_fork_orientation = RobotSide     # Visual RobotSide (forks to visual left)
+        elif fork_side_from_plc == 0:  # PLC Midden corresponds to iCurrentForkSide = 0
             visual_fork_orientation = MiddenLocation
-            # logger.debug(f"Lift {lift_id} at service row {current_row}. Visual forks set to Midden.")
-        elif current_row >= 1 and current_row <= MAX_ROWS_LEFT:  # Rows for "Operator Side" (visual left)
-            visual_fork_orientation = RobotSide      # RobotSide (1) is visual left
-            # logger.debug(f"Lift {lift_id} target row {current_row} (1-50). Visual forks to RobotSide (left).")
-        elif current_row >= (MAX_ROWS_LEFT + 1) and current_row <= (MAX_ROWS_LEFT + MAX_ROWS_RIGHT):  # Rows for "Robot Side" (visual right)
-            visual_fork_orientation = OpperatorSide  # OpperatorSide (2) is visual right
-            # logger.debug(f"Lift {lift_id} target row {current_row} ({MAX_ROWS_LEFT + 1}-{MAX_ROWS_LEFT + MAX_ROWS_RIGHT}). Visual forks to OpperatorSide (right).")
-        else:  # Default (e.g., row 0, or unexpected). Fallback to PLC's actual fork side.
-            # fork_side_from_plc is the value from PLC's iCurrentForkSide.
-            # The constants RobotSide and OpperatorSide here refer to the visual constants defined in this file.
-            if fork_side_from_plc == 1:  # PLC's iCurrentForkSide is 1 (PLC OpperatorSide)
-                                         # This should map to VISUAL LEFT (RobotSide, which is value 1)
-                visual_fork_orientation = RobotSide # Corrected: Was OpperatorSide
-            elif fork_side_from_plc == 2:  # PLC's iCurrentForkSide is 2 (PLC RobotSide)
-                                           # This should map to VISUAL RIGHT (OpperatorSide, which is value 2)
-                visual_fork_orientation = OpperatorSide # Corrected: Was RobotSide
-            else:  # PLC Midden (0) or unknown
-                visual_fork_orientation = MiddenLocation
-            # logger.debug(f"Lift {lift_id} target row {current_row} (neutral/other). Visual forks based on PLC state {fork_side_from_plc} -> {visual_fork_orientation}.")
+        else:
+            logger.warning(f"Lift {lift_id}: Unknown fork_side_from_plc value: {fork_side_from_plc}. Defaulting to Midden.")
+            # visual_fork_orientation remains MiddenLocation due to initialization
+
+        if lift_id not in self.lift_visuals: return
+
+        vis_data = self.lift_visuals[lift_id]
+        lift_rect = vis_data['rect']
+        fork_rect = vis_data['fork']
+        tray_rect = vis_data['tray']
+        location_label = vis_data['location_label']
+
+        # Update lift color based on error state
+        base_color = vis_data['color']
+        current_lift_color = 'red' if is_error else base_color
+        if self.canvas.itemcget(lift_rect, 'fill') != current_lift_color:
+            self.canvas.itemconfig(lift_rect, fill=current_lift_color)
+
+        # Update tray visibility
+        new_tray_state = tk.NORMAL if has_tray else tk.HIDDEN
+        if self.canvas.itemcget(tray_rect, 'state') != new_tray_state:
+            self.canvas.itemconfig(tray_rect, state=new_tray_state)
+
+        # Update fork side (lateral movement) and tags
+        fork_x_offset = 0
+        current_fork_tags = self.canvas.gettags(fork_rect) 
+        new_fork_tags = [tag for tag in current_fork_tags if not tag.startswith("side_")]
+
+        fork_extension_factor = 8.0  # Define fork_extension_factor before use
+        
+        # Gebruik visual_fork_orientation (afgeleid van PLC) om de vorkpositie te bepalen
+        if visual_fork_orientation == OpperatorSide: # OpperatorSide (waarde 2) is visueel naar rechts
+            fork_x_offset = (vis_data['lift_width'] / 2) + (vis_data['fork_width'] / 2) * fork_extension_factor
+            new_fork_tags.append("side_right")
+        elif visual_fork_orientation == RobotSide: # RobotSide (waarde 1) is visueel naar links
+            fork_x_offset = -((vis_data['lift_width'] / 2) + (vis_data['fork_width'] / 2) * fork_extension_factor)
+            new_fork_tags.append("side_left")
+        else: # MiddenLocation (waarde 0) or default
+            new_fork_tags.append("side_middle")
+        
+        self.canvas.itemconfig(fork_rect, tags=tuple(new_fork_tags))
+
+        # Gebruik de opgeslagen current_y tijdens animaties
+        if not self.animation_running.get(lift_id, False):
+            lift_center_y = self._calculate_y_position(current_row)
+            vis_data['current_y'] = lift_center_y - vis_data['y_size']/2
+        
+        lift_y1 = vis_data['current_y']
+
+        # Update fork position
+        self.canvas.coords(fork_rect, 
+                           vis_data['shaft_center_x'] + fork_x_offset - vis_data['fork_width']/2, 
+                           lift_y1 + vis_data['y_size']*0.1,
+                           vis_data['shaft_center_x'] + fork_x_offset + vis_data['fork_width']/2, 
+                           lift_y1 + vis_data['y_size']*0.9)
+
+        # Update tray position if visible
+        if has_tray:
+            tray_x_offset = fork_x_offset # Tray follows fork
+            self.canvas.coords(tray_rect,
+                               vis_data['shaft_center_x'] + tray_x_offset - vis_data['tray_width']/2, 
+                               lift_y1 + vis_data['y_size']*0.15,
+                               vis_data['shaft_center_x'] + tray_x_offset + vis_data['tray_width']/2, 
+                               lift_y1 + vis_data['y_size']*0.85)
+
+        # Update Location Label
+        self.canvas.itemconfig(location_label, text=f"{lift_id}: Row {current_row}")
+
+        # Animate lift movement if logical row has changed and not already animating to it
+        if current_row != self.last_position.get(lift_id) and current_row != MIN_ROW:
+            # Alleen een nieuwe animatie starten als er geen loopt
+            if not self.animation_running.get(lift_id, False):
+                self.animate_lift_movement(lift_id, current_row)
+        elif current_row == self.last_position.get(lift_id):
+            # Als positie hetzelfde is, zorg dat de lift op de juiste berekende Y-positie staat
+            if not self.animation_running.get(lift_id, False):
+                target_y_center = self._calculate_y_position(current_row)
+                y_offset = vis_data['y_size'] / 2
+                expected_y1 = target_y_center - y_offset
+                current_coords = self.canvas.coords(lift_rect)
+                if abs(current_coords[1] - expected_y1) > 0.1:
+                    self.canvas.coords(lift_rect, 
+                                   vis_data['shaft_center_x'] - vis_data['lift_width']/2, expected_y1,
+                                   vis_data['shaft_center_x'] + vis_data['lift_width']/2, expected_y1 + vis_data['y_size'])
+                    vis_data['current_y'] = expected_y1
+                    # Also update fork and tray based on this corrected lift_y1
+                    self.canvas.coords(fork_rect, 
+                               vis_data['shaft_center_x'] + fork_x_offset - vis_data['fork_width']/2, 
+                               expected_y1 + vis_data['y_size']*0.1,
+                               vis_data['shaft_center_x'] + fork_x_offset + vis_data['fork_width']/2, 
+                               expected_y1 + vis_data['y_size']*0.9)
+                    if has_tray:
+                        self.canvas.coords(tray_rect,
+                                   vis_data['shaft_center_x'] + fork_x_offset - vis_data['tray_width']/2, 
+                                   expected_y1 + vis_data['y_size']*0.15,
+                                   vis_data['shaft_center_x'] + fork_x_offset + vis_data['tray_width']/2, 
+                                   expected_y1 + vis_data['y_size']*0.85)
+
+    def _calculate_logical_row(self, y_position):
+        """Determine the logical row based on the lift's Y position"""
+        # Check service positions first
+        if abs(y_position - self.rack_info['service'][str(SERVICE_ROW_TOP)]['y_center_canvas']) < 20:  # Proximity to top service
+            return SERVICE_ROW_TOP
+        if abs(y_position - self.rack_info['service'][str(SERVICE_ROW_BOTTOM)]['y_center_canvas']) < 20: # Proximity to bottom service
+            return SERVICE_ROW_BOTTOM
+                
+        # Check left rack positions (Operator Zone)
+        rack_left = self.rack_info['left']
+        # Iterate from logical row 1 to MAX_ROWS_LEFT
+        for i in range(MAX_ROWS_LEFT):
+            logical_row = i + 1
+            # Calculate center y of this logical row on the canvas
+            # y_start_canvas is bottom of rack, so subtract to go upwards
+            row_center_y_canvas = rack_left['y_start_canvas'] - (i * rack_left['row_height_canvas']) - (rack_left['row_height_canvas'] / 2)
+            if abs(y_position - row_center_y_canvas) < (rack_left['row_height_canvas'] / 2):
+                return logical_row
+                
+        # Check right rack positions (Robot Zone)
+        rack_right = self.rack_info['right']
+        # Iterate for MAX_ROWS_RIGHT
+        for i in range(MAX_ROWS_RIGHT):
+            logical_row = MAX_ROWS_LEFT + 1 + i # e.g., 50 + 1 + 0 = 51 for the first row on the right
+            row_center_y_canvas = rack_right['y_start_canvas'] - (i * rack_right['row_height_canvas']) - (rack_right['row_height_canvas'] / 2)
+            if abs(y_position - row_center_y_canvas) < (rack_right['row_height_canvas'] / 2):
+                return logical_row
+                
+        logger.warning(f"Could not determine logical row for Y={y_position:.2f}. Defaulting to {MIN_ROW}.")
+        return MIN_ROW # Default if no specific match
