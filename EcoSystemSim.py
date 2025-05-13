@@ -8,7 +8,6 @@ import collections # Added import
 from asyncua import ua
 from opcua_client import OPCUAClient
 from lift_visualization import LiftVisualizationManager, LIFT1_ID, LIFT2_ID, LIFTS # Import new manager and constants
-from auto_mode import add_auto_mode_to_gui  # Import de auto mode functie
 
 # Define Cancel Reason Codes and Texts
 CANCEL_REASON_TEXTS = {
@@ -92,11 +91,6 @@ class EcoSystemGUI_DualLift_ST:
         self.system_stack_light_red_rect = None
         self.system_stack_light_yellow_rect = None
         self.system_stack_light_green_rect = None
-        
-        # Auto mode variable - to be used by add_auto_mode_to_gui and stack light
-        self.auto_mode_var = tk.BooleanVar(value=False)
-        self.auto_mode_var.trace_add("write", self._on_auto_mode_change)
-
 
         self._setup_gui_layout()
         
@@ -119,7 +113,7 @@ class EcoSystemGUI_DualLift_ST:
         self.main_controls_frame = ttk.Frame(content_frame)
         self.main_controls_frame.pack(side=tk.RIGHT, expand=True, fill="both", padx=5, pady=0)
 
-        # Container for the right-side panels (AutoMode and System Stack Light)
+        # Container for the right-side panels (System Stack Light)
         right_panel_container = ttk.Frame(self.main_controls_frame)
         right_panel_container.pack(side=tk.RIGHT, expand=False, fill="y", padx=(5, 0), pady=0)
 
@@ -130,13 +124,12 @@ class EcoSystemGUI_DualLift_ST:
         # Create Control Notebook in its dedicated frame
         self._create_control_notebook(notebook_frame) 
 
-        # Frame for the AutoMode panel (inside right_panel_container)
-        auto_mode_parent_frame = ttk.LabelFrame(right_panel_container, text="Automatic Mode")
-        auto_mode_parent_frame.pack(side=tk.TOP, expand=False, fill="x", pady=(0,5), padx=2)
+        # Frame for the AutoMode panel (REMOVED)
+        # auto_mode_parent_frame = ttk.LabelFrame(right_panel_container, text="Automatic Mode")
+        # auto_mode_parent_frame.pack(side=tk.TOP, expand=False, fill="x", pady=(0,5), padx=2)
 
-        # Initialize Auto Mode Manager and add its UI to its dedicated frame
-        # Pass self.auto_mode_var to be used by the auto_mode module
-        self.auto_mode_manager = add_auto_mode_to_gui(self, auto_mode_parent_frame, self.auto_mode_var)
+        # Initialize Auto Mode Manager and add its UI to its dedicated frame (REMOVED)
+        # self.auto_mode_manager = add_auto_mode_to_gui(self, auto_mode_parent_frame, self.auto_mode_var)
 
         # Frame for the System Stack Light (inside right_panel_container, below auto_mode_parent_frame)
         system_stack_light_frame = ttk.LabelFrame(right_panel_container, text="System Status")
@@ -596,57 +589,6 @@ class EcoSystemGUI_DualLift_ST:
 
         self.lift_vis_manager.update_lift_visual_state(lift_id, current_row, has_tray, fork_side, is_error)
         # Global stack light is updated in _monitor_plc after all data is processed
-
-    def _on_auto_mode_change(self, *args):
-        """Callback when auto_mode_var changes."""
-        # Logic to write to PLC if needed by auto_mode_manager can be here or in auto_mode.py
-        logger.info(f"Auto mode changed to: {self.auto_mode_var.get()}")
-        self._determine_and_update_global_stack_light()
-
-    def update_system_stack_light(self, status):
-        if not self.system_stack_light_canvas or not self.system_stack_light_red_rect:
-            # GUI elements not ready
-            return
-
-        # Default to dim for all
-        self.system_stack_light_canvas.itemconfig(self.system_stack_light_red_rect, fill=SYS_RED_DIM)
-        self.system_stack_light_canvas.itemconfig(self.system_stack_light_yellow_rect, fill=SYS_YELLOW_DIM)
-        self.system_stack_light_canvas.itemconfig(self.system_stack_light_green_rect, fill=SYS_GREEN_DIM)
-
-        if status == 'red':
-            self.system_stack_light_canvas.itemconfig(self.system_stack_light_red_rect, fill=SYS_RED_BRIGHT)
-        elif status == 'yellow':
-            self.system_stack_light_canvas.itemconfig(self.system_stack_light_yellow_rect, fill=SYS_YELLOW_BRIGHT)
-        elif status == 'green':
-            self.system_stack_light_canvas.itemconfig(self.system_stack_light_green_rect, fill=SYS_GREEN_BRIGHT)
-        elif status == 'off':
-            pass # Already all dim
-
-    def _determine_and_update_global_stack_light(self):
-        if not hasattr(self, 'is_connected'): # Ensure attributes are initialized
-             self.update_system_stack_light('off')
-             return
-
-        overall_status = 'off'
-        if self.is_connected:
-            any_error = False
-            for lift_id in LIFTS:
-                # Use the cached PLC data for error check
-                lift_plc_data = self.all_lift_data_cache.get(lift_id, {})
-                if self._safe_get_int_from_data(lift_plc_data, "iErrorCode") != 0:
-                    any_error = True
-                    break
-            
-            if any_error:
-                overall_status = 'red'
-            elif self.auto_mode_var.get(): # Check if auto_mode_var exists and is true
-                overall_status = 'yellow'
-            else: # Connected, no error, auto mode off
-                overall_status = 'green'
-        else: # Not connected
-            overall_status = 'off'
-        
-        self.update_system_stack_light(overall_status)
 
     async def _monitor_plc(self):
         logger.info("Starting Dual Lift PLC monitoring task (ST Logic).")

@@ -1,83 +1,64 @@
-2025-05-13 15:56:03,319 - PLCSim_DualLift - INFO - Starting PLC Simulator (Dual Lift)
-2025-05-13 15:56:03,320 - PLCSim_DualLift - INFO - Setting up dual-lift server on endpoint: opc.tcp://127.0.0.1:4860/gibas/plc/
-2025-05-13 15:56:05,865 - PLCSim_DualLift - INFO - Registered namespace with index: 2
-2025-05-13 15:56:06,372 - PLCSim_DualLift - INFO - Created LiftSystem object node
-2025-05-13 15:56:06,372 - PLCSim_DualLift - INFO - Creating system-level variables
-2025-05-13 15:56:06,373 - PLCSim_DualLift - INFO -   Created system variable iAmountOfSations (Int16) with value 2
-2025-05-13 15:56:06,373 - PLCSim_DualLift - INFO -   Created system variable iMainStatus (Int16) with value 1
-2025-05-13 15:56:06,373 - PLCSim_DualLift - INFO -   Created system variable iCancelAssignmentReason (Int16) with value 0
-2025-05-13 15:56:06,375 - PLCSim_DualLift - INFO -   Created system variable xWatchDog (Boolean) with value False
-2025-05-13 15:56:06,375 - PLCSim_DualLift - INFO - Creating variables for Lift1
-2025-05-13 15:56:06,376 - PLCSim_DualLift - INFO - Created StationData object for Lift1
-2025-05-13 15:56:06,376 - PLCSim_DualLift - INFO - Created Handshake object for Lift1
-2025-05-13 15:56:06,377 - PLCSim_DualLift - INFO -   Created variable iMainStatus (Int16) for Lift1
-2025-05-13 15:56:06,377 - PLCSim_DualLift - INFO -   Created variable iCancelAssignmentReson (String) for Lift1
-2025-05-13 15:56:06,378 - PLCSim_DualLift - INFO -   Created variable iElevatorRowLocation (Int16) for Lift1
-2025-05-13 15:56:06,378 - PLCSim_DualLift - INFO -   Created variable xTrayInElevator (Boolean) for Lift1
-2025-05-13 15:56:06,378 - PLCSim_DualLift - INFO -   Created variable iCurrentForkSide (Int16) for Lift1
-2025-05-13 15:56:06,379 - PLCSim_DualLift - INFO -   Created variable iErrorCode (Int16) for Lift1
-2025-05-13 15:56:06,379 - PLCSim_DualLift - INFO -   Created variable xClearError (Boolean) for Lift1
-2025-05-13 15:56:06,379 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iTaskType (Int16) for Lift1
-2025-05-13 15:56:06,381 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iOrigination (Int16) for Lift1
-2025-05-13 15:56:06,381 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iDestination (Int16) for Lift1
-2025-05-13 15:56:06,381 - PLCSim_DualLift - INFO -   Created variable sSeq_Step_comment (String) for Lift1
-2025-05-13 15:56:06,383 - PLCSim_DualLift - INFO -   Created variable StationData.iCycle (Int16) for Lift1
-2025-05-13 15:56:06,383 - PLCSim_DualLift - INFO -   Created variable StationData.iStationStatus (Int16) for Lift1
-2025-05-13 15:56:06,383 - PLCSim_DualLift - INFO -   Created variable StationData.sStationStateDescription (String) for Lift1
-2025-05-13 15:56:06,384 - PLCSim_DualLift - INFO -   Created variable StationData.sShortAlarmDescription (String) for Lift1
-2025-05-13 15:56:06,384 - PLCSim_DualLift - INFO -   Created variable StationData.sAlarmSolution (String) for Lift1
-2025-05-13 15:56:06,386 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iRowNr (Int16) for Lift1
-2025-05-13 15:56:06,387 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iJobType (Int16) for Lift1
-2025-05-13 15:56:06,387 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iTaskType (Int64) for Lift1
-2025-05-13 15:56:06,387 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iOrigination (Int64) for Lift1
-2025-05-13 15:56:06,387 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iDestination (Int64) for Lift1
-2025-05-13 15:56:06,389 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.xAcknowledgeMovement (Boolean) for Lift1
-2025-05-13 15:56:06,389 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iCancelAssignmentReason (Int16) for Lift1
-2025-05-13 15:56:06,389 - PLCSim_DualLift - INFO - Creating variables for Lift2
-2025-05-13 15:56:06,391 - PLCSim_DualLift - INFO - Created StationData object for Lift2
-2025-05-13 15:56:06,391 - PLCSim_DualLift - INFO - Created Handshake object for Lift2
-2025-05-13 15:56:06,391 - PLCSim_DualLift - INFO -   Created variable iMainStatus (Int16) for Lift2
-2025-05-13 15:56:06,392 - PLCSim_DualLift - INFO -   Created variable iCancelAssignmentReson (String) for Lift2
-2025-05-13 15:56:06,392 - PLCSim_DualLift - INFO -   Created variable iElevatorRowLocation (Int16) for Lift2
-2025-05-13 15:56:06,392 - PLCSim_DualLift - INFO -   Created variable xTrayInElevator (Boolean) for Lift2
-2025-05-13 15:56:06,392 - PLCSim_DualLift - INFO -   Created variable iCurrentForkSide (Int16) for Lift2
-2025-05-13 15:56:06,394 - PLCSim_DualLift - INFO -   Created variable iErrorCode (Int16) for Lift2
-2025-05-13 15:56:06,394 - PLCSim_DualLift - INFO -   Created variable xClearError (Boolean) for Lift2
-2025-05-13 15:56:06,394 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iTaskType (Int16) for Lift2
-2025-05-13 15:56:06,395 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iOrigination (Int16) for Lift2
-2025-05-13 15:56:06,396 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iDestination (Int16) for Lift2
-2025-05-13 15:56:06,396 - PLCSim_DualLift - INFO -   Created variable sSeq_Step_comment (String) for Lift2
-2025-05-13 15:56:06,396 - PLCSim_DualLift - INFO -   Created variable StationData.iCycle (Int16) for Lift2
-2025-05-13 15:56:06,397 - PLCSim_DualLift - INFO -   Created variable StationData.iStationStatus (Int16) for Lift2
-2025-05-13 15:56:06,397 - PLCSim_DualLift - INFO -   Created variable StationData.sStationStateDescription (String) for Lift2
-2025-05-13 15:56:06,398 - PLCSim_DualLift - INFO -   Created variable StationData.sShortAlarmDescription (String) for Lift2
-2025-05-13 15:56:06,398 - PLCSim_DualLift - INFO -   Created variable StationData.sAlarmSolution (String) for Lift2
-2025-05-13 15:56:06,398 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iRowNr (Int16) for Lift2
-2025-05-13 15:56:06,398 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iJobType (Int16) for Lift2
-2025-05-13 15:56:06,400 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iTaskType (Int64) for Lift2
-2025-05-13 15:56:06,400 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iOrigination (Int64) for Lift2
-2025-05-13 15:56:06,401 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iDestination (Int64) for Lift2
-2025-05-13 15:56:06,401 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.xAcknowledgeMovement (Boolean) for Lift2
-2025-05-13 15:56:06,401 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iCancelAssignmentReason (Int16) for Lift2
-2025-05-13 15:56:06,401 - PLCSim_DualLift - INFO - OPC UA Server Variables Initialized
-2025-05-13 15:56:06,403 - PLCSim_DualLift - INFO - Dual Lift PLC Simulator Server Started.
-2025-05-13 15:56:12,406 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=2, Origin=0, Dest=90
-2025-05-13 15:56:12,407 - PLCSim_DualLift - WARNING - [Lift1] Job rejected in Cycle 10. Reason Code: 4, Message: Invalid origin for MoveTo
-2025-05-13 15:56:29,231 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=2, Origin=0, Dest=90
-2025-05-13 15:56:29,232 - PLCSim_DualLift - WARNING - [Lift1] Job rejected in Cycle 10. Reason Code: 4, Message: Invalid origin for MoveTo
-2025-05-13 16:06:47,980 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=2, Origin=0, Dest=90
-2025-05-13 16:06:47,980 - PLCSim_DualLift - WARNING - [Lift1] Job rejected in Cycle 10. Reason Code: 4, Message: Invalid origin for MoveTo
-2025-05-13 16:09:27,003 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=2, Origin=10, Dest=90
-2025-05-13 16:09:27,004 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 10 -> 25
-2025-05-13 16:09:27,183 - PLCSim_DualLift - INFO - [Lift1] Cycle 25: Routing TaskType 2. Origin: 10, Dest: 0
-2025-05-13 16:09:27,183 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 25 -> 290
-2025-05-13 16:09:27,391 - PLCSim_DualLift - INFO - [Lift1] MoveTo: Job accepted. Signaling EcoSystem for target position 10.
-2025-05-13 16:09:27,392 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 290 -> 295
-2025-05-13 16:09:28,592 - PLCSim_DualLift - INFO - [Lift1] MoveTo: Acknowledge for target position 10 received. Proceeding to move.
-2025-05-13 16:09:28,593 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 295 -> 301
-2025-05-13 16:09:28,776 - PLCSim_DualLift - INFO - [Lift1] Moving to Target Position 10
-2025-05-13 16:09:30,948 - PLCSim_DualLift - INFO - [Lift1] Engine movement finished. Reached: 10
-2025-05-13 16:09:31,158 - PLCSim_DualLift - INFO - [Lift1] Already at Target Position 10
-2025-05-13 16:09:31,158 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 301 -> 399
-2025-05-13 16:09:31,376 - PLCSim_DualLift - INFO - [Lift1] Job type 2 (MoveToAssignment) to target 10 fully completed. Clearing active and EcoSystem job.
-2025-05-13 16:09:31,378 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 399 -> 10
+2025-05-13 16:18:24,787 - PLCSim_DualLift - INFO - Starting PLC Simulator (Dual Lift)
+2025-05-13 16:18:24,788 - PLCSim_DualLift - INFO - Setting up dual-lift server on endpoint: opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-13 16:18:27,056 - PLCSim_DualLift - INFO - Registered namespace with index: 2
+2025-05-13 16:18:27,615 - PLCSim_DualLift - INFO - Created LiftSystem object node
+2025-05-13 16:18:27,653 - PLCSim_DualLift - INFO - Creating system-level variables
+2025-05-13 16:18:27,706 - PLCSim_DualLift - INFO -   Created system variable iAmountOfSations (Int16) with value 2
+2025-05-13 16:18:27,734 - PLCSim_DualLift - INFO -   Created system variable iMainStatus (Int16) with value 1
+2025-05-13 16:18:27,739 - PLCSim_DualLift - INFO -   Created system variable iCancelAssignmentReason (Int16) with value 0
+2025-05-13 16:18:27,748 - PLCSim_DualLift - INFO -   Created system variable xWatchDog (Boolean) with value False
+2025-05-13 16:18:27,749 - PLCSim_DualLift - INFO - Creating variables for Lift1
+2025-05-13 16:18:27,750 - PLCSim_DualLift - INFO - Created StationData object for Lift1
+2025-05-13 16:18:27,751 - PLCSim_DualLift - INFO - Created Handshake object for Lift1
+2025-05-13 16:18:27,754 - PLCSim_DualLift - INFO -   Created variable iMainStatus (Int16) for Lift1
+2025-05-13 16:18:27,758 - PLCSim_DualLift - INFO -   Created variable iCancelAssignmentReson (String) for Lift1
+2025-05-13 16:18:27,760 - PLCSim_DualLift - INFO -   Created variable iElevatorRowLocation (Int16) for Lift1
+2025-05-13 16:18:27,765 - PLCSim_DualLift - INFO -   Created variable xTrayInElevator (Boolean) for Lift1
+2025-05-13 16:18:27,766 - PLCSim_DualLift - INFO -   Created variable iCurrentForkSide (Int16) for Lift1
+2025-05-13 16:18:27,768 - PLCSim_DualLift - INFO -   Created variable iErrorCode (Int16) for Lift1
+2025-05-13 16:18:27,772 - PLCSim_DualLift - INFO -   Created variable xClearError (Boolean) for Lift1
+2025-05-13 16:18:27,774 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iTaskType (Int16) for Lift1
+2025-05-13 16:18:27,775 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iOrigination (Int16) for Lift1
+2025-05-13 16:18:27,778 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iDestination (Int16) for Lift1
+2025-05-13 16:18:27,779 - PLCSim_DualLift - INFO -   Created variable sSeq_Step_comment (String) for Lift1
+2025-05-13 16:18:27,781 - PLCSim_DualLift - INFO -   Created variable StationData.iCycle (Int16) for Lift1
+2025-05-13 16:18:27,785 - PLCSim_DualLift - INFO -   Created variable StationData.iStationStatus (Int16) for Lift1
+2025-05-13 16:18:27,787 - PLCSim_DualLift - INFO -   Created variable StationData.sStationStateDescription (String) for Lift1
+2025-05-13 16:18:27,789 - PLCSim_DualLift - INFO -   Created variable StationData.sShortAlarmDescription (String) for Lift1
+2025-05-13 16:18:27,794 - PLCSim_DualLift - INFO -   Created variable StationData.sAlarmSolution (String) for Lift1
+2025-05-13 16:18:27,797 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iRowNr (Int16) for Lift1
+2025-05-13 16:18:27,799 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iJobType (Int16) for Lift1
+2025-05-13 16:18:27,802 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iTaskType (Int64) for Lift1
+2025-05-13 16:18:27,803 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iOrigination (Int64) for Lift1
+2025-05-13 16:18:27,804 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iDestination (Int64) for Lift1
+2025-05-13 16:18:27,807 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.xAcknowledgeMovement (Boolean) for Lift1
+2025-05-13 16:18:27,809 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iCancelAssignmentReason (Int16) for Lift1
+2025-05-13 16:18:27,811 - PLCSim_DualLift - INFO - Creating variables for Lift2
+2025-05-13 16:18:27,812 - PLCSim_DualLift - INFO - Created StationData object for Lift2
+2025-05-13 16:18:27,813 - PLCSim_DualLift - INFO - Created Handshake object for Lift2
+2025-05-13 16:18:27,815 - PLCSim_DualLift - INFO -   Created variable iMainStatus (Int16) for Lift2
+2025-05-13 16:18:27,817 - PLCSim_DualLift - INFO -   Created variable iCancelAssignmentReson (String) for Lift2
+2025-05-13 16:18:27,818 - PLCSim_DualLift - INFO -   Created variable iElevatorRowLocation (Int16) for Lift2
+2025-05-13 16:18:27,819 - PLCSim_DualLift - INFO -   Created variable xTrayInElevator (Boolean) for Lift2
+2025-05-13 16:18:27,821 - PLCSim_DualLift - INFO -   Created variable iCurrentForkSide (Int16) for Lift2
+2025-05-13 16:18:27,822 - PLCSim_DualLift - INFO -   Created variable iErrorCode (Int16) for Lift2
+2025-05-13 16:18:27,825 - PLCSim_DualLift - INFO -   Created variable xClearError (Boolean) for Lift2
+2025-05-13 16:18:27,827 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iTaskType (Int16) for Lift2
+2025-05-13 16:18:27,828 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iOrigination (Int16) for Lift2
+2025-05-13 16:18:27,832 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iDestination (Int16) for Lift2
+2025-05-13 16:18:27,835 - PLCSim_DualLift - INFO -   Created variable sSeq_Step_comment (String) for Lift2
+2025-05-13 16:18:27,839 - PLCSim_DualLift - INFO -   Created variable StationData.iCycle (Int16) for Lift2
+2025-05-13 16:18:27,841 - PLCSim_DualLift - INFO -   Created variable StationData.iStationStatus (Int16) for Lift2
+2025-05-13 16:18:27,842 - PLCSim_DualLift - INFO -   Created variable StationData.sStationStateDescription (String) for Lift2
+2025-05-13 16:18:27,845 - PLCSim_DualLift - INFO -   Created variable StationData.sShortAlarmDescription (String) for Lift2
+2025-05-13 16:18:27,848 - PLCSim_DualLift - INFO -   Created variable StationData.sAlarmSolution (String) for Lift2
+2025-05-13 16:18:27,853 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iRowNr (Int16) for Lift2
+2025-05-13 16:18:27,857 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iJobType (Int16) for Lift2
+2025-05-13 16:18:27,861 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iTaskType (Int64) for Lift2
+2025-05-13 16:18:27,873 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iOrigination (Int64) for Lift2
+2025-05-13 16:18:27,880 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iDestination (Int64) for Lift2
+2025-05-13 16:18:27,885 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.xAcknowledgeMovement (Boolean) for Lift2
+2025-05-13 16:18:27,891 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iCancelAssignmentReason (Int16) for Lift2
+2025-05-13 16:18:27,892 - PLCSim_DualLift - INFO - OPC UA Server Variables Initialized
+2025-05-13 16:18:27,901 - PLCSim_DualLift - INFO - Dual Lift PLC Simulator Server Started.
+2025-05-13 16:19:09,213 - asyncua.server.uaprocessor - ERROR - sending service fault response: The session cannot be used because ActivateSession has not been called. (BadSessionNotActivated)
