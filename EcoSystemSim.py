@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import time
+import collections # Added import
 from asyncua import ua
 from opcua_client import OPCUAClient
 from lift_visualization import LiftVisualizationManager, LIFT1_ID, LIFT2_ID, LIFTS # Import new manager and constants
@@ -56,6 +57,15 @@ PLC_ENDPOINT = "opc.tcp://127.0.0.1:4860/gibas/plc/" # Using port 4860
 PLC_NS_URI = "http://gibas.com/plc/"
 # LIFT1_ID, LIFT2_ID, LIFTS are now imported from lift_visualization
 
+# Define colors for the system stack light
+SYS_RED_BRIGHT = '#FF0000'
+SYS_RED_DIM = '#8B0000'  # Dark Red
+SYS_YELLOW_BRIGHT = '#FFFF00'
+SYS_YELLOW_DIM = '#ADAD00' # Dark Yellow (adjusted for better visibility than #8B8B00)
+SYS_GREEN_BRIGHT = '#00FF00'
+SYS_GREEN_DIM = '#006400'  # Dark Green
+SYS_BLACK = '#000000' # For border
+
 # Visualisation constants are now in lift_visualization.py
 # CANVAS_HEIGHT, CANVAS_WIDTH, etc. are not needed here directly anymore if LiftVisualizationManager handles them internally.
 
@@ -63,31 +73,99 @@ class EcoSystemGUI_DualLift_ST:
     def __init__(self, root):
         self.root = root
         self.root.title("Gibas EcoSystem Simulator (Dual Lift - ST Logic)")
-        self.root.geometry("1000x700")
+        self.root.geometry("1100x750") # Adjusted for potentially wider right panel and new button
         self.opcua_client = OPCUAClient(PLC_ENDPOINT, PLC_NS_URI)
         self.is_connected = False
         self.monitoring_task = None
+        self.all_lift_data_cache = {lift_id: {} for lift_id in LIFTS} # Cache for error states
 
         self.lift_frames = {}
         self.status_labels = {}
         self.job_controls = {}
         self.ack_controls = {}
         self.error_controls = {}
+        self.lift_tray_status = {lift_id: False for lift_id in LIFTS} # Initialize tray status
+        self.seq_step_history = {lift_id: collections.deque(maxlen=5) for lift_id in LIFTS} # Changed maxlen to 5
+
+        # For system stack light
+        self.system_stack_light_canvas = None
+        self.system_stack_light_red_rect = None
+        self.system_stack_light_yellow_rect = None
+        self.system_stack_light_green_rect = None
+        
+        # Auto mode variable - to be used by add_auto_mode_to_gui and stack light
+        self.auto_mode_var = tk.BooleanVar(value=False)
+        self.auto_mode_var.trace_add("write", self._on_auto_mode_change)
+
+
         self._setup_gui_layout()
         
         # Initialize LiftVisualizationManager after canvas is created in _setup_gui_layout
         self.lift_vis_manager = LiftVisualizationManager(self.root, self.shared_canvas, LIFTS)
-
-        # Add auto mode functionality to the GUI
-        self.auto_mode_manager = add_auto_mode_to_gui(self)
+        
+        self.update_system_stack_light('off') # Initial state
 
     def _setup_gui_layout(self):
         """Creates the main GUI layout, frames, and widgets."""
         self._create_connection_frame()
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(expand=True, fill="both", padx=10, pady=5)
-        self._create_visualization_frame(main_frame)
-        self._create_control_notebook(main_frame)
+
+        # Main content frame that will hold visualization and controls
+        content_frame = ttk.Frame(self.root)
+        content_frame.pack(expand=True, fill="both", padx=10, pady=5)
+
+        self._create_visualization_frame(content_frame) # Visualization on the left
+
+        # --- Right Panel for Controls --- 
+        self.main_controls_frame = ttk.Frame(content_frame)
+        self.main_controls_frame.pack(side=tk.RIGHT, expand=True, fill="both", padx=5, pady=0)
+
+        # Container for the right-side panels (AutoMode and System Stack Light)
+        right_panel_container = ttk.Frame(self.main_controls_frame)
+        right_panel_container.pack(side=tk.RIGHT, expand=False, fill="y", padx=(5, 0), pady=0)
+
+        # Frame for the Notebook (Lift1, Lift2 tabs) - Packed to the left of right_panel_container
+        notebook_frame = ttk.Frame(self.main_controls_frame)
+        notebook_frame.pack(side=tk.LEFT, expand=True, fill="both", padx=(0, 5), pady=0) 
+        
+        # Create Control Notebook in its dedicated frame
+        self._create_control_notebook(notebook_frame) 
+
+        # Frame for the AutoMode panel (inside right_panel_container)
+        auto_mode_parent_frame = ttk.LabelFrame(right_panel_container, text="Automatic Mode")
+        auto_mode_parent_frame.pack(side=tk.TOP, expand=False, fill="x", pady=(0,5), padx=2)
+
+        # Initialize Auto Mode Manager and add its UI to its dedicated frame
+        # Pass self.auto_mode_var to be used by the auto_mode module
+        self.auto_mode_manager = add_auto_mode_to_gui(self, auto_mode_parent_frame, self.auto_mode_var)
+
+        # Frame for the System Stack Light (inside right_panel_container, below auto_mode_parent_frame)
+        system_stack_light_frame = ttk.LabelFrame(right_panel_container, text="System Status")
+        system_stack_light_frame.pack(side=tk.TOP, expand=False, fill="x", pady=(5,0), padx=2)
+        system_stack_light_frame.grid_columnconfigure(0, weight=1) # Allow canvas to center if packed
+
+        self.system_stack_light_canvas = tk.Canvas(system_stack_light_frame, width=50, height=70, bg=self.root.cget('bg')) # Use root bg
+        self.system_stack_light_canvas.pack(pady=5)
+
+        rect_width = 30
+        rect_height = 20
+        border_width = 1
+        canvas_center_x = 50 / 2
+
+        # Red light (top)
+        self.system_stack_light_red_rect = self.system_stack_light_canvas.create_rectangle(
+            canvas_center_x - rect_width/2, 5, canvas_center_x + rect_width/2, 5 + rect_height,
+            fill=SYS_RED_DIM, outline=SYS_BLACK, width=border_width
+        )
+        # Yellow light (middle)
+        self.system_stack_light_yellow_rect = self.system_stack_light_canvas.create_rectangle(
+            canvas_center_x - rect_width/2, 5 + rect_height, canvas_center_x + rect_width/2, 5 + 2 * rect_height,
+            fill=SYS_YELLOW_DIM, outline=SYS_BLACK, width=border_width
+        )
+        # Green light (bottom)
+        self.system_stack_light_green_rect = self.system_stack_light_canvas.create_rectangle(
+            canvas_center_x - rect_width/2, 5 + 2 * rect_height, canvas_center_x + rect_width/2, 5 + 3 * rect_height,
+            fill=SYS_GREEN_DIM, outline=SYS_BLACK, width=border_width
+        )
 
     def _create_connection_frame(self):
         """Creates the connection management frame.""" # Corrected docstring quote
@@ -109,15 +187,17 @@ class EcoSystemGUI_DualLift_ST:
     def _create_visualization_frame(self, parent_frame):
         """Creates the warehouse visualization frame and canvas."""
         vis_frame = ttk.LabelFrame(parent_frame, text="Warehouse Visualization", padding=10)
-        vis_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=5)
+        # Set expand to False for vis_frame so it only takes the width of the canvas
+        vis_frame.pack(side=tk.LEFT, fill=tk.Y, expand=False, padx=10, pady=5) # Changed fill to tk.Y and expand to False
         from lift_visualization import CANVAS_WIDTH, CANVAS_HEIGHT # Import canvas dimensions
         self.shared_canvas = tk.Canvas(vis_frame, width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg='#EAEAEA')
+        # Canvas should fill the space given to vis_frame (which is now minimal)
         self.shared_canvas.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
     def _create_control_notebook(self, parent_frame):
         """Creates the notebook with tabs for each lift's controls."""
         self.notebook = ttk.Notebook(parent_frame)
-        self.notebook.pack(side=tk.RIGHT, expand=True, fill="both", padx=5, pady=5)
+        self.notebook.pack(expand=True, fill="both", padx=0, pady=5) 
 
         for lift_id in LIFTS:
             lift_tab_frame = ttk.Frame(self.notebook, padding="10")
@@ -164,7 +244,7 @@ class EcoSystemGUI_DualLift_ST:
         step_frame = ttk.LabelFrame(parent_frame, text=f"{lift_id} Stap Informatie", padding=10)
         step_frame.pack(fill=tk.X, pady=5)
         ttk.Label(step_frame, text="sSeq_Step_comment:").pack(side=tk.TOP, anchor=tk.W, padx=2, pady=1)
-        seq_step_text = tk.Text(step_frame, height=3, width=90, borderwidth=1, relief="groove")
+        seq_step_text = tk.Text(step_frame, height=5, width=90, borderwidth=1, relief="groove") # Changed height from 3 to 5
         seq_step_text.pack(fill=tk.X, padx=2, pady=1)
         seq_step_text.insert("1.0", "N/A")
         seq_step_text.config(state=tk.DISABLED)
@@ -177,25 +257,39 @@ class EcoSystemGUI_DualLift_ST:
         job_frame.pack(fill=tk.X, pady=5)
         controls = {}
         controls['task_type_var'] = tk.IntVar(value=1)
-        ttk.Radiobutton(job_frame, text="1: Full Placement", variable=controls['task_type_var'], value=1).grid(row=0, column=1, sticky=tk.W)
-        ttk.Radiobutton(job_frame, text="2: Move To", variable=controls['task_type_var'], value=2).grid(row=0, column=2, sticky=tk.W)
-        ttk.Radiobutton(job_frame, text="3: Prepare PickUp", variable=controls['task_type_var'], value=3).grid(row=0, column=3, sticky=tk.W)
+        
+        # Radiobuttons for Task Type
+        task_types_frame = ttk.Frame(job_frame)
+        task_types_frame.grid(row=0, column=1, columnspan=4, sticky=tk.W) # Span more columns
+
+        ttk.Radiobutton(task_types_frame, text="1: Full", variable=controls['task_type_var'], value=1, command=lambda l=lift_id: self._on_task_type_change(l)).grid(row=0, column=0, sticky=tk.W)
+        ttk.Radiobutton(task_types_frame, text="2: MoveTo", variable=controls['task_type_var'], value=2, command=lambda l=lift_id: self._on_task_type_change(l)).grid(row=0, column=1, sticky=tk.W, padx=5)
+        ttk.Radiobutton(task_types_frame, text="3: PreparePickUp", variable=controls['task_type_var'], value=3, command=lambda l=lift_id: self._on_task_type_change(l)).grid(row=0, column=2, sticky=tk.W, padx=5)
+        ttk.Radiobutton(task_types_frame, text="4: BringAway", variable=controls['task_type_var'], value=4, command=lambda l=lift_id: self._on_task_type_change(l)).grid(row=0, column=3, sticky=tk.W, padx=5)
+        
         ttk.Label(job_frame, text="Task Type:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
         
         # Standaardwaarden voor origin en destination - gebruik geldige standaardwaarden
         controls['origin_var'] = tk.IntVar(value=5)
         ttk.Label(job_frame, text="Origin:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
-        ttk.Entry(job_frame, textvariable=controls['origin_var'], width=10).grid(row=1, column=1, sticky=tk.W, padx=5)
+        controls['origin_entry'] = ttk.Entry(job_frame, textvariable=controls['origin_var'], width=10)
+        controls['origin_entry'].grid(row=1, column=1, sticky=tk.W, padx=5)
         
         controls['destination_var'] = tk.IntVar(value=90)
         ttk.Label(job_frame, text="Destination:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
-        ttk.Entry(job_frame, textvariable=controls['destination_var'], width=10).grid(row=2, column=1, sticky=tk.W, padx=5)
+        controls['destination_entry'] = ttk.Entry(job_frame, textvariable=controls['destination_var'], width=10)
+        controls['destination_entry'].grid(row=2, column=1, sticky=tk.W, padx=5)
+
+        # Toggle Tray Button
+        controls['toggle_tray_button'] = ttk.Button(job_frame, text="Toggle Tray", command=lambda l=lift_id: self._toggle_tray_presence(l))
+        controls['toggle_tray_button'].grid(row=1, column=2, padx=10, sticky=tk.W) # Positioned next to Origin
         
         controls['send_job_button'] = ttk.Button(job_frame, text="Send Job Request", command=lambda l=lift_id: self.send_job(l), state=tk.DISABLED)
-        controls['send_job_button'].grid(row=3, column=0, columnspan=2, pady=10)
+        controls['send_job_button'].grid(row=3, column=0, columnspan=2, pady=10, sticky=tk.W)
         controls['clear_task_button'] = ttk.Button(job_frame, text="Clear Task (Reset PLC)", command=lambda l=lift_id: self.clear_task(l), state=tk.DISABLED)
-        controls['clear_task_button'].grid(row=3, column=2, columnspan=2, pady=10)
+        controls['clear_task_button'].grid(row=3, column=2, columnspan=2, pady=10, sticky=tk.W) # Adjusted column span and sticky
         self.job_controls[lift_id] = controls
+        self._on_task_type_change(lift_id) # Call once to set initial state of origin entry
 
     def _create_ack_section(self, parent_frame, lift_id):
         """Creates the handshake/acknowledge section for a lift."""
@@ -264,6 +358,58 @@ class EcoSystemGUI_DualLift_ST:
 
     # --- GUI Layout and Element Creation End, Business Logic Methods Below ---
 
+    def _on_task_type_change(self, lift_id):
+        """Callback when the task type radio button changes."""
+        if lift_id not in self.job_controls: return
+        task_type = self.job_controls[lift_id]['task_type_var'].get()
+        origin_entry = self.job_controls[lift_id].get('origin_entry')
+        destination_entry = self.job_controls[lift_id].get('destination_entry')
+
+        if origin_entry:
+            if task_type == 4: # Bring Away
+                origin_entry.config(state=tk.DISABLED)
+            else:
+                origin_entry.config(state=tk.NORMAL)
+        
+        if destination_entry:
+            if task_type == 3: # Prepare PickUp
+                destination_entry.config(state=tk.DISABLED)
+            elif task_type == 2: # MoveToAssignment
+                destination_entry.config(state=tk.DISABLED) # Disable Destination for MoveTo
+            else:
+                destination_entry.config(state=tk.NORMAL)
+
+    def _toggle_tray_presence(self, lift_id):
+        """Toggles the simulated tray presence for a lift, updates visualization, and writes to PLC."""
+        if not self.is_connected:
+            messagebox.showwarning("OPC UA", "Not connected to PLC. Cannot update PLC tray status.")
+            # Still allow local toggle for visual testing if not connected?
+            # For now, let's prevent local toggle if not connected to avoid desync perception.
+            return
+
+        new_tray_status = not self.lift_tray_status[lift_id]
+        logger.info(f"Attempting to toggle tray presence for {lift_id} to: {new_tray_status} on PLC and GUI.")
+
+        async def async_write_tray_status():
+            opc_path = f"{lift_id}/xTrayInElevator"
+            success = await self.opcua_client.write_value(opc_path, new_tray_status, ua.VariantType.Boolean)
+            if success:
+                self.lift_tray_status[lift_id] = new_tray_status # Update local state only if PLC write succeeds
+                logger.info(f"Successfully wrote {opc_path} = {new_tray_status} to PLC.")
+                messagebox.showinfo("Tray Status", f"Tray presence for {lift_id} set to: {new_tray_status} on PLC and GUI.")
+                
+                # Update visualization immediately after successful PLC write and local state update
+                current_plc_data = self.all_lift_data_cache.get(lift_id, {})
+                current_row = self._safe_get_int_from_data(current_plc_data, "iElevatorRowLocation", self.lift_vis_manager.last_position.get(lift_id, 1))
+                fork_side = self._safe_get_int_from_data(current_plc_data, "iCurrentForkSide", 0)
+                is_error = self._safe_get_int_from_data(current_plc_data, "iErrorCode") != 0
+                self.lift_vis_manager.update_lift_visual_state(lift_id, current_row, self.lift_tray_status[lift_id], fork_side, is_error)
+            else:
+                logger.error(f"Failed to write {opc_path} = {new_tray_status} to PLC.")
+                messagebox.showerror("OPC UA Error", f"Failed to update tray status for {lift_id} on the PLC.")
+        
+        asyncio.create_task(async_write_tray_status())
+
     def _safe_get_int_from_data(self, plc_data, key, default=0):
         """Safely get an integer from PLC data dictionary."""
         val = plc_data.get(key, default)
@@ -283,10 +429,22 @@ class EcoSystemGUI_DualLift_ST:
                 continue  # Skip generic update for this label, it's handled below
 
             value = plc_data.get(name, "N/A")
-            if name == "sSeq_Step_comment" and value == "": value = "(No comment)"
-            elif name == "sSeq_Step_comment": value = str(value).strip()
+            
+            if name == "sSeq_Step_comment":
+                new_comment = str(value).strip()
+                if not new_comment: new_comment = "(No comment)"
+                
+                # Update history only if the new comment is different from the last one
+                if not self.seq_step_history[lift_id] or self.seq_step_history[lift_id][-1] != new_comment:
+                    self.seq_step_history[lift_id].append(new_comment)
+                
+                # Format display text from history
+                display_text = "\n".join(list(self.seq_step_history[lift_id]))
+                value = display_text # This will be written to the Text widget
+
             elif name.startswith("s") and isinstance(value, bytes): 
                 value = value.decode('utf-8', 'ignore').strip()
+            
             if isinstance(value, float): value = f"{value:.2f}"
             
             # Handle cancel reason code and update corresponding text label
@@ -304,7 +462,7 @@ class EcoSystemGUI_DualLift_ST:
             if isinstance(label_widget, tk.Text):
                 label_widget.config(state=tk.NORMAL)
                 label_widget.delete("1.0", tk.END)
-                label_widget.insert("1.0", str(value))
+                label_widget.insert("1.0", str(value)) # Value is now potentially multi-line for sSeq_Step_comment
                 label_widget.config(state=tk.DISABLED)
             else:
                 label_widget.config(text=str(value))
@@ -414,33 +572,90 @@ class EcoSystemGUI_DualLift_ST:
     def _update_gui_status(self, lift_id, plc_data):
         if lift_id not in self.status_labels: return
 
+        # Cache the latest data for this lift
+        self.all_lift_data_cache[lift_id] = plc_data
+
         self._update_lift_text_labels(lift_id, plc_data)
         self._update_lift_button_states(lift_id, plc_data)
-        
-        # Watchdog status is now handled by overall connection status.
-        # If OPC UA reads/writes fail, the connection status will reflect that.
 
         # Delegate Visualization Update to LiftVisualizationManager
         current_row = self._safe_get_int_from_data(plc_data, "iElevatorRowLocation")
         has_tray = plc_data.get("xTrayInElevator", False)
         fork_side = self._safe_get_int_from_data(plc_data, "iCurrentForkSide", 0)
         is_error = self._safe_get_int_from_data(plc_data, "iErrorCode") != 0
-        
+        plc_cycle = self._safe_get_int_from_data(plc_data, "iCycle", -1) # Get iCycle
+
+        # Update visualization
+        # stoplight_status = "off" # This local variable is no longer used for individual lift viz
+        # if is_error:
+            # stoplight_status = "red"
+        # elif has_tray:
+            # stoplight_status = "yellow" # Or another color indicating loaded
+        # else: # Potentially green if idle and no error, or just off
+            # stoplight_status = "green"
+
         self.lift_vis_manager.update_lift_visual_state(lift_id, current_row, has_tray, fork_side, is_error)
+        # Global stack light is updated in _monitor_plc after all data is processed
+
+    def _on_auto_mode_change(self, *args):
+        """Callback when auto_mode_var changes."""
+        # Logic to write to PLC if needed by auto_mode_manager can be here or in auto_mode.py
+        logger.info(f"Auto mode changed to: {self.auto_mode_var.get()}")
+        self._determine_and_update_global_stack_light()
+
+    def update_system_stack_light(self, status):
+        if not self.system_stack_light_canvas or not self.system_stack_light_red_rect:
+            # GUI elements not ready
+            return
+
+        # Default to dim for all
+        self.system_stack_light_canvas.itemconfig(self.system_stack_light_red_rect, fill=SYS_RED_DIM)
+        self.system_stack_light_canvas.itemconfig(self.system_stack_light_yellow_rect, fill=SYS_YELLOW_DIM)
+        self.system_stack_light_canvas.itemconfig(self.system_stack_light_green_rect, fill=SYS_GREEN_DIM)
+
+        if status == 'red':
+            self.system_stack_light_canvas.itemconfig(self.system_stack_light_red_rect, fill=SYS_RED_BRIGHT)
+        elif status == 'yellow':
+            self.system_stack_light_canvas.itemconfig(self.system_stack_light_yellow_rect, fill=SYS_YELLOW_BRIGHT)
+        elif status == 'green':
+            self.system_stack_light_canvas.itemconfig(self.system_stack_light_green_rect, fill=SYS_GREEN_BRIGHT)
+        elif status == 'off':
+            pass # Already all dim
+
+    def _determine_and_update_global_stack_light(self):
+        if not hasattr(self, 'is_connected'): # Ensure attributes are initialized
+             self.update_system_stack_light('off')
+             return
+
+        overall_status = 'off'
+        if self.is_connected:
+            any_error = False
+            for lift_id in LIFTS:
+                # Use the cached PLC data for error check
+                lift_plc_data = self.all_lift_data_cache.get(lift_id, {})
+                if self._safe_get_int_from_data(lift_plc_data, "iErrorCode") != 0:
+                    any_error = True
+                    break
+            
+            if any_error:
+                overall_status = 'red'
+            elif self.auto_mode_var.get(): # Check if auto_mode_var exists and is true
+                overall_status = 'yellow'
+            else: # Connected, no error, auto mode off
+                overall_status = 'green'
+        else: # Not connected
+            overall_status = 'off'
+        
+        self.update_system_stack_light(overall_status)
 
     async def _monitor_plc(self):
         logger.info("Starting Dual Lift PLC monitoring task (ST Logic).")
         
-        # Define system interface variables according to interface.txt
-        # xWatchDog is written by EcoSystem, so not read here.
         interface_vars = [
-            "iAmountOfSations", # Corrected typo from iAmountOfStations if it was ever there
+            "iAmountOfSations", 
             "iMainStatus",
-            "iCancelAssignmentReason" # Corrected from iCancelAssignment
-            # "xWatchDog"  # Removed: EcoSystem WRITES this, PLC READS it.
+            "iCancelAssignmentReason" 
         ]
-        
-        # Define station data variables according to interface.txt structure
         station_vars = [
             "StationData.iCycle",
             "StationData.iStationStatus", 
@@ -450,18 +665,13 @@ class EcoSystemGUI_DualLift_ST:
             "StationData.Handshake.iRowNr",
             "StationData.Handshake.iJobType"
         ]
-        
-        # Define elevator variables that aren't in interface.txt but needed for visualization
         internal_vars = [
             "iElevatorRowLocation",
             "xTrayInElevator",
             "iCurrentForkSide",
             "iErrorCode",
             "sSeq_Step_comment"
-            # ActiveElevatorAssignment_... are handled by active_job_vars_to_read_and_map
         ]
-
-        # Variables from ElevatorEcoSystAssignment to be read per lift (initial job request from GUI)
         eco_assignment_vars = [
             "ElevatorEcoSystAssignment.iTaskType",
             "ElevatorEcoSystAssignment.iOrigination",
@@ -469,16 +679,12 @@ class EcoSystemGUI_DualLift_ST:
             "ElevatorEcoSystAssignment.xAcknowledgeMovement",
             "ElevatorEcoSystAssignment.iCancelAssignmentReason"
         ]
-
-        # PLC's internal active job parameters to be read for persistent display in GUI status section
-        # The keys of this dictionary are the PLC variable names.
-        # The values are the keys used in lift_data and for GUI labels.
         active_job_vars_to_read_and_map = {
             "ActiveElevatorAssignment_iTaskType": "iTaskType",
             "ActiveElevatorAssignment_iOrigination": "iOrigination",
             "ActiveElevatorAssignment_iDestination": "iDestination"
-        }
-        
+        } 
+
         logger.info(f"Monitoring system interface variables: {interface_vars}")
         logger.info(f"Monitoring station data variables: {station_vars}")
         logger.info(f"Monitoring EcoSystem assignment variables: {eco_assignment_vars}")
@@ -498,136 +704,87 @@ class EcoSystemGUI_DualLift_ST:
         # Main monitoring loop
         while self.opcua_client.is_connected: 
             try:
+                any_critical_read_failed = False # Initialize here
+                sys_data = {} # Initialize here
+
                 # Send EcoSystem watchdog signal to PLC
                 ecosystem_watchdog_sent_ok = await self.opcua_client.write_value("xWatchDog", True, ua.VariantType.Boolean)
                 if not ecosystem_watchdog_sent_ok:
                     logger.warning("Failed to send EcoSystem watchdog signal (xWatchDog) to PLC. Assuming connection issue.")
-                    any_critical_read_failed = True # This will trigger _handle_connection_error in the loop
-                
-                current_time = time.time()
-                all_lift_data = {}
-                if 'any_critical_read_failed' not in locals(): # ensure it's defined if the watchdog write was the first operation
-                    any_critical_read_failed = False
-                # system_watchdog_ok = False # Removed: Old logic
+                    any_critical_read_failed = True 
+                    # self._handle_connection_error() # More direct handling
+                    # break # Exit monitoring loop on critical failure
 
-                # Read system variables
-                sys_data = {}
+                # Read system variables first
                 for var_name in interface_vars:
                     value = await self.opcua_client.read_value(var_name)
                     if value is not None:
                         sys_data[var_name] = value
-                        # if var_name == "xWatchDog": # Removed block
-                            # if value: 
-                            #     self.last_watchdog_time["System"] = current_time
-                            #     system_watchdog_ok = True
-                            # If value is False, system_watchdog_ok remains False unless updated by timeout check
-                    # elif var_name == "xWatchDog": # Removed block
-                        # logger.warning("Failed to read system xWatchDog variable.")
-                        # system_watchdog_ok = False
-                    elif value is None and var_name in ["iMainStatus"]: # Example of a critical variable
-                        logger.error(f"CRITICAL READ FAILED for {var_name}. Aborting monitor for this cycle.")
+                    elif var_name in ["iMainStatus"]: # Example of a critical variable to check for None
+                        logger.error(f"CRITICAL READ FAILED for system variable {var_name}. Aborting monitor for this cycle.")
                         any_critical_read_failed = True
-                        break # Break from reading system vars, will then break main loop via any_critical_read_failed
-
-
-                if any_critical_read_failed: # Check if critical read failed or watchdog send failed
+                        break # Break from reading system vars
+                
+                if any_critical_read_failed:
                     self._handle_connection_error()
                     break
 
-                # Check system watchdog timeout - REMOVED entire block
-                # if not system_watchdog_ok and (current_time - self.last_watchdog_time.get("System", 0)) > self.watchdog_timeout:
-                #    logger.error(f"System Watchdog timeout! Last seen: {self.last_watchdog_time.get('System', 'never')}")
-                #    system_watchdog_ok = False 
-                #    any_critical_read_failed = True 
-
-                # Update central watchdog display - REMOVED
-                # self.root.after(0, self._update_watchdog_display, system_watchdog_ok)
+                current_cycle_all_lift_data = {}
 
                 # Read station data for each lift
                 for lift_id_loop in LIFTS:
-                    lift_data = {}
-                    # watchdog_ok_for_lift = False # Removed
-
-                    # Include system variables in lift data
-                    for key, value in sys_data.items():
+                    lift_data = {} 
+                    for key, value in sys_data.items(): 
                         lift_data[key] = value
-                      
+                    
                     # Read StationData variables
-                    for var_name_full_path in station_vars: # var_name_full_path is like "StationData.iCycle"
-                        base_name = var_name_full_path.split('.')[-1] # e.g. "iCycle"
-                        object_structure = var_name_full_path.rsplit('.', 1)[0] # e.g. "StationData" or "StationData.Handshake"
-                        
-                        path_to_try = f"{lift_id_loop}/{object_structure.replace('.', '/')}/{base_name}" # e.g. Lift1/StationData/iCycle or Lift1/StationData/Handshake/iJobType
-                        
+                    for var_name_full_path in station_vars:
+                        base_name = var_name_full_path.split('.')[-1]
+                        object_structure = var_name_full_path.rsplit('.', 1)[0]
+                        path_to_try = f"{lift_id_loop}/{object_structure.replace('.', '/')}/{base_name}"
                         value = await self.opcua_client.read_value(path_to_try)
-                        if value is not None:
-                            lift_data[base_name] = value
-                        else:
-                            logger.warning(f"Failed to read {var_name_full_path} for {lift_id_loop} using path: {path_to_try}")
+                        if value is not None: lift_data[base_name] = value
+                        else: logger.warning(f"Failed to read {var_name_full_path} for {lift_id_loop} path: {path_to_try}")
 
                     # Read ElevatorEcoSystAssignment variables
-                    for var_name_full_path in eco_assignment_vars: # var_name_full_path is like "ElevatorEcoSystAssignment.iTaskType"
-                        base_name = var_name_full_path.split('.')[-1] # e.g. "iTaskType"
-                        # The object is directly under the lift, then ElevatorEcoSystAssignment, then the variable
-                        path_to_try = f"{lift_id_loop}/ElevatorEcoSystAssignment/{base_name}" # e.g. Lift1/ElevatorEcoSystAssignment/iTaskType
-                        
+                    for var_name_full_path in eco_assignment_vars:
+                        base_name = var_name_full_path.split('.')[-1]
+                        path_to_try = f"{lift_id_loop}/ElevatorEcoSystAssignment/{base_name}"
                         value = await self.opcua_client.read_value(path_to_try)
-                        if value is not None:
-                            lift_data[base_name] = value # Store with base name, e.g., "iCancelAssignmentReason"
-                        else:
-                            logger.warning(f"Failed to read {var_name_full_path} for {lift_id_loop} using path: {path_to_try}")
+                        if value is not None: lift_data[base_name] = value
+                        else: logger.warning(f"Failed to read {var_name_full_path} for {lift_id_loop} path: {path_to_try}")
                     
-                    # Read PLC's actual active job parameters for persistent display.
-                    # These will overwrite the initial request values in lift_data if they differ (e.g., after PLC clears the request).
+                    # Read PLC's actual active job parameters
                     for plc_var_name, display_key in active_job_vars_to_read_and_map.items():
-                        # Path is typically LiftN/ActiveElevatorAssignment_iTaskType
-                        path_to_try = f"{lift_id_loop}/{plc_var_name}" 
+                        path_to_try = f"{lift_id_loop}/{plc_var_name}"
                         value = await self.opcua_client.read_value(path_to_try)
-                        if value is not None:
-                            lift_data[display_key] = value
+                        if value is not None: lift_data[display_key] = value
                         else:
-                            logger.warning(f"Failed to read PLC active job parameter {plc_var_name} for {lift_id_loop} (path: {path_to_try}). GUI might not show active job.")
-                            # If read fails, and the key wasn't set by eco_assignment_vars (e.g. request was already 0 or cleared)
-                            # ensure it defaults to 0 for consistent display of iTaskType, iOrigination, iDestination.
-                            if display_key not in lift_data or lift_data[display_key] is None:
-                                lift_data[display_key] = 0 
-
-                    # Also try to read the other internal variables needed for visualization
+                            logger.warning(f"Failed to read PLC active job parameter {plc_var_name} for {lift_id_loop} (path: {path_to_try}).")
+                            if display_key not in lift_data or lift_data[display_key] is None: lift_data[display_key] = 0
+                    
+                    # Read other internal variables
                     for var_name in internal_vars:
-                        # Try multiple path formats
-                        paths_to_try = [
-                            f"{lift_id_loop}/{var_name}",  # Lift1/iElevatorRowLocation
-                            f"{lift_id_loop}.{var_name}"   # Lift1.iElevatorRowLocation
-                        ]
+                        paths_to_try = [f"{lift_id_loop}/{var_name}", f"{lift_id_loop}.{var_name}"]
                         value = None
                         for path in paths_to_try:
                             value = await self.opcua_client.read_value(path)
-                            if value is not None:
-                                break
-                        
-                        if value is not None:
-                            lift_data[var_name] = value
-                  
+                            if value is not None: break
+                        if value is not None: lift_data[var_name] = value
+                        # else: logger.warning(f"Failed to read internal var {var_name} for {lift_id_loop}") # Optional: log if needed
 
-                    # Handle watchdog specifically - REMOVED (EcoSystem sends, doesn't check per lift this way)
-                    # if sys_data.get("xWatchDog", False):
-                    #    self.last_watchdog_time[lift_id_loop] = current_time
-                    #    watchdog_ok_for_lift = True
-                      
-                    all_lift_data[lift_id_loop] = lift_data
-                # logger.info(f"All lift data: {all_lift_data}") # Debugging line
-
-                if any_critical_read_failed: # This might be triggered by other critical read failures too
-                    self._handle_connection_error() # This already updates connection status which resets watchdog display
-                    break
+                    current_cycle_all_lift_data[lift_id_loop] = lift_data
+                    self.all_lift_data_cache[lift_id_loop] = lift_data # Update cache for _determine_and_update_global_stack_light
 
                 # Update GUI with collected data
-                for lift_id_gui, data_gui in all_lift_data.items():
+                for lift_id_gui, data_gui in current_cycle_all_lift_data.items():
                     if data_gui: 
                         self.root.after(0, self._update_gui_status, lift_id_gui, data_gui)
                 
-                await asyncio.sleep(0.2)
-
+                # Determine and update global stack light AFTER all lift data for the cycle is processed
+                self.root.after(0, self._determine_and_update_global_stack_light)
+                
+                await asyncio.sleep(0.2) # OPCUA read interval
             except asyncio.CancelledError:
                 logger.info("PLC monitoring task cancelled.")
                 break
@@ -645,10 +802,8 @@ class EcoSystemGUI_DualLift_ST:
             self.opcua_client.endpoint_url = self.endpoint_var.get()
             connected = await self.opcua_client.connect()
             if connected:
-                await asyncio.sleep(1.0) # Keep this sleep, remove only the commented log
-                self._update_connection_status(True)
-                # now = time.time() # Removed
-                # for lift_id in LIFTS: self.last_watchdog_time[lift_id] = now # Removed
+                # await asyncio.sleep(1.0) # Keep this sleep, remove only the commented log # Original comment
+                self._update_connection_status(True) # This will trigger stack light update
                 if self.monitoring_task: self.monitoring_task.cancel()
                 self.monitoring_task = asyncio.create_task(self._monitor_plc())
             else:
@@ -700,18 +855,11 @@ class EcoSystemGUI_DualLift_ST:
             if self.disconnect_button:
                 self.disconnect_button.config(state=btn_disconn_state)
             
-            # Update watchdog display on connect/disconnect - REMOVED
-            # if connected:
-                # When connected, _monitor_plc will update it periodically
-                # For the initial state, we can assume it's N/A until the first read
-                 # self._update_watchdog_display(False, initial=True) # Show N/A initially
-            # else:
-                # When disconnected, reset watchdog display
-                # self._update_watchdog_display(False, disconnected=True)
-
             for lift_id in LIFTS:
-                self._reset_lift_gui_elements(lift_id)
-            # If connected, PLC monitoring will update individual button states via _update_gui_status
+                self._reset_lift_gui_elements(lift_id) # Resets errors, so stack light needs update
+            
+            self._determine_and_update_global_stack_light() # Update stack light based on new connection status
+
         else:
             logger.warning("_update_connection_status called but root window does not exist.")
 
@@ -752,32 +900,57 @@ class EcoSystemGUI_DualLift_ST:
         task_type = controls['task_type_var'].get()
         origin = controls['origin_var'].get()
         destination = controls['destination_var'].get()
-        logger.info(f"Sending Job to {lift_id} using interface variables: Type={task_type}, Origin={origin}, Dest={destination}")
+
+        if task_type == 4: # Bring Away
+            if not self.lift_tray_status[lift_id]:
+                messagebox.showwarning("Job Error", f"Cannot send 'Bring Away' for {lift_id}: No tray present (simulated). Use 'Toggle Tray' button first.")
+                return
+            logger.info(f"Sending Job to {lift_id}: TaskType={task_type} (Bring Away), Destination={destination}. Origin is current lift position with tray.")
+            # For BringAway, PLC uses its current position as origin. We only send TaskType and Destination.
+            # Origin variable is ignored by PLC for TaskType 4 based on PLC logic.
+        elif task_type == 3: # Prepare PickUp
+            logger.info(f"Sending Job to {lift_id}: TaskType={task_type} (Prepare PickUp), Origin={origin}. Destination is ignored.")
+            # For PreparePickUp, PLC uses its current position as destination. We only send TaskType and Origin.
+            # Destination variable is ignored by PLC for TaskType 3.
+        else:
+            logger.info(f"Sending Job to {lift_id} using interface variables: Type={task_type}, Origin={origin}, Dest={destination}")
         
         async def job_write_sequence():
-            # Try both formats of interface variables
-            # First try direct ElevatorEcoSystAssignment variables
             path_prefix = f"{lift_id}/ElevatorEcoSystAssignment/"
             
-            # Write to ElevatorEcoSystAssignment variables (new interface)
-            # Use Int64 for task, origin, destination as per PLCSim.py
             success_type = await self.opcua_client.write_value(f"{path_prefix}iTaskType", task_type, ua.VariantType.Int64)
-            success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)  
-            success_dest = await self.opcua_client.write_value(f"{path_prefix}iDestination", destination, ua.VariantType.Int64)
-            
-            # Als de nieuwe interface niet lukt, probeer de oude interface (voor backward compatibility)
+            success_origin = True # Assume success if not applicable
+            success_dest = True   # Assume success if not applicable
+
+            if task_type == 1: # FullAssignment
+                success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)
+                success_dest = await self.opcua_client.write_value(f"{path_prefix}iDestination", destination, ua.VariantType.Int64)
+            elif task_type == 2: # MoveToAssignment
+                success_dest = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)
+                # Origin is not used by PLC for MoveTo
+            elif task_type == 3: # PreparePickUp
+                success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)
+                # Destination is not used by PLC for PreparePickUp
+            elif task_type == 4: # BringAway
+                success_dest = await self.opcua_client.write_value(f"{path_prefix}iDestination", destination, ua.VariantType.Int64)
+                # Origin is not used by PLC for BringAway (uses current pos)
+
             if not all([success_type, success_origin, success_dest]):
-                logger.info(f"ElevatorEcoSystAssignment interface failed, trying legacy Eco_i* variables...")
-                success_type = await self.opcua_client.write_value(f"{lift_id}/Eco_iTaskType", task_type, ua.VariantType.Int16)
-                success_origin = await self.opcua_client.write_value(f"{lift_id}/Eco_iOrigination", origin, ua.VariantType.Int16)  
-                success_dest = await self.opcua_client.write_value(f"{lift_id}/Eco_iDestination", destination, ua.VariantType.Int16)
+                # Fallback to legacy only if primary fails and it's not a task type (3 or 4) that has specific field handling
+                if task_type <= 2: 
+                    logger.info(f"ElevatorEcoSystAssignment interface failed for TaskType {task_type}, trying legacy Eco_i* variables...")
+                    # Ensure legacy variables are only attempted for task types that used them fully
+                    legacy_success_type = await self.opcua_client.write_value(f"{lift_id}/Eco_iTaskType", task_type, ua.VariantType.Int16)
+                    legacy_success_origin = await self.opcua_client.write_value(f"{lift_id}/Eco_iOrigination", origin, ua.VariantType.Int16)
+                    legacy_success_dest = await self.opcua_client.write_value(f"{lift_id}/Eco_iDestination", destination, ua.VariantType.Int16)
+                    if not (legacy_success_type and legacy_success_origin and legacy_success_dest):
+                        messagebox.showerror("OPC UA Error", f"Failed to send job to {lift_id} using both new and legacy interfaces.")
+                        return
+                else: # For task types 3 and 4, if the new interface fails, it's a direct error.
+                    messagebox.showerror("OPC UA Error", f"Failed to send job (Type {task_type}) to {lift_id} using ElevatorEcoSystAssignment interface.")
+                    return
             
-            # Controleer of een van beide methoden is geslaagd
-            if not (success_type and success_origin and success_dest):
-                messagebox.showerror("OPC UA Error", f"Failed to send job to {lift_id}.")
-                return
-                
-            logger.info(f"Job sent successfully to {lift_id}.")
+            logger.info(f"Job (Type {task_type}) sent successfully to {lift_id}.")
             
         asyncio.create_task(job_write_sequence())
 
@@ -800,7 +973,7 @@ class EcoSystemGUI_DualLift_ST:
                 
                 # Als ook dat mislukt, probeer legacy pad
                 if not success2:
-                    path3 = f"{lift_id}/EcoAck_xAcknowldeFromEco"
+                    path3 = f"{lift_id}/EcoAck_xAknowledeFromEco"
                     success3 = await self.opcua_client.write_value(path3, True, ua.VariantType.Boolean)
                     
                     if not success3:

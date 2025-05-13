@@ -1,18 +1,21 @@
-2025-05-12 17:08:46,644 - EcoSystemSim_DualLift_ST - INFO - Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
-2025-05-12 17:08:46,646 - opcua_client - INFO - OPCUAClient: Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
-2025-05-12 17:08:46,655 - opcua_client - INFO - OPCUAClient: Connected to opc.tcp://127.0.0.1:4860/gibas/plc/. Namespace Index: 2
-2025-05-12 17:08:47,706 - EcoSystemSim_DualLift_ST - INFO - Starting Dual Lift PLC monitoring task (ST Logic).
-2025-05-12 17:08:47,707 - EcoSystemSim_DualLift_ST - INFO - Monitoring system interface variables: ['iAmountOfSations', 'iMainStatus', 'iCancelAssignmentReason']
-2025-05-12 17:08:47,707 - EcoSystemSim_DualLift_ST - INFO - Monitoring station data variables: ['StationData.iCycle', 'StationData.iStationStatus', 'StationData.sStationStateDescription', 'StationData.sShortAlarmDescription', 'StationData.sAlarmSolution', 'StationData.Handshake.iRowNr', 'StationData.Handshake.iJobType']
-2025-05-12 17:08:47,707 - EcoSystemSim_DualLift_ST - INFO - Monitoring EcoSystem assignment variables: ['ElevatorEcoSystAssignment.iTaskType', 'ElevatorEcoSystAssignment.iOrigination', 'ElevatorEcoSystAssignment.iDestination', 'ElevatorEcoSystAssignment.xAcknowledgeMovement', 'ElevatorEcoSystAssignment.iCancelAssignmentReason']
-2025-05-12 17:08:47,707 - EcoSystemSim_DualLift_ST - INFO - Internal visualization variables (not monitored directly): ['iElevatorRowLocation', 'xTrayInElevator', 'iCurrentForkSide', 'iErrorCode', 'sSeq_Step_comment']
-2025-05-12 17:08:47,708 - EcoSystemSim_DualLift_ST - INFO - Testing initial connection with iMainStatus
-2025-05-12 17:08:47,714 - EcoSystemSim_DualLift_ST - INFO - Initial read successful: iMainStatus = 1
-2025-05-12 17:08:51,503 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1 using interface variables: Type=1, Origin=5, Dest=10
-2025-05-12 17:08:51,509 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Lift1/ElevatorEcoSystAssignment/iTaskType (value: 1).
-2025-05-12 17:08:51,509 - opcua_client - INFO - OPCUAClient: Attempting to write value: 1 (Final UA Variant: Variant(Value=1, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iTaskType
-2025-05-12 17:08:51,515 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Lift1/ElevatorEcoSystAssignment/iOrigination (value: 5).
-2025-05-12 17:08:51,515 - opcua_client - INFO - OPCUAClient: Attempting to write value: 5 (Final UA Variant: Variant(Value=5, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iOrigination
-2025-05-12 17:08:51,520 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Lift1/ElevatorEcoSystAssignment/iDestination (value: 10).
-2025-05-12 17:08:51,520 - opcua_client - INFO - OPCUAClient: Attempting to write value: 10 (Final UA Variant: Variant(Value=10, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iDestination
-2025-05-12 17:08:51,521 - EcoSystemSim_DualLift_ST - INFO - Job sent successfully to Lift1.
+2025-05-13 16:09:17,558 - EcoSystemSim_DualLift_ST - INFO - Auto mode changed to: False
+2025-05-13 16:09:19,794 - EcoSystemSim_DualLift_ST - INFO - Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-13 16:09:19,796 - opcua_client - INFO - OPCUAClient: Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-13 16:09:19,801 - opcua_client - INFO - OPCUAClient: Connected to opc.tcp://127.0.0.1:4860/gibas/plc/. Namespace Index: 2
+2025-05-13 16:09:19,806 - EcoSystemSim_DualLift_ST - INFO - Starting Dual Lift PLC monitoring task (ST Logic).
+2025-05-13 16:09:19,806 - EcoSystemSim_DualLift_ST - INFO - Monitoring system interface variables: ['iAmountOfSations', 'iMainStatus', 'iCancelAssignmentReason']
+2025-05-13 16:09:19,806 - EcoSystemSim_DualLift_ST - INFO - Monitoring station data variables: ['StationData.iCycle', 'StationData.iStationStatus', 'StationData.sStationStateDescription', 'StationData.sShortAlarmDescription', 'StationData.sAlarmSolution', 'StationData.Handshake.iRowNr', 'StationData.Handshake.iJobType']
+2025-05-13 16:09:19,806 - EcoSystemSim_DualLift_ST - INFO - Monitoring EcoSystem assignment variables: ['ElevatorEcoSystAssignment.iTaskType', 'ElevatorEcoSystAssignment.iOrigination', 'ElevatorEcoSystAssignment.iDestination', 'ElevatorEcoSystAssignment.xAcknowledgeMovement', 'ElevatorEcoSystAssignment.iCancelAssignmentReason']
+2025-05-13 16:09:19,806 - EcoSystemSim_DualLift_ST - INFO - Internal visualization variables (not monitored directly): ['iElevatorRowLocation', 'xTrayInElevator', 'iCurrentForkSide', 'iErrorCode', 'sSeq_Step_comment']
+2025-05-13 16:09:19,806 - EcoSystemSim_DualLift_ST - INFO - Testing initial connection with iMainStatus
+2025-05-13 16:09:19,809 - EcoSystemSim_DualLift_ST - INFO - Initial read successful: iMainStatus = 1
+2025-05-13 16:09:26,804 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1 using interface variables: Type=2, Origin=10, Dest=90
+2025-05-13 16:09:26,809 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Lift1/ElevatorEcoSystAssignment/iTaskType (value: 2).
+2025-05-13 16:09:26,809 - opcua_client - INFO - OPCUAClient: Attempting to write value: 2 (Final UA Variant: Variant(Value=2, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-13 16:09:26,813 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Lift1/ElevatorEcoSystAssignment/iOrigination (value: 10).
+2025-05-13 16:09:26,813 - opcua_client - INFO - OPCUAClient: Attempting to write value: 10 (Final UA Variant: Variant(Value=10, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-13 16:09:26,814 - EcoSystemSim_DualLift_ST - INFO - Job (Type 2) sent successfully to Lift1.
+2025-05-13 16:09:28,547 - EcoSystemSim_DualLift_ST - INFO - Sending handshake acknowledge for Lift1 (xAcknowledgeMovement = True)
+2025-05-13 16:09:28,551 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Lift1/ElevatorEcoSystAssignment/xAcknowledgeMovement (value: True).
+2025-05-13 16:09:28,551 - opcua_client - INFO - OPCUAClient: Attempting to write value: True (Final UA Variant: Variant(Value=True, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/xAcknowledgeMovement
+2025-05-13 16:09:28,552 - EcoSystemSim_DualLift_ST - INFO - Handshake acknowledge signal sent to Lift1 via interface variable.

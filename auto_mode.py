@@ -10,35 +10,35 @@ from lift_visualization import LIFT1_ID, LIFT2_ID, LIFTS, MAX_ROWS_LEFT, MAX_ROW
 logger = logging.getLogger("AutoMode")
 
 class AutoModeManager:
-    def __init__(self, ecosystem_gui):
-        self.eco_gui = ecosystem_gui
-        self.running = False
-        self.auto_task = None
-        self.last_job_time = {lift_id: 0 for lift_id in LIFTS}
-        self.min_wait_between_jobs = 2.0  # Seconden
-        self.max_wait_between_jobs = 8.0  # Seconden
-        self.error_recovery_time = 5.0  # Seconden
-        
-        # Bijhouden of een lift bezet is (bezig met een taak)
-        self.lift_busy = {lift_id: False for lift_id in LIFTS}
-        
-        # Zones voor elke lift om botsingen te voorkomen
-        self.lift_zones = {
-            LIFT1_ID: {'origin_range': (1, 99), 'dest_range': (1, 99)},
-            LIFT2_ID: {'origin_range': (1, 99), 'dest_range': (1, 99)}
-        }
-        
-        # Voeg de GUI-elementen toe
+    def __init__(self, ecosystem_gui, parent_frame, auto_mode_tk_var): # Added auto_mode_tk_var
+        self.ecosystem_gui = ecosystem_gui
+        self.parent_frame = parent_frame
+        self.auto_mode_active = False
+        self.auto_mode_tk_var = auto_mode_tk_var # Store the tk.BooleanVar
+        self.opcua_client = self.ecosystem_gui.opcua_client
+        self.lift_ids = list(self.ecosystem_gui.lift_frames.keys()) # Get lift_ids from EcoSystemGUI
+        self.current_lift_index = 0
+        self.job_delay_ms = 5000 # Default delay
+
+        # Initialize time-related attributes that were missing
+        self.min_wait_between_jobs = 2.0  # Default minimum wait time in seconds
+        self.max_wait_between_jobs = 5.0  # Default maximum wait time in seconds
+        self.error_recovery_time = 5.0    # Default error recovery time in seconds
+        self.auto_task = None # Initialize auto_task to None
+
+        self.after_id = None
         self._setup_ui()
-    
+        # Ensure the tk var is in sync if auto_mode_active has an initial state
+        if self.auto_mode_tk_var:
+            self.auto_mode_tk_var.set(self.auto_mode_active)
+
     def _setup_ui(self):
         """Voegt auto-mode besturingselementen toe aan de EcoSystem GUI"""
-        # Maak een nieuw frame onder het bestaande connection frame
-        self.auto_frame = ttk.LabelFrame(self.eco_gui.root, text="Automatische Modus", padding=10)
+        # Maak een nieuw frame binnen het opgegeven parent_frame
+        self.auto_frame = ttk.LabelFrame(self.parent_frame, text="Automatische Modus", padding=10)
         
-        # Plaats het frame onder het connection frame
-        # We doen dit met de pack manager op index 1 (na het connection frame)
-        self.auto_frame.pack(fill=tk.X, padx=10, pady=5)
+        # Plaats het frame bovenaan het parent_frame (main_controls_frame in EcoSystemSim)
+        self.auto_frame.pack(fill=tk.X, padx=0, pady=5, side=tk.TOP)
         
         # Label voor status
         self.status_label = ttk.Label(self.auto_frame, text="Status: Uitgeschakeld", foreground="red")
@@ -81,12 +81,15 @@ class AutoModeManager:
     
     def start_auto_mode(self):
         """Start de automatische modus"""
-        if not self.eco_gui.is_connected:
+        if not self.ecosystem_gui.is_connected:
             self.show_status("Kan auto-modus niet starten: Niet verbonden met PLC", "red")
             return
         
         self.running = True
-        self.show_status("Auto-modus actief", "green")
+        self.auto_mode_active = True
+        if self.auto_mode_tk_var:
+            self.auto_mode_tk_var.set(True)
+        self.status_label.config(text="Status: Running", foreground="green")
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
         
@@ -104,7 +107,10 @@ class AutoModeManager:
     def stop_auto_mode(self):
         """Stop de automatische modus"""
         self.running = False
-        self.show_status("Auto-modus gestopt", "red")
+        self.auto_mode_active = False
+        if self.auto_mode_tk_var:
+            self.auto_mode_tk_var.set(False)
+        self.status_label.config(text="Status: Stopped", foreground="red")
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
         
@@ -385,7 +391,14 @@ class AutoModeManager:
         return False
 
 # Functie om de Auto Mode Manager toe te voegen aan de EcoSystem GUI
-def add_auto_mode_to_gui(ecosystem_gui):
-    """Voegt de Auto Mode Manager toe aan de EcoSystem GUI"""
-    auto_manager = AutoModeManager(ecosystem_gui)
-    return auto_manager
+def add_auto_mode_to_gui(ecosystem_gui, parent_frame, auto_mode_tk_var): # Added auto_mode_tk_var
+    """
+    Adds the Auto Mode control UI to the specified parent_frame.
+
+    Args:
+        ecosystem_gui: The main EcoSystemGUI_DualLift_ST instance.
+        parent_frame: The tkinter Frame where the auto mode UI should be placed.
+        auto_mode_tk_var: A tk.BooleanVar from EcoSystemSim to link auto mode state.
+    """
+    manager = AutoModeManager(ecosystem_gui, parent_frame, auto_mode_tk_var) # Pass auto_mode_tk_var
+    return manager
