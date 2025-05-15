@@ -50,8 +50,8 @@ BringAway = 4
 
 # Fork Side Constants
 MiddenLocation = 0
-RobotSide = 1
-OpperatorSide = 2
+RobotSide = 2  # Right (robot side)
+OpperatorSide = 1  # Left (operator side)
 
 # Station Status Constants
 STATUS_NOT_APPLICABLE = 0
@@ -75,7 +75,23 @@ CANCEL_INVALID_ZERO_POSITION = 4
 CANCEL_LIFTS_CROSS = 5
 CANCEL_INVALID_ASSIGNMENT = 6
 
+SIMULATION_CYCLE_TIME_MS = 200  # milliseconds
+FORK_MOVEMENT_DURATION_S = 1.0 # seconds
+LIFT_MOVEMENT_DURATION_PER_ROW_S = 0.05 # seconds
+
 class PLCSimulator_DualLift:
+    # Fork positions (sForks_Position_*)
+    sForks_Position_LEFT = 1
+    sForks_Position_MIDDLE = 0
+    sForks_Position_RIGHT = 2
+
+    # Task types (iTaskType)
+    TASK_TYPE_NONE = 0
+    TASK_TYPE_FULL_ASSIGNMENT = 1
+    TASK_TYPE_MOVE_TO = 2
+    TASK_TYPE_PREPARE_PICKUP = 3
+    TASK_TYPE_BRING_AWAY = 4
+
     def __init__(self, endpoint="opc.tcp://127.0.0.1:4860/gibas/plc/"):
         self.server = Server()
         self.endpoint = endpoint
@@ -120,7 +136,6 @@ class PLCSimulator_DualLift:
             # --- Handshake ---
             "iAssignmentType": 0, # This is for PLC-to-EcoSystem handshake (e.g. GetTray/SetTray)
             "iRowNr": 0,          # This is for PLC-to-EcoSystem handshake
-            # "EcoAck_xAcknowldeFromEco": False, # Removed: Use ElevatorEcoSystAssignment.xAcknowledgeMovement
 
             # --- Lift State ---
             "iElevatorRowLocation": 0,
@@ -142,7 +157,7 @@ class PLCSimulator_DualLift:
         self.system_state = {
             "iAmountOfSations": 2,
             "iMainStatus": 1,
-            "iCancelAssignmentReason": 0, # Renamed from iCancelAssignment
+            "iCancelAssignmentReson": 0, 
             "xWatchDog": False  # EcoSystem status, written by EcoSystem, read by PLC
         }
 
@@ -224,7 +239,7 @@ class PLCSimulator_DualLift:
                 lift_obj: [
                     # ("xWatchDog", "xWatchDog", None), # Removed: xWatchDog is now a system-level variable
                     ("iMainStatus", "iStatus", None),
-                    ("iCancelAssignmentReson", "iCancelAssignmentReson", None), # Note: This seems like a typo, perhaps "Reason"? Keeping as is for now.
+                    ("iCancelAssignmentReson", "iCancelAssignmentReson", None), # Confirmed name
                     ("iElevatorRowLocation", "iElevatorRowLocation", None),
                     ("xTrayInElevator", "xTrayInElevator", None),
                     ("iCurrentForkSide", "iCurrentForkSide", None),
@@ -264,7 +279,7 @@ class PLCSimulator_DualLift:
                             ua_type = ua.VariantType.Int16
                         elif isinstance(value, float):
                             ua_type = ua.VariantType.Float
-                    
+                        
                     try:
                         node = await parent_obj.add_variable(self.namespace_idx, var_name, value, datatype=ua_type)
                         await node.set_writable()
@@ -294,7 +309,7 @@ class PLCSimulator_DualLift:
                 ("iOrigination", 0, ua.VariantType.Int64),   # Changed to Int64
                 ("iDestination", 0, ua.VariantType.Int64),   # Changed to Int64
                 ("xAcknowledgeMovement", False, ua.VariantType.Boolean),
-                ("iCancelAssignmentReason", 0, ua.VariantType.Int16) # Corrected name
+                ("iCancelAssignmentReson", 0, ua.VariantType.Int16) 
             ]
             
             for var_name, default_value, ua_type in eco_assign_vars:
@@ -354,8 +369,7 @@ class PLCSimulator_DualLift:
         # For input vars from EcoSystem, read from OPC
         is_input_from_eco = name == "xClearError" or \
                             name.startswith("ElevatorEcoSystAssignment.")
-                            # Removed: name.startswith("Eco_") 
-                            # Removed: name == "EcoAck_xAcknowldeFromEco"
+
 
         # For non-input vars, return cached state
         if not is_input_from_eco:
@@ -483,7 +497,7 @@ class PLCSimulator_DualLift:
         origination = await self._read_opc_value(lift_id, "ElevatorEcoSystAssignment.iOrigination")
         destination = await self._read_opc_value(lift_id, "ElevatorEcoSystAssignment.iDestination")
         acknowledge_movement = await self._read_opc_value(lift_id, "ElevatorEcoSystAssignment.xAcknowledgeMovement")
-        cancel_assignment_reason_from_eco = await self._read_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason")
+        cancel_assignment_reason_from_eco = await self._read_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReson") # Changed
 
 
         # Read the system-level xWatchDog signal from the EcoSystem
@@ -593,7 +607,8 @@ class PLCSimulator_DualLift:
                         if other_lift_active_task_type == FullAssignment:
                              other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"], other_lift_active_origin, other_lift_active_dest)
                         elif other_lift_active_task_type == MoveToAssignment:
-                             other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"], other_lift_active_dest)
+                             # Corrected: MoveTo uses origin as its target destination from EcoSystem's perspective
+                             other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"], other_lift_active_origin)
                         elif other_lift_active_task_type == PreparePickUp:
                              other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"], other_lift_active_origin)
                         elif other_lift_active_task_type == BringAway: 
@@ -609,7 +624,7 @@ class PLCSimulator_DualLift:
                         is_job_acceptable = False
                         rejection_code = CANCEL_LIFTS_CROSS
                         rejection_msg = "Potential collision with other lift"
-                        logger.warning(f"[{lift_id}] Collision detected in Cycle 10. My range: {my_movement_range_for_collision_check}, Other\'s range: {other_lift_movement_range}")
+                        logger.warning(f"[{lift_id}] Collision detected in Cycle 10. My range: {my_movement_range_for_collision_check}, Other\\'s range: {other_lift_movement_range}")
 
                 if is_job_acceptable:
                     await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", task_type)
@@ -636,8 +651,8 @@ class PLCSimulator_DualLift:
                     
                     state["_current_job_valid"] = True 
                     
-                    await self._update_opc_value('System', "iCancelAssignmentReason", 0)
-                    await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason", 0)
+                    await self._update_opc_value('System', "iCancelAssignmentReson", 0) # Corrected here
+                    await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReson", 0)
                     await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
                     await self._update_opc_value(lift_id, "sAlarmMessage", "")
                     await self._update_opc_value(lift_id, "sAlarmSolution", "")
@@ -651,8 +666,8 @@ class PLCSimulator_DualLift:
                     step_comment = f"Job Rejected: {rejection_msg}"
                     logger.warning(f"[{lift_id}] Job rejected in Cycle 10. Reason Code: {rejection_code}, Message: {rejection_msg}")
                     
-                    await self._update_opc_value('System', "iCancelAssignmentReason", rejection_code)
-                    await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason", rejection_code)
+                    await self._update_opc_value('System', "iCancelAssignmentReson", rejection_code) # Corrected here
+                    await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReson", rejection_code)
                     await self._update_opc_value(lift_id, "sShortAlarmDescription", f"Job Rejected: {rejection_msg}")
                     await self._update_opc_value(lift_id, "sAlarmMessage", rejection_msg) 
                     await self._update_opc_value(lift_id, "sAlarmSolution", "Check job parameters. Clear/send new job from EcoSystem.")
@@ -681,8 +696,8 @@ class PLCSimulator_DualLift:
                 await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
                 await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0) # Clear EcoSystem request too
                 await self._update_opc_value(lift_id, "iStationStatus", STATUS_WARNING)
-                await self._update_opc_value('System', "iCancelAssignmentReason", CANCEL_INVALID_ASSIGNMENT)
-                await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason", CANCEL_INVALID_ASSIGNMENT)
+                await self._update_opc_value('System', "iCancelAssignmentReson", CANCEL_INVALID_ASSIGNMENT) # Corrected here
+                await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReson", CANCEL_INVALID_ASSIGNMENT) # Ensure this is also Reson if it was Reason
                 next_cycle = 10
             else:
                 task_type = state["ActiveElevatorAssignment_iTaskType"]
@@ -703,8 +718,8 @@ class PLCSimulator_DualLift:
                     state["_current_job_valid"] = False
                     await self._update_opc_value(lift_id, "iStationStatus", STATUS_ERROR)
                     await self._update_opc_value(lift_id, "sShortAlarmDescription", "Internal Error: Invalid Task Route")
-                    await self._update_opc_value('System', "iCancelAssignmentReason", CANCEL_INVALID_ASSIGNMENT)
-                    await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignment", CANCEL_INVALID_ASSIGNMENT)
+                    await self._update_opc_value('System', "iCancelAssignmentReson", CANCEL_INVALID_ASSIGNMENT) # Corrected here
+                    await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReson", CANCEL_INVALID_ASSIGNMENT) # Ensure this is also Reson
                     next_cycle = 10 # Back to ready
         
         elif current_cycle == 90: # FullAssignment: Signal Job Acceptance to EcoSystem
@@ -716,9 +731,10 @@ class PLCSimulator_DualLift:
 
         elif current_cycle == 95: # FullAssignment: Wait for EcoSystem Acknowledge for Job Start
             step_comment = f"FullAssignment: Waiting for acknowledge from EcoSystem for origin {state['ActiveElevatorAssignment_iOrigination']}."
-            if acknowledge_movement:
-                step_comment = f"FullAssignment: Acknowledge for origin {state['ActiveElevatorAssignment_iOrigination']} received. Proceeding."
-                logger.info(f"[{lift_id}] {step_comment}")
+            ack_received = await self._read_opc_value(lift_id, "ElevatorEcoSystAssignment.xAcknowledgeMovement")
+            logger.debug(f"[{lift_id}] Cycle 95: Reading xAcknowledgeMovement for origin {state['ActiveElevatorAssignment_iOrigination']}. Value: {ack_received}") # DEBUG LINE ADDED
+            if ack_received:
+                logger.info(f"[{lift_id}] FullAssignment: Acknowledge for origin {state['ActiveElevatorAssignment_iOrigination']} received. Proceeding.")
                 await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.xAcknowledgeMovement", False) # Consume ack
                 await self._update_opc_value(lift_id, "StationData.Handshake.iJobType", 0) # Clear handshake signal
                 await self._update_opc_value(lift_id, "StationData.Handshake.iRowNr", 0)
@@ -752,7 +768,7 @@ class PLCSimulator_DualLift:
             origin = state["ActiveElevatorAssignment_iOrigination"]
             
             # Determine fork side based on origin position
-            target_fork_side = RobotSide if origin < 50 else OpperatorSide
+            target_fork_side = OpperatorSide if origin <= 50 else RobotSide
             
             # Check if forks already at correct side
             if state["iCurrentForkSide"] == target_fork_side:
@@ -774,124 +790,45 @@ class PLCSimulator_DualLift:
             logger.info(f"[{lift_id}] Picked up load")
             next_cycle = 160
             
-        elif current_cycle == 160:  # Move Forks to Middle
-            step_comment = "Moving Forks to Middle Position"
+        elif current_cycle == 160: # FullAssignment: Move Forks to Middle (after pickup)
+            step_comment = "FullAssignment: Moving forks to middle after pickup"
             
-            # Check if forks already at middle
-            if state["iCurrentForkSide"] == MiddenLocation:
-                logger.info(f"[{lift_id}] Forks already at middle position")
-                next_cycle = 190 # Changed from 200 to 190 for second handshake
-            else:
-                # Start fork movement
-                state["_fork_target_pos"] = MiddenLocation
-                state["_fork_start_time"] = time.time()
+            # Corrected condition: Initiate movement only if not already moving AND not at the target
+            if state["iCurrentForkSide"] != self.sForks_Position_MIDDLE and not state["_sub_fork_moving"]:
+                state["_fork_target_pos"] = self.sForks_Position_MIDDLE
+                state["_fork_move_start_time"] = time.time()
                 state["_sub_fork_moving"] = True
                 logger.info(f"[{lift_id}] Moving forks to middle position")
-                # Will stay in this state until movement completes
-                # On completion, _simulate_sub_movement will clear _sub_fork_moving
-                # and the next cycle will be processed.
-            # If movement just finished, or was skipped, proceed to job complete
-            if not state["_sub_fork_moving"]: # If forks are now at middle
-                 next_cycle = 299 # Proceed to job complete
-                 
-        elif current_cycle == 299:  # Job Complete
-            step_comment = "Job Complete - Returning to Ready"
-            # Reset any cancel assignment reasons
-            await self._update_opc_value('System', "iCancelAssignmentReason", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason", 0)
-            # Set status back to OK
-            await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
-            # Clear alarm messages
-            await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
-            await self._update_opc_value(lift_id, "sAlarmMessage", "")
-            await self._update_opc_value(lift_id, "sAlarmSolution", "")
-            
-            logger.info(f"[{lift_id}] Job type {state['ActiveElevatorAssignment_iTaskType']} (FullAssignment) fully completed. Clearing active and EcoSystem job.")
-            # Clear active job variables
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iOrigination", 0)
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iDestination", 0)
-            state["_current_job_valid"] = False 
-            
-            # Clear EcoSystem job request variables
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iOrigination", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iDestination", 0)
-            
-            next_cycle = 10
-            
-        elif current_cycle == 290: # MoveTo: Signal Job Acceptance to EcoSystem
-            # Target for MoveTo is stored in ActiveElevatorAssignment_iOrigination
-            target_pos_for_moveto = state['ActiveElevatorAssignment_iOrigination']
-            step_comment = f"MoveTo: Job accepted. Signaling EcoSystem for target position {target_pos_for_moveto}."
-            logger.info(f"[{lift_id}] {step_comment}")
-            await self._update_opc_value(lift_id, "StationData.Handshake.iJobType", MoveToAssignment)
-            await self._update_opc_value(lift_id, "StationData.Handshake.iRowNr", target_pos_for_moveto)
-            next_cycle = 295
 
-        elif current_cycle == 295: # MoveTo: Wait for EcoSystem Acknowledge
-            target_pos_for_moveto = state['ActiveElevatorAssignment_iOrigination'] # Target is from Origination
-            step_comment = f"MoveTo: Waiting for acknowledge from EcoSystem for target position {target_pos_for_moveto}."
-            if acknowledge_movement:
-                step_comment = f"MoveTo: Acknowledge for target position {target_pos_for_moveto} received. Proceeding to move."
-                logger.info(f"[{lift_id}] {step_comment}")
+            # Check if movement is complete and at target
+            if not state["_sub_fork_moving"] and state["iCurrentForkSide"] == self.sForks_Position_MIDDLE:
+                logger.info(f"[{lift_id}] Forks at middle position after pickup.")
+                next_cycle = 190 # Proceed to signal for destination move
+            else:
+                # If still moving, or if the move hasn't started yet (and not at target), stay in 160
+                next_cycle = 160
+
+        elif current_cycle == 190: # FullAssignment: Signal Destination Move
+            step_comment = f"FullAssignment: Forks at middle. Signaling move to destination {state['ActiveElevatorAssignment_iDestination']}."
+            logger.info(f"[{lift_id}] {step_comment}")
+            await self._update_opc_value(lift_id, "StationData.Handshake.iJobType", FullAssignment)
+            await self._update_opc_value(lift_id, "StationData.Handshake.iRowNr", state["ActiveElevatorAssignment_iDestination"])
+            next_cycle = 195
+
+        elif current_cycle == 195: # FullAssignment: Wait for EcoSystem Acknowledge for Destination Move
+            step_comment = f"FullAssignment: Waiting for acknowledge from EcoSystem for destination {state['ActiveElevatorAssignment_iDestination']}."
+            ack_received = await self._read_opc_value(lift_id, "ElevatorEcoSystAssignment.xAcknowledgeMovement")
+            logger.debug(f"[{lift_id}] Cycle 195: Reading xAcknowledgeMovement for destination {state['ActiveElevatorAssignment_iDestination']}. Value: {ack_received}") # DEBUG LINE ADDED
+            if ack_received:
+                logger.info(f"[{lift_id}] FullAssignment: Acknowledge for destination {state['ActiveElevatorAssignment_iDestination']} received. Proceeding.")
                 await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.xAcknowledgeMovement", False) # Consume ack
                 await self._update_opc_value(lift_id, "StationData.Handshake.iJobType", 0) # Clear handshake signal
                 await self._update_opc_value(lift_id, "StationData.Handshake.iRowNr", 0)
-                next_cycle = 301 # Proceed to move to position
+                next_cycle = 400 # Proceed to move to destination
             else:
                 # Stay in this cycle, waiting for xAcknowledgeMovement
-                next_cycle = 295
-            
-        elif current_cycle == 300:  # Start MoveToAssignment (This cycle is now effectively a placeholder if handshake is used)
-            step_comment = "Starting MoveTo Job"
-            # This cycle will be entered if the handshake in 290/295 is somehow skipped or if logic changes.
-            # Normally, 295 should go to 301.
-            logger.info(f"[{lift_id}] Cycle 300 (Start MoveTo) reached. Proceeding to 301.")
-            next_cycle = 301 # Ensure it proceeds to actual movement
-            
-        elif current_cycle == 301:  # Move to Position
-            # Target for MoveTo is stored in ActiveElevatorAssignment_iOrigination
-            target_loc = state["ActiveElevatorAssignment_iOrigination"]
-            step_comment = f"Moving to Target Position {target_loc}" # Changed comment
-            
-            # Check if already at target
-            if state["iElevatorRowLocation"] == target_loc:
-                logger.info(f"[{lift_id}] Already at Target Position {target_loc}")
-                next_cycle = 399  # Skip move
-            else:
-                # Start move
-                state["_move_target_pos"] = target_loc
-                state["_move_start_time"] = time.time()
-                state["_sub_engine_moving"] = True
-                logger.info(f"[{lift_id}] Moving to Target Position {target_loc}")
-                # Will stay in this state until movement completes
-                
-        elif current_cycle == 399:  # MoveTo Complete
-            target_loc = state["ActiveElevatorAssignment_iOrigination"] # Reflects the actual target for MoveTo
-            step_comment = f"MoveTo Target Position {target_loc} Complete - Returning to Ready" # Changed comment
-            
-            logger.info(f"[{lift_id}] Job type {state['ActiveElevatorAssignment_iTaskType']} (MoveToAssignment) to target {target_loc} fully completed. Clearing active and EcoSystem job.")
-            # Clear active job variables
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iOrigination", 0) 
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iDestination", 0)
-            state["_current_job_valid"] = False
+                next_cycle = 195
 
-            # Clear EcoSystem job request variables
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iOrigination", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iDestination", 0)
-
-            # Reset any cancel assignment reasons and set status to OK
-            await self._update_opc_value('System', "iCancelAssignmentReason", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason", 0) # Already cleared above, but good for clarity
-            await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
-            await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
-            await self._update_opc_value(lift_id, "sAlarmMessage", "")
-            await self._update_opc_value(lift_id, "sAlarmSolution", "")
-
-            next_cycle = 10
         elif current_cycle == 400: # Start BringAway: Validate (already done in 10/25), prepare for move
             step_comment = f"BringAway: Preparing to move to destination {state['ActiveElevatorAssignment_iDestination']}"
             if not state["xTrayInElevator"]: 
@@ -1040,13 +977,13 @@ class PLCSimulator_DualLift:
             await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iDestination", 0)
 
             # Reset any cancel assignment reasons and set status to OK
-            await self._update_opc_value('System', "iCancelAssignmentReason", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason", 0) # Already cleared above
+            await self._update_opc_value('System', "iCancelAssignmentReson", 0) # Corrected here
+            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReson", 0) 
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
             await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
             await self._update_opc_value(lift_id, "sAlarmMessage", "")
             await self._update_opc_value(lift_id, "sAlarmSolution", "")
-            
+
             next_cycle = 10
 
         elif current_cycle == 490: # PreparePickUp: Signal Job Acceptance to EcoSystem
@@ -1058,9 +995,10 @@ class PLCSimulator_DualLift:
 
         elif current_cycle == 495: # PreparePickUp: Wait for EcoSystem Acknowledge
             step_comment = f"PreparePickUp: Waiting for acknowledge from EcoSystem for origin {state['ActiveElevatorAssignment_iOrigination']}."
-            if acknowledge_movement:
-                step_comment = f"PreparePickUp: Acknowledge for origin {state['ActiveElevatorAssignment_iOrigination']} received. Proceeding."
-                logger.info(f"[{lift_id}] {step_comment}")
+            ack_received = await self._read_opc_value(lift_id, "ElevatorEcoSystAssignment.xAcknowledgeMovement")
+            logger.debug(f"[{lift_id}] Cycle 495: Reading xAcknowledgeMovement for origin {state['ActiveElevatorAssignment_iOrigination']}. Value: {ack_received}") # DEBUG LINE ADDED
+            if ack_received:
+                logger.info(f"[{lift_id}] PreparePickUp: Acknowledge for origin {state['ActiveElevatorAssignment_iOrigination']} received. Proceeding.")
                 await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.xAcknowledgeMovement", False) # Consume ack
                 await self._update_opc_value(lift_id, "StationData.Handshake.iJobType", 0) # Clear handshake signal
                 await self._update_opc_value(lift_id, "StationData.Handshake.iRowNr", 0)
@@ -1150,8 +1088,8 @@ class PLCSimulator_DualLift:
             await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iOrigination", 0)
             await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iDestination", 0)
 
-            await self._update_opc_value('System', "iCancelAssignmentReason", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReason", 0)
+            await self._update_opc_value('System', "iCancelAssignmentReson", 0)
+            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iCancelAssignmentReson", 0)
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
             await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
             await self._update_opc_value(lift_id, "sAlarmMessage", "")

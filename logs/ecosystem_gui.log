@@ -1,45 +1,30 @@
-2025-05-13 16:21:07,454 - EcoSystemSim_DualLift_ST - INFO - Auto mode changed to: False
-2025-05-13 16:21:11,628 - EcoSystemSim_DualLift_ST - INFO - Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
-2025-05-13 16:21:11,629 - opcua_client - INFO - OPCUAClient: Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
-2025-05-13 16:21:11,634 - opcua_client - INFO - OPCUAClient: Connected to opc.tcp://127.0.0.1:4860/gibas/plc/. Namespace Index: 2
-2025-05-13 16:21:11,642 - EcoSystemSim_DualLift_ST - INFO - Starting Dual Lift PLC monitoring task (ST Logic).
-2025-05-13 16:21:11,642 - EcoSystemSim_DualLift_ST - INFO - Monitoring system interface variables: ['iAmountOfSations', 'iMainStatus', 'iCancelAssignmentReason']
-2025-05-13 16:21:11,642 - EcoSystemSim_DualLift_ST - INFO - Monitoring station data variables: ['StationData.iCycle', 'StationData.iStationStatus', 'StationData.sStationStateDescription', 'StationData.sShortAlarmDescription', 'StationData.sAlarmSolution', 'StationData.Handshake.iRowNr', 'StationData.Handshake.iJobType']
-2025-05-13 16:21:11,642 - EcoSystemSim_DualLift_ST - INFO - Monitoring EcoSystem assignment variables: ['ElevatorEcoSystAssignment.iTaskType', 'ElevatorEcoSystAssignment.iOrigination', 'ElevatorEcoSystAssignment.iDestination', 'ElevatorEcoSystAssignment.xAcknowledgeMovement', 'ElevatorEcoSystAssignment.iCancelAssignmentReason']
-2025-05-13 16:21:11,642 - EcoSystemSim_DualLift_ST - INFO - Internal visualization variables (not monitored directly): ['iElevatorRowLocation', 'xTrayInElevator', 'iCurrentForkSide', 'iErrorCode', 'sSeq_Step_comment']
-2025-05-13 16:21:11,642 - EcoSystemSim_DualLift_ST - INFO - Testing initial connection with iMainStatus
-2025-05-13 16:21:11,647 - EcoSystemSim_DualLift_ST - INFO - Initial read successful: iMainStatus = 1
-2025-05-13 16:21:12,872 - EcoSystemSim_DualLift_ST - INFO - Auto mode changed to: True
-2025-05-13 16:21:12,874 - AutoMode - INFO - Auto-modus gestart
-2025-05-13 16:21:12,877 - AutoMode - INFO - Auto mode loop started.
-2025-05-13 16:21:13,465 - opcua_client - ERROR - OPCUAClient: Node not found for variable StationData.Handshake.iJobType after thorough search
-2025-05-13 16:21:14,069 - opcua_client - ERROR - OPCUAClient: Node not found for variable StationData.Handshake.iJobType after thorough search
-2025-05-13 16:21:14,069 - AutoMode - INFO - Lift Lift1 is ready. Attempting to send new FullPlacement job.
-2025-05-13 16:21:14,069 - AutoMode - INFO - AutoMode: Sending FullPlacement job to Lift1: TaskType=1, Origin=41, Destination=43
-2025-05-13 16:21:14,681 - opcua_client - ERROR - OPCUAClient: Node not found for variable ElevatorEcoSystAssignment.iOrigination after thorough search
-2025-05-13 16:21:14,681 - opcua_client - INFO - OPCUAClient: Trying alternative path separator: Lift1.ElevatorEcoSystAssignment.iOrigination
-2025-05-13 16:21:15,399 - opcua_client - ERROR - OPCUAClient: Node not found for variable Lift1.ElevatorEcoSystAssignment.iOrigination after thorough search
-2025-05-13 16:21:16,123 - opcua_client - ERROR - OPCUAClient: Node not found for variable ElevatorEcoSystAssignment.iDestination after thorough search
-2025-05-13 16:21:16,124 - opcua_client - INFO - OPCUAClient: Trying alternative path separator: Lift1.ElevatorEcoSystAssignment.iDestination
-2025-05-13 16:21:16,974 - opcua_client - ERROR - OPCUAClient: Node not found for variable Lift1.ElevatorEcoSystAssignment.iDestination after thorough search
-2025-05-13 16:21:17,896 - opcua_client - ERROR - OPCUAClient: Node not found for variable ElevatorEcoSystAssignment.iTaskType after thorough search
-2025-05-13 16:21:17,897 - opcua_client - INFO - OPCUAClient: Trying alternative path separator: Lift1.ElevatorEcoSystAssignment.iTaskType
-2025-05-13 16:21:18,848 - opcua_client - ERROR - OPCUAClient: Node not found for variable Lift1.ElevatorEcoSystAssignment.iTaskType after thorough search
-2025-05-13 16:21:18,849 - AutoMode - INFO - FullPlacement job successfully sent to Lift1.
-2025-05-13 16:21:18,849 - AutoMode - INFO - Lift Lift2 is ready. Attempting to send new FullPlacement job.
-2025-05-13 16:21:18,849 - AutoMode - INFO - AutoMode: Sending FullPlacement job to Lift2: TaskType=1, Origin=33, Destination=13
-2025-05-13 16:21:19,524 - opcua_client - ERROR - OPCUAClient: Node not found for variable ElevatorEcoSystAssignment.iOrigination after thorough search
-2025-05-13 16:21:19,524 - opcua_client - INFO - OPCUAClient: Trying alternative path separator: Lift2.ElevatorEcoSystAssignment.iOrigination
-2025-05-13 16:21:20,189 - opcua_client - ERROR - OPCUAClient: Node not found for variable Lift2.ElevatorEcoSystAssignment.iOrigination after thorough search
-2025-05-13 16:21:20,506 - EcoSystemSim_DualLift_ST - INFO - GUI task cancelled.
-2025-05-13 16:21:20,506 - EcoSystemSim_DualLift_ST - INFO - Main finally block reached.
-2025-05-13 16:21:20,506 - EcoSystemSim_DualLift_ST - INFO - Main finally: OPC UA client connected, ensuring disconnect.
-2025-05-13 16:21:20,506 - opcua_client - INFO - OPCUAClient: Disconnecting from OPC UA server.
-2025-05-13 16:21:20,507 - AutoMode - INFO - Auto-mode loop geannuleerd.
-2025-05-13 16:21:20,507 - AutoMode - INFO - Auto mode loop ended.
-2025-05-13 16:21:20,508 - opcua_client - INFO - OPCUAClient: Disconnected.
-2025-05-13 16:21:20,508 - EcoSystemSim_DualLift_ST - INFO - Main finally: Destroying root window if it still exists.
-2025-05-13 16:21:20,597 - EcoSystemSim_DualLift_ST - INFO - Application shutdown sequence complete.
-2025-05-13 16:21:20,598 - EcoSystemSim_DualLift_ST - INFO - PLC monitoring task cancelled.
-2025-05-13 16:21:20,598 - EcoSystemSim_DualLift_ST - INFO - PLC monitoring task stopped.
-2025-05-13 16:21:20,599 - EcoSystemSim_DualLift_ST - INFO - Application exiting __main__.
+2025-05-15 09:53:00,385 - EcoSystemSim_DualLift_ST - INFO - Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-15 09:53:00,385 - opcua_client - INFO - OPCUAClient: Attempting to connect to opc.tcp://127.0.0.1:4860/gibas/plc/
+2025-05-15 09:53:00,393 - opcua_client - INFO - OPCUAClient: Connected to opc.tcp://127.0.0.1:4860/gibas/plc/. Namespace Index: 2
+2025-05-15 09:53:00,402 - EcoSystemSim_DualLift_ST - INFO - Starting Dual Lift PLC monitoring task (ST Logic).
+2025-05-15 09:53:00,403 - EcoSystemSim_DualLift_ST - INFO - Monitoring system interface variables: ['iAmountOfSations', 'iMainStatus', 'iCancelAssignmentReson']
+2025-05-15 09:53:00,403 - EcoSystemSim_DualLift_ST - INFO - Monitoring station data variables: ['StationData.iCycle', 'StationData.iStationStatus', 'StationData.sStationStateDescription', 'StationData.sShortAlarmDescription', 'StationData.sAlarmSolution', 'StationData.Handshake.iRowNr', 'StationData.Handshake.iJobType']
+2025-05-15 09:53:00,403 - EcoSystemSim_DualLift_ST - INFO - Monitoring EcoSystem assignment variables: ['ElevatorEcoSystAssignment.iTaskType', 'ElevatorEcoSystAssignment.iOrigination', 'ElevatorEcoSystAssignment.iDestination', 'ElevatorEcoSystAssignment.xAcknowledgeMovement', 'ElevatorEcoSystAssignment.iCancelAssignmentReson']
+2025-05-15 09:53:00,403 - EcoSystemSim_DualLift_ST - INFO - Internal visualization variables (not monitored directly): ['iElevatorRowLocation', 'xTrayInElevator', 'iCurrentForkSide', 'iErrorCode', 'sSeq_Step_comment']
+2025-05-15 09:53:00,403 - EcoSystemSim_DualLift_ST - INFO - Testing initial connection with iMainStatus
+2025-05-15 09:53:00,408 - EcoSystemSim_DualLift_ST - INFO - Initial read successful: iMainStatus = 1
+2025-05-15 09:53:03,898 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1: TaskType=1, Origin=5, Destination=76
+2025-05-15 09:53:03,903 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Lift1/ElevatorEcoSystAssignment/iTaskType (value: 1).
+2025-05-15 09:53:03,903 - opcua_client - INFO - OPCUAClient: Attempting to write value: 1 (Final UA Variant: Variant(Value=1, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iTaskType
+2025-05-15 09:53:03,907 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Lift1/ElevatorEcoSystAssignment/iOrigination (value: 5).
+2025-05-15 09:53:03,907 - opcua_client - INFO - OPCUAClient: Attempting to write value: 5 (Final UA Variant: Variant(Value=5, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iOrigination
+2025-05-15 09:53:03,912 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Lift1/ElevatorEcoSystAssignment/iDestination (value: 76).
+2025-05-15 09:53:03,912 - opcua_client - INFO - OPCUAClient: Attempting to write value: 76 (Final UA Variant: Variant(Value=76, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/iDestination
+2025-05-15 09:53:03,913 - EcoSystemSim_DualLift_ST - INFO - Job parameters (Type 1) sent successfully to Lift1 via ElevatorEcoSystAssignment interface.
+2025-05-15 09:53:05,582 - EcoSystemSim_DualLift_ST - INFO - Sending handshake acknowledge for Lift1 (xAcknowledgeMovement = True)
+2025-05-15 09:53:05,586 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Lift1/ElevatorEcoSystAssignment/xAcknowledgeMovement (value: True).
+2025-05-15 09:53:05,587 - opcua_client - INFO - OPCUAClient: Attempting to write value: True (Final UA Variant: Variant(Value=True, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/xAcknowledgeMovement
+2025-05-15 09:53:05,587 - EcoSystemSim_DualLift_ST - INFO - Handshake acknowledge signal sent to Lift1 via interface variable.
+2025-05-15 09:53:09,936 - EcoSystemSim_DualLift_ST - INFO - Sending handshake acknowledge for Lift1 (xAcknowledgeMovement = True)
+2025-05-15 09:53:09,943 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Lift1/ElevatorEcoSystAssignment/xAcknowledgeMovement (value: True).
+2025-05-15 09:53:09,943 - opcua_client - INFO - OPCUAClient: Attempting to write value: True (Final UA Variant: Variant(Value=True, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/xAcknowledgeMovement
+2025-05-15 09:53:09,944 - EcoSystemSim_DualLift_ST - INFO - Handshake acknowledge signal sent to Lift1 via interface variable.
+2025-05-15 09:53:15,116 - EcoSystemSim_DualLift_ST - INFO - Sending handshake acknowledge for Lift1 (xAcknowledgeMovement = True)
+2025-05-15 09:53:15,120 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Lift1/ElevatorEcoSystAssignment/xAcknowledgeMovement (value: True).
+2025-05-15 09:53:15,121 - opcua_client - INFO - OPCUAClient: Attempting to write value: True (Final UA Variant: Variant(Value=True, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Lift1/ElevatorEcoSystAssignment/xAcknowledgeMovement
+2025-05-15 09:53:15,122 - EcoSystemSim_DualLift_ST - INFO - Handshake acknowledge signal sent to Lift1 via interface variable.

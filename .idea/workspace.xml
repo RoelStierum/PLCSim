@@ -8,7 +8,6 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/EcoSystemSim.py" beforeDir="false" afterPath="$PROJECT_DIR$/EcoSystemSim.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/PLCSim.py" beforeDir="false" afterPath="$PROJECT_DIR$/PLCSim.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auto_mode.py" beforeDir="false" afterPath="$PROJECT_DIR$/auto_mode.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cleanup_port.py" beforeDir="false" afterPath="$PROJECT_DIR$/cleanup_port.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/logs/ecosystem_gui.log" beforeDir="false" afterPath="$PROJECT_DIR$/logs/ecosystem_gui.log" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/logs/plcsim.log" beforeDir="false" afterPath="$PROJECT_DIR$/logs/plcsim.log" afterDir="false" />

@@ -28,8 +28,8 @@ LIFTS = (LIFT1_ID, LIFT2_ID)
 
 # Fork Side Constants (mirroring PLCSim.py for clarity in this module)
 MiddenLocation = 0
-RobotSide = 1      # Visualized as forks to the left (corresponds to PLC's OpperatorSide)
-OpperatorSide = 2  # Visualized as forks to the right (corresponds to PLC's RobotSide)
+OpperatorSide = 1  # Left (operator side)
+RobotSide = 2      # Right (robot side)
 
 class LiftVisualizationManager:
     def __init__(self, root, canvas, lift_ids):
@@ -384,11 +384,11 @@ class LiftVisualizationManager:
 
 
         visual_fork_orientation = MiddenLocation # Default to Midden
-        if fork_side_from_plc == 1:  # PLC RobotSide (physical right) corresponds to iCurrentForkSide = 1
+        if fork_side_from_plc == 1:  # PLC RobotSide (physical right) correspondeert met visueel links
+            visual_fork_orientation = RobotSide   # Visual RobotSide (forks to visual left)
+        elif fork_side_from_plc == 2:  # PLC OpperatorSide (physical left) correspondeert met visueel rechts
             visual_fork_orientation = OpperatorSide # Visual OpperatorSide (forks to visual right)
-        elif fork_side_from_plc == 2:  # PLC OpperatorSide (physical left) corresponds to iCurrentForkSide = 2
-            visual_fork_orientation = RobotSide     # Visual RobotSide (forks to visual left)
-        elif fork_side_from_plc == 0:  # PLC Midden corresponds to iCurrentForkSide = 0
+        elif fork_side_from_plc == 0:  # PLC Midden
             visual_fork_orientation = MiddenLocation
         else:
             logger.warning(f"Lift {lift_id}: Unknown fork_side_from_plc value: {fork_side_from_plc}. Defaulting to Midden.")

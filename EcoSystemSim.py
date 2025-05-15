@@ -7,7 +7,7 @@ import time
 import collections # Added import
 from asyncua import ua
 from opcua_client import OPCUAClient
-from lift_visualization import LiftVisualizationManager, LIFT1_ID, LIFT2_ID, LIFTS # Import new manager and constants
+from lift_visualization import LiftVisualizationManager, LIFTS # Import new manager and constants
 
 # Define Cancel Reason Codes and Texts
 CANCEL_REASON_TEXTS = {
@@ -72,7 +72,7 @@ class EcoSystemGUI_DualLift_ST:
     def __init__(self, root):
         self.root = root
         self.root.title("Gibas EcoSystem Simulator (Dual Lift - ST Logic)")
-        self.root.geometry("1100x750") # Adjusted for potentially wider right panel and new button
+        self.root.geometry("1250x750") # Adjusted for potentially wider right panel and new button
         self.opcua_client = OPCUAClient(PLC_ENDPOINT, PLC_NS_URI)
         self.is_connected = False
         self.monitoring_task = None
@@ -113,7 +113,7 @@ class EcoSystemGUI_DualLift_ST:
         self.main_controls_frame = ttk.Frame(content_frame)
         self.main_controls_frame.pack(side=tk.RIGHT, expand=True, fill="both", padx=5, pady=0)
 
-        # Container for the right-side panels (System Stack Light)
+        # Container for the right-side panels (System Stack Light and Auto Mode)
         right_panel_container = ttk.Frame(self.main_controls_frame)
         right_panel_container.pack(side=tk.RIGHT, expand=False, fill="y", padx=(5, 0), pady=0)
 
@@ -124,12 +124,11 @@ class EcoSystemGUI_DualLift_ST:
         # Create Control Notebook in its dedicated frame
         self._create_control_notebook(notebook_frame) 
 
-        # Frame for the AutoMode panel (REMOVED)
+        # Frame for the AutoMode panel - REMOVED
         # auto_mode_parent_frame = ttk.LabelFrame(right_panel_container, text="Automatic Mode")
         # auto_mode_parent_frame.pack(side=tk.TOP, expand=False, fill="x", pady=(0,5), padx=2)
+        # self._create_auto_mode_controls(auto_mode_parent_frame)
 
-        # Initialize Auto Mode Manager and add its UI to its dedicated frame (REMOVED)
-        # self.auto_mode_manager = add_auto_mode_to_gui(self, auto_mode_parent_frame, self.auto_mode_var)
 
         # Frame for the System Stack Light (inside right_panel_container, below auto_mode_parent_frame)
         system_stack_light_frame = ttk.LabelFrame(right_panel_container, text="System Status")
@@ -223,9 +222,9 @@ class EcoSystemGUI_DualLift_ST:
         self.status_labels[lift_id] = {}
         row_idx, col_idx = 0, 0
         for var_name in status_vars_to_display:
-            ttk.Label(status_frame, text=f"{var_name}:").grid(row=row_idx, column=col_idx*2, sticky=tk.W, padx=2, pady=1)
+            ttk.Label(status_frame, text=f"{var_name}:").grid(row=row_idx, column=col_idx*2, sticky=tk.W, padx=5, pady=2)
             label = ttk.Label(status_frame, text="N/A", width=25, anchor="w")
-            label.grid(row=row_idx, column=col_idx*2+1, sticky=tk.W, padx=2, pady=1)
+            label.grid(row=row_idx, column=col_idx*2+1, sticky=tk.W, padx=5, pady=2)
             self.status_labels[lift_id][var_name] = label
             col_idx += 1
             if col_idx >= 2: 
@@ -349,6 +348,123 @@ class EcoSystemGUI_DualLift_ST:
         text_label.grid(row=1, column=1, sticky=tk.W, padx=5, pady=2)
         self.status_labels[lift_id]["sCancelAssignmentReasonText"] = text_label
 
+    def _create_auto_mode_controls(self, parent_frame):
+        """Creates the controls for the Automatic Mode."""
+        self.start_auto_mode_button = ttk.Button(parent_frame, text="Start Auto Mode", command=self._start_auto_mode_gui)
+        self.start_auto_mode_button.pack(pady=5, padx=5, fill=tk.X)
+
+        self.stop_auto_mode_button = ttk.Button(parent_frame, text="Stop Auto Mode", command=self._stop_auto_mode_gui, state=tk.DISABLED)
+        self.stop_auto_mode_button.pack(pady=5, padx=5, fill=tk.X)
+
+        self.auto_mode_status_label = ttk.Label(parent_frame, text="Auto Mode: OFF", foreground="red")
+        self.auto_mode_status_label.pack(pady=5, padx=5)
+
+    def _start_auto_mode_gui(self):
+        if not self.is_connected:
+            messagebox.showwarning("Auto Mode", "Cannot start Auto Mode: Not connected to PLC.")
+            return
+        if self.auto_mode_controller:
+            asyncio.create_task(self.auto_mode_controller.start_auto_mode())
+            self._update_auto_mode_gui_status() # Update GUI immediately
+
+    def _stop_auto_mode_gui(self):
+        if self.auto_mode_controller:
+            asyncio.create_task(self.auto_mode_controller.stop_auto_mode())
+            self._update_auto_mode_gui_status() # Update GUI immediately
+            
+    def _update_auto_mode_gui_status(self):
+        if self.auto_mode_controller and self.auto_mode_status_label:
+            if self.auto_mode_controller.is_running:
+                self.auto_mode_status_label.config(text="Auto Mode: RUNNING", foreground="green")
+                if self.start_auto_mode_button: self.start_auto_mode_button.config(state=tk.DISABLED)
+                if self.stop_auto_mode_button: self.stop_auto_mode_button.config(state=tk.NORMAL)
+            else:
+                self.auto_mode_status_label.config(text="Auto Mode: OFF", foreground="red")
+                if self.start_auto_mode_button: self.start_auto_mode_button.config(state=tk.NORMAL if self.is_connected else tk.DISABLED)
+                if self.stop_auto_mode_button: self.stop_auto_mode_button.config(state=tk.DISABLED)
+        # Call this also when connection status changes
+        if not self.is_connected and self.start_auto_mode_button:
+             self.start_auto_mode_button.config(state=tk.DISABLED)
+
+
+    def update_system_stack_light(self, state_key):
+        """Updates the global system stack light's colors based on a state key.
+        
+        Args:
+            state_key (str): A string indicating the desired state, e.g., 
+                             'off', 'red', 'error', 'yellow', 'warning', 
+                             'green', 'ok', 'busy'.
+        """
+        if not hasattr(self, 'system_stack_light_canvas') or not self.system_stack_light_canvas:
+            logger.warning("update_system_stack_light called before canvas initialization.")
+            return
+
+        # Default to all dim (which represents 'off')
+        red_fill = SYS_RED_DIM
+        yellow_fill = SYS_YELLOW_DIM
+        green_fill = SYS_GREEN_DIM
+
+        if state_key in ('red', 'error'):
+            red_fill = SYS_RED_BRIGHT
+        elif state_key in ('yellow', 'warning', 'busy'):
+            yellow_fill = SYS_YELLOW_BRIGHT
+        elif state_key in ('green', 'ok', 'connected_idle'): # 'connected_idle' for when connected and no issues/activity
+            green_fill = SYS_GREEN_BRIGHT
+        elif state_key == 'off':
+            pass # Defaults are already set for 'off' (all dim)
+        else:
+            logger.warning(f"Unknown state_key '{state_key}' for update_system_stack_light. Defaulting to 'off'.")
+            # Defaults to 'off' (all dim)
+
+        # Check if rect attributes exist before trying to itemconfig
+        if hasattr(self, 'system_stack_light_red_rect') and self.system_stack_light_red_rect:
+            self.system_stack_light_canvas.itemconfig(self.system_stack_light_red_rect, fill=red_fill)
+        if hasattr(self, 'system_stack_light_yellow_rect') and self.system_stack_light_yellow_rect:
+            self.system_stack_light_canvas.itemconfig(self.system_stack_light_yellow_rect, fill=yellow_fill)
+        if hasattr(self, 'system_stack_light_green_rect') and self.system_stack_light_green_rect:
+            self.system_stack_light_canvas.itemconfig(self.system_stack_light_green_rect, fill=green_fill)
+        
+        logger.debug(f"System stack light set to: {state_key} (R:{red_fill}, Y:{yellow_fill}, G:{green_fill})")
+
+    def _determine_and_update_global_stack_light(self):
+        """Determines the global system state and updates the stack light accordingly."""
+        if not self.is_connected:
+            self.update_system_stack_light('off')
+            return
+
+        # Check for errors in any lift
+        any_lift_in_error = False
+        for lift_id in LIFTS:
+            lift_data = self.all_lift_data_cache.get(lift_id, {})
+            if self._safe_get_int_from_data(lift_data, "iErrorCode") != 0:
+                any_lift_in_error = True
+                break
+        
+        if any_lift_in_error:
+            self.update_system_stack_light('error') # Red
+            return
+
+        # Check if any lift is busy (e.g., iCycle not 0 or 10, or handshake needed)
+        # This is a simplified check; you might need more specific logic
+        any_lift_busy = False
+        for lift_id in LIFTS:
+            lift_data = self.all_lift_data_cache.get(lift_id, {})
+            plc_cycle = self._safe_get_int_from_data(lift_data, "iCycle", -1)
+            ack_type = self._safe_get_int_from_data(lift_data, "iJobType") 
+            if plc_cycle not in [0, 10] and plc_cycle > 0 : # Active cycle
+                any_lift_busy = True
+                break
+            if ack_type > 0: # Awaiting acknowledgement
+                any_lift_busy = True
+                break
+        
+        if any_lift_busy:
+            self.update_system_stack_light('busy') # Yellow
+            return
+
+        # If connected, no errors, and not busy, then system is idle/ok
+        self.update_system_stack_light('connected_idle') # Green
+
     # --- GUI Layout and Element Creation End, Business Logic Methods Below ---
 
     def _on_task_type_change(self, lift_id):
@@ -427,11 +543,14 @@ class EcoSystemGUI_DualLift_ST:
                 new_comment = str(value).strip()
                 if not new_comment: new_comment = "(No comment)"
                 
+                # Replace literal \n with actual line breaks
+                new_comment = new_comment.replace("\\n", "\n")
+                
                 # Update history only if the new comment is different from the last one
                 if not self.seq_step_history[lift_id] or self.seq_step_history[lift_id][-1] != new_comment:
                     self.seq_step_history[lift_id].append(new_comment)
                 
-                # Format display text from history
+                # Format display text from history - join with actual newlines, not "\\n"
                 display_text = "\n".join(list(self.seq_step_history[lift_id]))
                 value = display_text # This will be written to the Text widget
 
@@ -442,8 +561,8 @@ class EcoSystemGUI_DualLift_ST:
             
             # Handle cancel reason code and update corresponding text label
             if name == "iCancelAssignmentReasonCode":
-                # The actual data from PLC is stored under "iCancelAssignmentReason" in plc_data
-                reason_code = self._safe_get_int_from_data(plc_data, "iCancelAssignmentReason", 0)
+                # The actual data from PLC is stored under "iCancelAssignmentReson" in plc_data
+                reason_code = self._safe_get_int_from_data(plc_data, "iCancelAssignmentReson", 0)
                 value = reason_code # This value (the code) will be set to the iCancelAssignmentReasonCode label
                 
                 # Update the separate sCancelAssignmentReasonText label
@@ -596,7 +715,7 @@ class EcoSystemGUI_DualLift_ST:
         interface_vars = [
             "iAmountOfSations", 
             "iMainStatus",
-            "iCancelAssignmentReason" 
+            "iCancelAssignmentReson" 
         ]
         station_vars = [
             "StationData.iCycle",
@@ -619,7 +738,7 @@ class EcoSystemGUI_DualLift_ST:
             "ElevatorEcoSystAssignment.iOrigination",
             "ElevatorEcoSystAssignment.iDestination",
             "ElevatorEcoSystAssignment.xAcknowledgeMovement",
-            "ElevatorEcoSystAssignment.iCancelAssignmentReason"
+            "ElevatorEcoSystAssignment.iCancelAssignmentReson"
         ]
         active_job_vars_to_read_and_map = {
             "ActiveElevatorAssignment_iTaskType": "iTaskType",
@@ -798,9 +917,10 @@ class EcoSystemGUI_DualLift_ST:
                 self.disconnect_button.config(state=btn_disconn_state)
             
             for lift_id in LIFTS:
-                self._reset_lift_gui_elements(lift_id) # Resets errors, so stack light needs update
+                self._reset_lift_gui_elements(lift_id) 
             
-            self._determine_and_update_global_stack_light() # Update stack light based on new connection status
+            self._determine_and_update_global_stack_light() 
+            # self._update_auto_mode_gui_status() # Update auto mode buttons based on connection - REMOVED
 
         else:
             logger.warning("_update_connection_status called but root window does not exist.")
@@ -833,43 +953,82 @@ class EcoSystemGUI_DualLift_ST:
             # Ensure GUI is reset even if opcua_client thought it was already disconnected
             self._update_connection_status(False)
 
-    def send_job(self, lift_id):
-        """Stuurt een job naar de PLC volgens de interface.txt specificatie"""
+    def is_lift_ready_for_job(self, lift_id: str) -> bool:
+        """Checks if the specified lift is ready to receive a new job."""
+        if not self.is_connected:
+            return False
+        
+        lift_data = self.all_lift_data_cache.get(lift_id, {})
+        plc_cycle = self._safe_get_int_from_data(lift_data, "iCycle", -1)
+        error_code = self._safe_get_int_from_data(lift_data, "iErrorCode", 0)
+        
+        # Lift is ready if iCycle is 10 (idle/ready state) and no error
+        is_ready = (plc_cycle == 10 and error_code == 0)
+        if not is_ready:
+            logger.debug(f"Lift {lift_id} not ready: iCycle={plc_cycle}, iErrorCode={error_code}")
+        return is_ready
+
+    def send_job(self, lift_id: str):
+        """Sends a job request to the PLC based on GUI inputs."""
         if not self.opcua_client.is_connected:
-             messagebox.showwarning("OPC UA", "Not connected to PLC.")
-             return
+            messagebox.showwarning("OPC UA", "Not connected to PLC.")
+            return
+
+        if lift_id not in self.job_controls:
+            logger.error(f"Job controls for {lift_id} not found.")
+            messagebox.showerror("GUI Error", f"Could not find job controls for {lift_id}.")
+            return
+
         controls = self.job_controls[lift_id]
         task_type = controls['task_type_var'].get()
         origin = controls['origin_var'].get()
         destination = controls['destination_var'].get()
 
-        if task_type == 4: # Bring Away
-            if not self.lift_tray_status[lift_id]:
-                messagebox.showwarning("Job Error", f"Cannot send 'Bring Away' for {lift_id}: No tray present (simulated). Use 'Toggle Tray' button first.")
+        # Validate inputs based on task type
+        if task_type == 1: # FullAssignment
+            if origin == 0 or destination == 0:
+                messagebox.showwarning("Job Error", "For Full Assignment, Origin and Destination must be non-zero.")
                 return
-            logger.info(f"Sending Job to {lift_id}: TaskType={task_type} (Bring Away), Destination={destination}. Origin is current lift position with tray.")
-            # For BringAway, PLC uses its current position as origin. We only send TaskType and Destination.
-            # Origin variable is ignored by PLC for TaskType 4 based on PLC logic.
-        elif task_type == 3: # Prepare PickUp
-            logger.info(f"Sending Job to {lift_id}: TaskType={task_type} (Prepare PickUp), Origin={origin}. Destination is ignored.")
-            # For PreparePickUp, PLC uses its current position as destination. We only send TaskType and Origin.
-            # Destination variable is ignored by PLC for TaskType 3.
+            logger.info(f"Sending Job to {lift_id}: TaskType={task_type}, Origin={origin}, Destination={destination}")
+        elif task_type == 2: # MoveToAssignment (PLC uses iOrigination as the target for MoveTo)
+            if origin == 0:
+                messagebox.showwarning("Job Error", "For Move To Assignment, Origin (target row) must be non-zero.")
+                return
+            # Destination is not used by PLC for MoveTo, but GUI might still have a value. We send what's in origin.
+            logger.info(f"Sending Job to {lift_id}: TaskType={task_type}, Origin(Target)={origin}")
+        elif task_type == 3: # PreparePickUp
+            if origin == 0:
+                messagebox.showwarning("Job Error", "For Prepare PickUp, Origin must be non-zero.")
+                return
+            # Destination is not used by PLC for PreparePickUp
+            logger.info(f"Sending Job to {lift_id}: TaskType={task_type}, Origin={origin}")
+        elif task_type == 4: # BringAway
+            if destination == 0:
+                messagebox.showwarning("Job Error", "For Bring Away, Destination must be non-zero.")
+                return
+            # Origin is not used by PLC for BringAway (uses current pos)
+            # Check for tray presence (using the GUI's simulated status for now)
+            if not self.lift_tray_status[lift_id]:
+                messagebox.showwarning("Job Error", f"Cannot send 'Bring Away' for {lift_id}: No tray present (simulated). Toggle tray first.")
+                return
+            logger.info(f"Sending Job to {lift_id}: TaskType={task_type}, Destination={destination}")
         else:
-            logger.info(f"Sending Job to {lift_id} using interface variables: Type={task_type}, Origin={origin}, Dest={destination}")
-        
+            messagebox.showerror("Job Error", f"Unknown task type: {task_type}")
+            return
+
         async def job_write_sequence():
             path_prefix = f"{lift_id}/ElevatorEcoSystAssignment/"
-            
             success_type = await self.opcua_client.write_value(f"{path_prefix}iTaskType", task_type, ua.VariantType.Int64)
-            success_origin = True # Assume success if not applicable
-            success_dest = True   # Assume success if not applicable
+            success_origin = True
+            success_dest = True
+            success_send_job = False # Initialize
 
             if task_type == 1: # FullAssignment
                 success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)
                 success_dest = await self.opcua_client.write_value(f"{path_prefix}iDestination", destination, ua.VariantType.Int64)
-            elif task_type == 2: # MoveToAssignment
-                success_dest = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)
-                # Origin is not used by PLC for MoveTo
+            elif task_type == 2: # MoveToAssignment (PLC uses iOrigination as the target for MoveTo)
+                success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)
+                # Destination is not used by PLC for MoveTo
             elif task_type == 3: # PreparePickUp
                 success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)
                 # Destination is not used by PLC for PreparePickUp
@@ -877,23 +1036,28 @@ class EcoSystemGUI_DualLift_ST:
                 success_dest = await self.opcua_client.write_value(f"{path_prefix}iDestination", destination, ua.VariantType.Int64)
                 # Origin is not used by PLC for BringAway (uses current pos)
 
-            if not all([success_type, success_origin, success_dest]):
-                # Fallback to legacy only if primary fails and it's not a task type (3 or 4) that has specific field handling
-                if task_type <= 2: 
-                    logger.info(f"ElevatorEcoSystAssignment interface failed for TaskType {task_type}, trying legacy Eco_i* variables...")
-                    # Ensure legacy variables are only attempted for task types that used them fully
-                    legacy_success_type = await self.opcua_client.write_value(f"{lift_id}/Eco_iTaskType", task_type, ua.VariantType.Int16)
-                    legacy_success_origin = await self.opcua_client.write_value(f"{lift_id}/Eco_iOrigination", origin, ua.VariantType.Int16)
-                    legacy_success_dest = await self.opcua_client.write_value(f"{lift_id}/Eco_iDestination", destination, ua.VariantType.Int16)
-                    if not (legacy_success_type and legacy_success_origin and legacy_success_dest):
-                        messagebox.showerror("OPC UA Error", f"Failed to send job to {lift_id} using both new and legacy interfaces.")
-                        return
-                else: # For task types 3 and 4, if the new interface fails, it's a direct error.
-                    messagebox.showerror("OPC UA Error", f"Failed to send job (Type {task_type}) to {lift_id} using ElevatorEcoSystAssignment interface.")
-                    return
-            
-            logger.info(f"Job (Type {task_type}) sent successfully to {lift_id}.")
-            
+            if success_type and success_origin and success_dest:
+                # After setting parameters, trigger the job by setting xSendJob to True
+                # Assuming xSendJob is at the same level as iTaskType, iOrigination etc.
+                # If xSendJob is at a different path, this needs to be adjusted.
+                # For ST Logic, typically setting iTaskType is enough, and xSendJob might not be needed
+                # or might be part of a different structure.
+                # For now, let's assume setting iTaskType is the primary trigger.
+                # If a separate "send job" boolean is required by the PLC:
+                # success_send_job = await self.opcua_client.write_value(f\"{path_prefix}xSendJob\", True, ua.VariantType.Boolean)
+                # if not success_send_job:
+                #    logger.error(f\"Failed to set xSendJob for {lift_id}.\")
+
+                # For many PLC programs, just writing the task type and parameters is enough.
+                # If xSendJob is not used, we can consider this successful.
+                success_send_job = True # Assuming setting params is enough or xSendJob is handled differently
+                logger.info(f"Job parameters (Type {task_type}) sent successfully to {lift_id} via ElevatorEcoSystAssignment interface.")
+                # Optionally, provide user feedback
+                # messagebox.showinfo(\"Job Sent\", f\"Job (Type {task_type}) sent to {lift_id}.\")
+            else:
+                logger.error(f"Failed to send job (Type {task_type}) to {lift_id} using ElevatorEcoSystAssignment interface. Check individual write successes.")
+                messagebox.showerror("OPC UA Error", f"Failed to send job parameters to {lift_id}.")
+        
         asyncio.create_task(job_write_sequence())
 
     def acknowledge_job_step(self, lift_id):
@@ -981,20 +1145,40 @@ async def main():
     gui = EcoSystemGUI_DualLift_ST(root)
     
     async def on_closing_async(): 
-        logger.info("Close button clicked (async handler).")
+        logger.info("Async closing operations started...")
+        # if gui.auto_mode_controller and gui.auto_mode_controller.is_running: # REMOVED
+        #     logger.info("Auto mode is running, attempting to stop it gracefully...") # REMOVED
+        #     await gui.auto_mode_controller.stop_auto_mode() # REMOVED
+        #     logger.info("Auto mode stopped.") # REMOVED
+
+        if gui.monitoring_task:
+            logger.info("Cancelling PLC monitoring task...")
+            gui.monitoring_task.cancel()
+            gui.monitoring_task = None
         if gui.opcua_client and gui.opcua_client.is_connected:
             logger.info("OPC UA client is connected, attempting async disconnect.")
             await gui.opcua_client.disconnect() 
         if root.winfo_exists():
             root.destroy()
-        logger.info("Window destroyed after potential disconnect.")
+        logger.info("Window destroyed after potential disconnect and auto mode stop.")
 
     def on_closing_sync_wrapper(): 
         logger.info("WM_DELETE_WINDOW triggered.")
         if asyncio.get_event_loop().is_running():
             asyncio.create_task(on_closing_async())
         else:
-            logger.warning("Event loop not running during on_closing. Destroying root directly.")
+            logger.warning("Event loop not running during on_closing. Attempting to stop auto mode and destroy root directly.")
+            # Try to stop auto mode controller if event loop isn't running (best effort)
+            if gui.auto_mode_controller and gui.auto_mode_controller.is_running:
+                # This is tricky without a running loop for the async stop.
+                # For simplicity, we might just log and proceed.
+                # Or, if AutoModeController's stop has a synchronous part:
+                # gui.auto_mode_controller.is_running = False # Force stop flag
+                logger.warning("Cannot guarantee clean async stop of auto_mode_controller without running event loop.")
+
+            if gui.opcua_client and gui.opcua_client.is_connected:
+                 logger.warning("OPC UA client connected, but event loop not running for async disconnect.")
+                 # asyncio.run(gui.opcua_client.disconnect()) # This might cause issues if called from sync context that's part of an outer async context
             if root.winfo_exists(): root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_closing_sync_wrapper)
@@ -1009,9 +1193,26 @@ async def main():
         logger.error(f"Error in GUI task: {e}", exc_info=True)
     finally:
         logger.info("Main finally block reached.")
+        # Ensure auto mode is stopped
+        # if gui.auto_mode_controller and gui.auto_mode_controller.is_running:
+        #     logger.info("Main finally: Auto mode is running, ensuring it's stopped.")
+        #     try:
+        #         loop = asyncio.get_event_loop()
+        #         if loop.is_running() and not loop.is_closed():
+        #             stop_auto_task = asyncio.create_task(gui.auto_mode_controller.stop_auto_mode())
+        #             # Give it a moment to complete, but don't block indefinitely
+        #             await asyncio.wait_for(stop_auto_task, timeout=2.0) 
+        #             logger.info("Main finally: Auto mode stop task completed or timed out.")
+        #         else:
+        #             logger.warning("Main finally: Event loop not running or closed, cannot stop auto mode cleanly.")
+        #     except asyncio.TimeoutError:
+        #         logger.warning("Main finally: Timeout waiting for auto mode to stop.")
+        #     except Exception as e_auto_stop:
+        #         logger.error(f"Main finally: Error trying to stop auto mode: {e_auto_stop}")
+        
         if gui.opcua_client and gui.opcua_client.is_connected:
-             logger.info("Main finally: OPC UA client connected, ensuring disconnect.")
-             try:
+            logger.info("Main finally: OPC UA client is connected, ensuring disconnection.")
+            try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running() and not loop.is_closed():
                     disconnect_task = asyncio.create_task(gui.opcua_client.disconnect())
@@ -1021,11 +1222,11 @@ async def main():
                 else:
                     logger.info("Main finally: Event loop not running, attempting blocking disconnect.")
                     asyncio.run(gui.opcua_client.disconnect()) 
-             except asyncio.TimeoutError:
+            except asyncio.TimeoutError:
                 logger.error("Main finally: Timeout during final disconnect attempt.")
-             except RuntimeError as e_rt:
+            except RuntimeError as e_rt:
                 logger.error(f"Main finally: Runtime error during disconnect: {e_rt}. Might be due to event loop state.")
-             except Exception as e_final_disconnect:
+            except Exception as e_final_disconnect:
                  logger.error(f"Main finally: Error during final disconnect attempt: {e_final_disconnect}", exc_info=True)
 
         if root.winfo_exists(): 
