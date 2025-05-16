@@ -432,45 +432,29 @@ class PLCSimulator_DualLift:
         """
         Calculate the range of positions a lift will cover during its movement.
         Returns a tuple (min_pos, max_pos) representing the range.
-        
-        Args:
-            current_pos: Current position of the lift
-            *positions: Target positions the lift will visit (origin, destination)
         """
         all_positions = [current_pos] + list(positions)
         # Filter out zero positions (invalid/unspecified positions)
         valid_positions = [pos for pos in all_positions if pos > 0]
-        
         if not valid_positions:
             return (0, 0)  # No valid positions
-            
         return (min(valid_positions), max(valid_positions))
-    
+
     def _check_lift_ranges_overlap(self, my_range, other_range):
         """
         Check if two lift movement ranges overlap.
         A range of (0,0) from _calculate_movement_range indicates no valid positions for movement.
         """
         my_min, my_max = my_range
-        other_min_planned, other_max_planned = other_range
+        other_min, other_max = other_range
 
-        # If my lift has no valid planned movement for the current job (e.g., job is to/from invalid positions),
-        # it cannot cause a collision by this specific movement command.
         if my_min == 0 and my_max == 0:
             logger.debug(f"Collision check: My lift has no effective planned movement ({my_range}). No collision for this job.")
             return False
 
-        # If the other lift's range is (0,0), it means it's not occupying any valid positive space
-        # according to _calculate_movement_range (which filters for pos > 0).
-        # The standard overlap check below correctly handles this:
-        # e.g., my_range=(10,20), other_range=(0,0) -> not (20 < 0 or 10 > 0) -> not (False or True) -> False.
-        
         logger.debug(f"Collision check: My lift's planned path {my_range}, Other lift's occupied/planned path {other_range}.")
 
-        # Standard range overlap check: Overlap exists if they are NOT separated.
-        # NOT (my_max is to the left of other_min OR my_min is to the right of other_max)
-        overlap = not (my_max < other_min_planned or my_min > other_max_planned)
-
+        overlap = not (my_max < other_min or my_min > other_max)
         if overlap:
             logger.warning(f"COLLISION DETECTED: My lift's planned path {my_range} overlaps with other lift's path/position {other_range}.")
         return overlap
@@ -637,6 +621,7 @@ class PLCSimulator_DualLift:
                     other_lift_active_origin = await self._read_opc_value(other_lift_id, "ActiveElevatorAssignment_iOrigination")
                     other_lift_active_dest = await self._read_opc_value(other_lift_id, "ActiveElevatorAssignment_iDestination")
 
+                    # --- Belangrijk: Gebruik altijd de juiste range voor het type taak van de andere lift ---
                     if other_lift_state["_current_job_valid"] and other_lift_active_task_type > 0:
                         if other_lift_active_task_type == FullAssignment:
                              other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"], other_lift_active_origin, other_lift_active_dest)
@@ -794,23 +779,26 @@ class PLCSimulator_DualLift:
                 # Will stay in this state until movement completes
                 
         elif current_cycle == 150:  # Prepare Forks for Pickup
-            step_comment = "Preparing Forks for Pickup"
             origin = state["ActiveElevatorAssignment_iOrigination"]
-            
-            # Determine fork side based on origin position
             target_fork_side = OpperatorSide if origin <= 50 else RobotSide
-            
-            # Check if forks already at correct side
-            if state["iCurrentForkSide"] == target_fork_side:
+            # Controleer eerst of de lift op de juiste hoogte is
+            if state["iElevatorRowLocation"] != origin:
+                # Eerst de lift naar de juiste hoogte bewegen
+                state["_move_target_pos"] = origin
+                state["_move_start_time"] = time.time()
+                state["_sub_engine_moving"] = True
+                step_comment = f"Moving to Origin {origin} before preparing forks"
+                # Blijf in deze cycle tot de lift op positie is
+            elif state["iCurrentForkSide"] == target_fork_side:
                 logger.info(f"[{lift_id}] Forks already at correct side for pickup")
                 next_cycle = 155  # Skip fork movement
             else:
-                # Start fork movement
+                # Nu pas vorken bewegen!
                 state["_fork_target_pos"] = target_fork_side
                 state["_fork_start_time"] = time.time()
                 state["_sub_fork_moving"] = True
                 logger.info(f"[{lift_id}] Moving forks to {target_fork_side} for pickup")
-                # Will stay in this state until movement completes
+                # Blijf in deze cycle tot vorken klaar zijn
                 
         elif current_cycle == 155:  # Pickup
             step_comment = "Picking Up Load"
@@ -1003,14 +991,22 @@ class PLCSimulator_DualLift:
             step_comment = f"BringAway: Moving forks to side for placing at {destination_pos}"
             target_side = RobotSide if self.get_side(destination_pos) == "robot" else OpperatorSide
             
-            if state["iCurrentForkSide"] == target_side:
-                logger.info(f"[{lift_id}] BringAway: Forks already at side {target_side} for placing.")
-                next_cycle = 435 # Skip fork movement
+            # Controleer eerst of de lift op de juiste hoogte is
+            if state["iElevatorRowLocation"] != destination_pos:
+                state["_move_target_pos"] = destination_pos
+                state["_move_start_time"] = time.time()
+                state["_sub_engine_moving"] = True
+                step_comment = f"Moving to Destination {destination_pos} before moving forks"
+                # Blijf in deze cycle tot lift op positie is
+            elif state["iCurrentForkSide"] == target_side:
+                logger.info(f"[{lift_id}] BringAway: Forks al op juiste zijde voor plaatsen.")
+                next_cycle = 435  # Skip fork movement
             else:
                 state["_fork_target_pos"] = target_side
+                state["_fork_start_time"] = time.time()
                 state["_sub_fork_moving"] = True
-                # sSeq_Step_comment will be updated by the main logic before return if sub_movement is active
-                next_cycle = 435 # Proceed to 435 after fork movement (or immediately if already there)
+                logger.info(f"[{lift_id}] BringAway: Moving forks to {target_side} for placing.")
+                # Blijf in deze cycle tot vorken klaar zijn
 
         elif current_cycle == 435: # BringAway: Forks at Side, Place Tray
             # This state is entered when _sub_fork_moving (from 430) becomes false, or if skipped
@@ -1032,8 +1028,14 @@ class PLCSimulator_DualLift:
 
         elif current_cycle == 440: # BringAway: Tray Placed, Move Fork to Middle
             step_comment = f"BringAway: Tray placed at {state['ActiveElevatorAssignment_iDestination']}. Moving fork to middle."
-            
-            if state["iCurrentForkSide"] == MiddenLocation:
+            # Controleer eerst of de lift op de juiste hoogte is
+            if state["iElevatorRowLocation"] != state["ActiveElevatorAssignment_iDestination"]:
+                state["_move_target_pos"] = state["ActiveElevatorAssignment_iDestination"]
+                state["_move_start_time"] = time.time()
+                state["_sub_engine_moving"] = True
+                step_comment = f"Moving to Destination {state['ActiveElevatorAssignment_iDestination']} before moving fork to middle"
+                # Blijf in deze cycle tot lift op positie is
+            elif state["iCurrentForkSide"] == MiddenLocation:
                 logger.info(f"[{lift_id}] BringAway: Forks already at middle after placing.")
                 next_cycle = 450 # Skip fork movement
             else:
@@ -1155,7 +1157,14 @@ class PLCSimulator_DualLift:
             step_comment = f"PreparePickUp: Preparing Forks at Origin {origin_pos}"
             target_fork_side = RobotSide if self.get_side(origin_pos) == "robot" else OpperatorSide
             
-            if state["iCurrentForkSide"] == target_fork_side:
+            # Controleer eerst of de lift op de juiste hoogte is
+            if state["iElevatorRowLocation"] != origin_pos:
+                state["_move_target_pos"] = origin_pos
+                state["_move_start_time"] = time.time()
+                state["_sub_engine_moving"] = True
+                step_comment = f"Moving to Origin {origin_pos} before preparing forks"
+                # Blijf in deze cycle tot lift op positie is
+            elif state["iCurrentForkSide"] == target_fork_side:
                 logger.info(f"[{lift_id}] PreparePickUp: Forks already at correct side ({target_fork_side}) for pickup at {origin_pos}")
                 next_cycle = 515  # Go to Move Forks to Middle
             else:
@@ -1163,7 +1172,7 @@ class PLCSimulator_DualLift:
                 state["_fork_start_time"] = time.time()
                 state["_sub_fork_moving"] = True
                 logger.info(f"[{lift_id}] PreparePickUp: Moving forks to {target_fork_side} for pickup at {origin_pos}")
-                # Stays in this cycle if _sub_fork_moving is true
+                # Blijf in deze cycle tot vorken klaar zijn
 
         elif current_cycle == 515:  # PreparePickUp: Move Forks to Middle
             step_comment = "PreparePickUp: Forks prepared. Moving forks to Middle."

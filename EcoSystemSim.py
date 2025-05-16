@@ -18,7 +18,6 @@ CANCEL_REASON_TEXTS = {
     4: "Destination and origin can’t be zero with a full move operation / Origin can’t be zero with a prepare or move operation",
     5: "Lifts cross each other",
     6: "Invalid assignment"
-    # Add other reasons as they are defined in PLCSim or interface.txt
 }
 
 # Zorg dat de logs map bestaat
@@ -655,12 +654,19 @@ class EcoSystemGUI_DualLift_ST:
             ack_type = self._safe_get_int_from_data(lift_data, "iJobType") # From Handshake/iJobType
             ack_button = self.ack_controls[lift_id]['ack_movement_button']
             ack_label = self.ack_controls[lift_id]['ack_info_label']
-            if ack_type > 0: # PLC is awaiting some form of acknowledgement
+            prev_ack_state = getattr(self, f"_prev_ack_state_{lift_id}", None)
+            if ack_type > 0:
+                if prev_ack_state != True:
+                    logger.info(f"Acknowledge requested by PLC for {lift_id} (iJobType={ack_type}).")  # Log when PLC requests ack
                 ack_label.config(text=f"PLC Awaiting Ack (Type: {ack_type})", foreground="blue")
                 ack_button.config(state=tk.NORMAL)
+                setattr(self, f"_prev_ack_state_{lift_id}", True)
             else:
+                if prev_ack_state == True:
+                    logger.info(f"Acknowledge received by PLC for {lift_id}.")  # Log when PLC has received ack (iJobType returns to 0)
                 ack_label.config(text="PLC Awaiting Ack: No", foreground="grey")
                 ack_button.config(state=tk.DISABLED)
+                setattr(self, f"_prev_ack_state_{lift_id}", False)
 
         # Update Error Display section
         # Error data is directly from lift_data which contains iErrorCode, sErrorShortDescription etc.
@@ -988,13 +994,13 @@ class EcoSystemGUI_DualLift_ST:
             messagebox.showerror("GUI Error", f"Could not determine elevator identifier for {lift_id}.")
             return
 
-        logger.info(f"Acknowledging job step for {lift_id} ({elevator_id}).")
+        logger.info(f"Acknowledge requested by user for {lift_id} ({elevator_id}).")  # Log when user requests ack
         async def async_ack():
             # Corrected path: Directly under the ElevatorX object
             path = f"{self.ECO_TO_PLC_BASE}/{elevator_id}/xAcknowledgeMovement"
             success = await self.opcua_client.write_value(path, True, ua.VariantType.Boolean)
             if success:
-                logger.info(f"Successfully sent acknowledge for {lift_id} ({elevator_id}).")
+                logger.info(f"Acknowledge sent to PLC for {lift_id} ({elevator_id}) at path {path}.")  # Log when ack is sent
                 # Optionally, reset the GUI ack button or status here, though monitoring loop should update it
             else:
                 logger.error(f"Failed to send acknowledge for {lift_id} ({elevator_id}).")
