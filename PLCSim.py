@@ -138,6 +138,7 @@ class PLCSimulator_DualLift:
             "Eco_iDestination": 0,
             "Eco_xAcknowledgeMovement": False,
             "Eco_iCancelAssignment": 0, # From EcoToPlc...iCancelAssignment (Eco to PLC)
+            "xClearError": False, # From EcoToPlc...xClearError
 
             # --- Active Job (Internal processing, not directly in PlcToEco as full struct) ---
             "ActiveElevatorAssignment_iTaskType": 0,
@@ -315,7 +316,8 @@ class PLCSimulator_DualLift:
                 "Eco_xAcknowledgeMovement": (ua.VariantType.Boolean, "xAcknowledgeMovement"),
                 # OPC UA name is "iCancelAssignent" as per interface.txt (with typo)
                 # Internal state key remains "Eco_iCancelAssignment"
-                "Eco_iCancelAssignment": (ua.VariantType.Int64, "iCancelAssignment") # Changed Int16 to Int64
+                "Eco_iCancelAssignment": (ua.VariantType.Int64, "iCancelAssignment"), # Changed Int16 to Int64
+                "xClearError": (ua.VariantType.Boolean, "xClearError") # Added for error clearing
             }
             for state_key, (ua_type_val, opc_name) in eco_elevator_direct_vars_map.items():
                 value = initial_lift_state[state_key]
@@ -419,13 +421,11 @@ class PLCSimulator_DualLift:
                 
         # Simulate Fork Movement
         elif state["_sub_fork_moving"]:
-            if now - state["_fork_start_time"] >= (self._task_duration / 2.0):
+            if now - state["_fork_start_time"] >= (self._task_duration / 2.0): # Corrected to use FORK_MOVEMENT_DURATION_S or similar
                 logger.info(f"[{lift_id}] Fork movement finished. Reached: {state['_fork_target_pos']}")
                 await self._update_opc_value(lift_id, "iCurrentForkSide", state["_fork_target_pos"])
                 state["_sub_fork_moving"] = False
-                # Return True because a movement just finished in this cycle
-                return True # Corrected: was missing this return True, causing potential issues
-                  # Return True if any sub-function is still busy
+                return True # Ensure this returns True when movement finishes in this cycle
         return state["_sub_engine_moving"] or state["_sub_fork_moving"]
         
     def _calculate_movement_range(self, current_pos, *positions):
@@ -496,12 +496,12 @@ class PLCSimulator_DualLift:
                 # Update internal state if different
                 if self.lift_state[lift_id]["xTrayInElevator"] != current_tray_status_opc:
                     self.lift_state[lift_id]["xTrayInElevator"] = current_tray_status_opc
-                    self.logger.info(f"[{lift_id}] Synced xTrayInElevator from OPC: {current_tray_status_opc}")
+                    logger.info(f"[{lift_id}] Synced xTrayInElevator from OPC: {current_tray_status_opc}") # Changed self.logger to logger
 
             except Exception as e:
-                self.logger.error(f"[{lift_id}] Error syncing xTrayInElevator from OPC: {e}")
+                logger.error(f"[{lift_id}] Error syncing xTrayInElevator from OPC: {e}") # Changed self.logger to logger
         else:
-            self.logger.warning(f"[{lift_id}] OPC node for xTrayInElevator not found in opc_node_map.")
+            logger.warning(f"[{lift_id}] OPC node for xTrayInElevator not found in opc_node_map.") # Changed self.logger to logger
 
         # Read current state for the lift
         current_state = self.lift_state[lift_id]
@@ -532,31 +532,36 @@ class PLCSimulator_DualLift:
         # Read the system-level xWatchDog signal from the EcoSystem
         ecosystem_watchdog_status = await self._read_opc_value('System', "xWatchDog")
         
+        # Handle xWatchDog
         if ecosystem_watchdog_status is False:
             # logger.warning(f"[{lift_id}] EcoSystem Watchdog is FALSE.") # Potentially log periodically
-            pass # PLC logic might react to this, e.g., by stopping operations after a timeout
+            state["_watchdog_plc_state"] = False # Update internal PLC watchdog state
         elif ecosystem_watchdog_status is True:
-            # Clear the watchdog on PLC side after reading it, or PLC sets its own internal watchdog based on this
-            await self._update_opc_value('System', "xWatchDog", False) # PLC acknowledges watchdog
+            # logger.info(f"[{lift_id}] EcoSystem Watchdog is TRUE. Acknowledging.")
+            await self._update_opc_value('System', "xWatchDog", False) # PLC acknowledges watchdog by setting it back to False
             state["_watchdog_plc_state"] = True # Internal PLC watchdog status
         else:
             logger.warning(f"[{lift_id}] EcoSystem Watchdog returned unexpected value: {ecosystem_watchdog_status}")
 
+
         # Check for error clearing requests
-        clear_error_request = await self._read_opc_value(lift_id, "xClearError")
+        clear_error_request = await self._read_opc_value(lift_id, "xClearError") # Read xClearError
         if clear_error_request and state["iErrorCode"] != 0:
             logger.info(f"[{lift_id}] Received xClearError request. Clearing error {state['iErrorCode']}.")
             await self._update_opc_value(lift_id, "iErrorCode", 0)
             await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
-            await self._update_opc_value(lift_id, "sAlarmMessage", "")
+            # await self._update_opc_value(lift_id, "sAlarmMessage", "") # Assuming AlarmMessage is also cleared
             await self._update_opc_value(lift_id, "sAlarmSolution", "")
             await self._update_opc_value(lift_id, "xClearError", False) # Consume the signal
             state["iErrorCode"] = 0 # Update internal state
-            # Decide next state after error clear, e.g., go to init or ready
-            if current_cycle >= 800: # If it was in a general error state
-                 next_cycle = 0 # Go to init/idle after clearing error
-            # If error occurred mid-task, specific recovery logic might be needed,
-            # for now, just clearing and going to idle.
+            if current_cycle >= 800: 
+                 next_cycle = 0 
+            # else: # If error occurred mid-task, specific recovery might be needed.
+                  # For now, just clearing and going to idle or allowing current cycle to re-evaluate.
+                  # If in a task cycle, it might retry or go to a safe state.
+                  # If in cycle 10, it will become ready for a new job.
+            logger.info(f"[{lift_id}] Error cleared. Current cycle {current_cycle}, next cycle will be {next_cycle}")
+
 
         logger.debug(f"[{lift_id}] Cycle={current_cycle}, Job: Type={task_type}, Origin={origination}, Dest={destination}, Ack={acknowledge_movement}, ErrorCode={state['iErrorCode']}")
         
@@ -682,7 +687,7 @@ class PLCSimulator_DualLift:
                     
                     await self._update_opc_value(lift_id, "iCancelAssignment", 0) # Corrected path to PlcToEco.StationData.X.iCancelAssignment
                     await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
-                    await self._update_opc_value(lift_id, "sAlarmMessage", "")
+                    # await self._update_opc_value(lift_id, "sAlarmMessage", "")
                     await self._update_opc_value(lift_id, "sAlarmSolution", "")
                     await self._update_opc_value(lift_id, "iStationStatus", STATUS_NOTIFICATION) 
 
@@ -695,15 +700,15 @@ class PLCSimulator_DualLift:
                     logger.warning(f"[{lift_id}] Job rejected in Cycle 10. Reason Code: {rejection_code}, Message: {rejection_msg}")
                     
                     await self._update_opc_value(lift_id, "iCancelAssignment", rejection_code) # Corrected path
-                    await self._update_opc_value(lift_id, "sShortAlarmDescription", f"Job Rejected: {rejection_msg}")
-                    await self._update_opc_value(lift_id, "sAlarmMessage", rejection_msg) 
+                    await self._update_opc_value(lift_id, "sShortAlarmDescription", step_comment) # Use step_comment for the message
+                    # REMOVED: await self._update_opc_value(lift_id, "sAlarmMessage", rejection_msg) 
                     await self._update_opc_value(lift_id, "sAlarmSolution", "Check job parameters. Clear/send new job from EcoSystem.")
                     
                     await self._update_opc_value(lift_id, "iErrorCode", 0) 
                     state["iErrorCode"] = 0 
 
                     await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0) # Clear active task
-                    await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0) # Clear EcoSystem request
+                    await self._update_opc_value(lift_id, "Eco_iTaskType", 0) # Clear EcoSystem request
                     state["_current_job_valid"] = False
                     
                     await self._update_opc_value(lift_id, "iStationStatus", STATUS_WARNING)
@@ -721,7 +726,7 @@ class PLCSimulator_DualLift:
             if not state["_current_job_valid"]:
                 logger.error(f"[{lift_id}] Reached Cycle 25 without a valid current job. This should not happen. Returning to Ready.")
                 await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-                await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0) # Clear EcoSystem request too
+                await self._update_opc_value(lift_id, "Eco_iTaskType", 0) # Clear EcoSystem request too
                 await self._update_opc_value(lift_id, "iStationStatus", STATUS_WARNING)
                 await self._update_opc_value(lift_id, "iCancelAssignment", CANCEL_INVALID_ASSIGNMENT) # Corrected path
                 next_cycle = 10
@@ -740,7 +745,7 @@ class PLCSimulator_DualLift:
                 else:
                     logger.error(f"[{lift_id}] Invalid task type {task_type} encountered in Cycle 25. Resetting job.")
                     await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-                    await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0)
+                    await self._update_opc_value(lift_id, "Eco_iTaskType", 0) # Corrected
                     state["_current_job_valid"] = False
                     await self._update_opc_value(lift_id, "iStationStatus", STATUS_ERROR)
                     await self._update_opc_value(lift_id, "sShortAlarmDescription", "Internal Error: Invalid Task Route")
@@ -821,7 +826,7 @@ class PLCSimulator_DualLift:
             # Corrected condition: Initiate movement only if not already moving AND not at the target
             if state["iCurrentForkSide"] != self.sForks_Position_MIDDLE and not state["_sub_fork_moving"]:
                 state["_fork_target_pos"] = self.sForks_Position_MIDDLE
-                state["_fork_move_start_time"] = time.time()
+                state["_fork_start_time"] = time.time() # Corrected from _fork_move_start_time
                 state["_sub_fork_moving"] = True
                 logger.info(f"[{lift_id}] Moving forks to middle position")
 
@@ -854,20 +859,81 @@ class PLCSimulator_DualLift:
                 # Stay in this cycle, waiting for xAcknowledgeMovement
                 next_cycle = 195
 
+        # --- MoveToAssignment Sequence (TaskType 2) ---
+        # Routed from cycle 25 to 290
+        elif current_cycle == 290: # MoveToAssignment: Signal Job Acceptance to EcoSystem
+            # Target for MoveTo is stored in ActiveElevatorAssignment_iOrigination
+            target_loc = state["ActiveElevatorAssignment_iOrigination"]
+            step_comment = f"MoveToAssignment: Job accepted. Signaling EcoSystem for target {target_loc}."
+            logger.info(f"[{lift_id}] {step_comment}")
+            await self._update_opc_value(lift_id, "iJobType", MoveToAssignment)
+            await self._update_opc_value(lift_id, "iRowNr", target_loc)
+            next_cycle = 295
+
+        elif current_cycle == 295: # MoveToAssignment: Wait for EcoSystem Acknowledge
+            target_loc = state["ActiveElevatorAssignment_iOrigination"]
+            step_comment = f"MoveToAssignment: Waiting for acknowledge from EcoSystem for target {target_loc}."
+            ack_received = await self._read_opc_value(lift_id, "Eco_xAcknowledgeMovement")
+            if ack_received:
+                logger.info(f"[{lift_id}] MoveToAssignment: Acknowledge for target {target_loc} received. Proceeding.")
+                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False) # Consume ack
+                await self._update_opc_value(lift_id, "iJobType", 0)
+                await self._update_opc_value(lift_id, "iRowNr", 0)
+                next_cycle = 300 # Proceed to move
+            else:
+                next_cycle = 295 # Stay in this cycle
+
+        elif current_cycle == 300:  # MoveToAssignment: Move Lift to Target
+            target_loc = state["ActiveElevatorAssignment_iOrigination"]
+            step_comment = f"MoveToAssignment: Moving to target position {target_loc}" 
+
+            if not state["_sub_engine_moving"]: 
+                if state["iElevatorRowLocation"] == target_loc:
+                    logger.info(f"[{lift_id}] MoveToAssignment: Arrived or already at target {target_loc}.")
+                    step_comment = f"MoveToAssignment: Arrived at target {target_loc}."
+                    next_cycle = 310
+                else: 
+                    state["_move_target_pos"] = target_loc
+                    state["_move_start_time"] = time.time()
+                    state["_sub_engine_moving"] = True
+                    logger.info(f"[{lift_id}] MoveToAssignment: Initiating move to target {target_loc}.")
+        
+        elif current_cycle == 310:  # MoveToAssignment: Job Complete
+            target_loc = state["ActiveElevatorAssignment_iOrigination"] 
+            step_comment = f"MoveToAssignment: Job Complete. Arrived at target {target_loc}. Returning to Ready."
+            logger.info(f"[{lift_id}] Job type {state['ActiveElevatorAssignment_iTaskType']} (MoveToAssignment) completed for target {target_loc}.")
+
+            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
+            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iOrigination", 0) 
+            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iDestination", 0) 
+            state["_current_job_valid"] = False
+
+            await self._update_opc_value(lift_id, "Eco_iTaskType", 0)
+            await self._update_opc_value(lift_id, "Eco_iOrigination", 0)
+            await self._update_opc_value(lift_id, "Eco_iDestination", 0)
+            
+            await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False)
+
+            await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
+            await self._update_opc_value(lift_id, "iJobType", 0) 
+            await self._update_opc_value(lift_id, "iRowNr", 0)   
+            
+            next_cycle = 10 
+        
         elif current_cycle == 400: # Start BringAway: Validate (already done in 10/25), prepare for move
             step_comment = f"BringAway: Preparing to move to destination {state['ActiveElevatorAssignment_iDestination']}"
             if not state["xTrayInElevator"]: 
                 step_comment = "BringAway Error: No tray at start of sequence!"
                 logger.error(f"[{lift_id}] {step_comment}")
-                await self._update_opc_value(lift_id, "sShortAlarmDescription", "BringAway: No Tray")
-                await self._update_opc_value(lift_id, "sAlarmMessage", "TaskType BringAway started but xTrayInElevator is false.")
+                await self._update_opc_value(lift_id, "sShortAlarmDescription", step_comment) # Use step_comment for the message
+                # REMOVED: await self._update_opc_value(lift_id, "sAlarmMessage", "TaskType BringAway started but xTrayInElevator is false.")
                 await self._update_opc_value(lift_id, "sAlarmSolution", "Ensure tray is present or use a different task. Reset job.")
                 await self._update_opc_value(lift_id, "iErrorCode", CANCEL_INVALID_ASSIGNMENT) 
                 state["iErrorCode"] = CANCEL_INVALID_ASSIGNMENT
                 await self._update_opc_value(lift_id, "iStationStatus", STATUS_ERROR)
                 
                 await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-                await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0)
+                await self._update_opc_value(lift_id, "Eco_iTaskType", 0) # Corrected
                 state["_current_job_valid"] = False
                 next_cycle = 10 
             else:
@@ -1005,17 +1071,17 @@ class PLCSimulator_DualLift:
             await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False)
 
             # === DIAGNOSTIC START ===
-            try:
-                logger.info(f"[{lift_id}] DIAGNOSTIC: Reading back Eco_iTaskType after attempting to clear.")
-                node_task_type_path_diag = self._get_node_path(lift_id, "Eco_iTaskType")
-                if node_task_type_path_diag: # Ensure path was found
-                    task_type_node_diag = self.server.get_node(node_task_type_path_diag)
-                    eco_task_type_diag = await task_type_node_diag.read_value()
-                    logger.info(f"[{lift_id}] DIAGNOSTIC: Value of Eco_iTaskType on server is now: {eco_task_type_diag}")
-                else:
-                    logger.warning(f"[{lift_id}] DIAGNOSTIC: Could not get node path for Eco_iTaskType.")
-            except Exception as e_diag:
-                logger.error(f"[{lift_id}] DIAGNOSTIC: Error reading back Eco_iTaskType: {e_diag}")
+            # try:
+            #     logger.info(f"[{lift_id}] DIAGNOSTIC: Reading back Eco_iTaskType after attempting to clear.")
+            #     # node_task_type_path_diag = self._get_node_path(lift_id, "Eco_iTaskType") # _get_node_path is not defined
+            #     # if node_task_type_path_diag: # Ensure path was found
+            #     #     task_type_node_diag = self.server.get_node(node_task_type_path_diag)
+            #     #     eco_task_type_diag = await task_type_node_diag.read_value()
+            #     #     logger.info(f"[{lift_id}] DIAGNOSTIC: Value of Eco_iTaskType on server is now: {eco_task_type_diag}")
+            #     # else:
+            #     #     logger.warning(f"[{lift_id}] DIAGNOSTIC: Could not get node path for Eco_iTaskType.")
+            # except Exception as e_diag:
+            #     logger.error(f"[{lift_id}] DIAGNOSTIC: Error reading back Eco_iTaskType: {e_diag}")
             # === DIAGNOSTIC END ===
 
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
@@ -1053,17 +1119,17 @@ class PLCSimulator_DualLift:
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_NOTIFICATION)
             # Validate if tray is present - PreparePickUp should not have a tray
             if state["xTrayInElevator"]:
-                step_comment = "PreparePickUp Error: Tray present on elevator!"
+                step_comment = "PreparePickUp Error: Tray present on elevator!" # Updated step_comment for clarity
                 logger.error(f"[{lift_id}] {step_comment}")
-                await self._update_opc_value(lift_id, "sShortAlarmDescription", "PreparePickUp: Tray Present")
-                await self._update_opc_value(lift_id, "sAlarmMessage", "TaskType PreparePickUp started but xTrayInElevator is true.")
+                await self._update_opc_value(lift_id, "sShortAlarmDescription", step_comment) # Use step_comment for OPC
+                # REMOVED: await self._update_opc_value(lift_id, "sAlarmMessage", "TaskType PreparePickUp started but xTrayInElevator is true.")
                 await self._update_opc_value(lift_id, "sAlarmSolution", "Ensure tray is not present. Reset job.")
                 await self._update_opc_value(lift_id, "iErrorCode", CANCEL_PICKUP_WITH_TRAY) 
                 state["iErrorCode"] = CANCEL_PICKUP_WITH_TRAY
                 await self._update_opc_value(lift_id, "iStationStatus", STATUS_ERROR)
                 
                 await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-                await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0)
+                await self._update_opc_value(lift_id, "Eco_iTaskType", 0) # Corrected
                 state["_current_job_valid"] = False
                 next_cycle = 10 # Back to ready after error
             else:
@@ -1122,9 +1188,12 @@ class PLCSimulator_DualLift:
             state["_current_job_valid"] = False 
 
             # Clear EcoSystem job request variables
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iOrigination", 0)
-            await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iDestination", 0)
+            # await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0)
+            # await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iOrigination", 0)
+            # await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iDestination", 0)
+            await self._update_opc_value(lift_id, "Eco_iTaskType", 0)
+            await self._update_opc_value(lift_id, "Eco_iOrigination", 0)
+            await self._update_opc_value(lift_id, "Eco_iDestination", 0)
 
             await self._update_opc_value(lift_id, "iCancelAssignment", 0)
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
