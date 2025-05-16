@@ -256,12 +256,34 @@ class LiftVisualizationManager:
         # logger.info(f"Lift {lift_id} moving from row {current_logical_row} (Y: {current_center_y_canvas:.2f}) to {target_row} (Y: {target_center_y_canvas:.2f})")
 
         # Start de animatie met behulp van Tkinter's after-mechanisme
-        # Dit is volledig thread-veilig omdat het op de hoofdthread draait
         self.animation_running[lift_id] = True
         
-        # Parameters voor de animatie
-        total_steps = 10  # Aantal stappen in de animatie
-        duration_ms = 50  # Milliseconden tussen stappen (sneller = 50ms, langzamer = 100ms)
+        # Dynamically calculate animation parameters for smoother movement
+        MIN_ANIMATION_STEPS = 10
+        STEPS_PER_ROW_FACTOR = 3  # User's suggestion: 3 steps per row distance
+        MAX_TOTAL_ANIMATION_DURATION_MS = 2500 # Max 2.5 seconds for any animation
+        MIN_TOTAL_ANIMATION_DURATION_MS = 250  # Min 0.25 seconds for any animation
+        TARGET_DURATION_PER_ROW_MS = 60      # Target 60ms of total animation time per row of distance
+        MIN_STEP_DURATION_MS = 10            # Smallest time slice for a single animation step
+
+        row_distance = abs(target_row - current_logical_row)
+
+        # Calculate total steps based on distance, with a minimum
+        total_steps_calculated = max(MIN_ANIMATION_STEPS, row_distance * STEPS_PER_ROW_FACTOR)
+        
+        # Calculate total animation duration, scaled with distance but bounded
+        calculated_total_duration = row_distance * TARGET_DURATION_PER_ROW_MS
+        calculated_total_duration = max(MIN_TOTAL_ANIMATION_DURATION_MS, calculated_total_duration)
+        calculated_total_duration = min(MAX_TOTAL_ANIMATION_DURATION_MS, calculated_total_duration)
+        
+        # Calculate duration of each step
+        # Ensure step_duration is not zero if total_steps_calculated is very large
+        if total_steps_calculated == 0: # Should not happen if row_distance > 0 or MIN_ANIMATION_STEPS > 0
+            total_steps_calculated = MIN_ANIMATION_STEPS # Safeguard
+
+        step_duration_ms_calculated = max(MIN_STEP_DURATION_MS, int(calculated_total_duration / total_steps_calculated))
+        
+        # logger.info(f"Lift {lift_id} animation: rows={row_distance}, steps={total_steps_calculated}, step_ms={step_duration_ms_calculated}, total_ms={total_steps_calculated*step_duration_ms_calculated}")
         
         # Start de eerste animatiestap
         self._animate_lift_step(
@@ -270,8 +292,8 @@ class LiftVisualizationManager:
             target_y=target_center_y_canvas,
             target_row=target_row,
             current_step=0,
-            total_steps=total_steps,
-            step_duration_ms=duration_ms
+            total_steps=total_steps_calculated,
+            step_duration_ms=step_duration_ms_calculated
         )
 
     def _animate_lift_step(self, lift_id, start_y, target_y, target_row, current_step, total_steps, step_duration_ms):

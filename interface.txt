@@ -1,56 +1,96 @@
-Here are the main variables extracted from the file:
+
+iCancelAssignment - Integer for canceling assignment: 
+
+1 = Pickup assignment while tray is on forks
+
+2 = Destination out of reach
+
+3 = Origin out of reach
+
+4 = Destination and origin can’t be zero with a full move operation / Origin can’t be zero with a prepare or move operation
+
+5 = Lifts cross each other
+
+6 = Invalid assignment
+
+
+iStationStatus:
+
+0 = Not Applicable
+
+1= OK
+
+2 = Notification
+
+3 = Warning
+
+4 = Error
+
+5 = Device is booting
+
+6 = Device is offline
+
+7 = Semi-Auto mode
+
+8= Teach mode
+
+9 = Hand mode
+
+10 = Home mode
+
+11 = Stop
+
+
+Here are the variables with their full names, extracted from the provided information:
 
 From PlcToEco (PLC to EcoSystem):
 
-iAmountOfSations - Integer indicating the number of stations
-iMainStatus - Integer for main system status
-StationData (Array with 3 elements) - Contains data for each station:
-    iCycle - Current cycle number of the station
-    sStationStateDescription - String describing the station state
-    sShortAlarmDescription - Short description of any alarm
-    sAlarmSolution - String with solution for the alarm
-    iStationStatus - Integer for station status
-    Handshake - structs with:
-        iRowNr - Row number
-        iJobType - Type of job
-iCancelAssignment - Integer for canceling assignment: 
+iAmountOfSations: "Di_Call_Blocks"."OPC_UA"."PlcToEco"."StationDataToEco"."iAmountOfSations"
+iMainStatus: "Di_Call_Blocks"."OPC_UA"."PlcToEco"."StationDataToEco"."iMainStatus"
+StationData (Array with 3 elements):
+iCycle: "Di_Call_Blocks"."OPC_UA"."PlcToEco"."StationDataToEco"."StationData"[x]."iCycle" 
+sStationStateDescription: "Di_Call_Blocks"."OPC_UA"."PlcToEco"."StationDataToEco"."StationData"[x]."sStationStateDescription" 
+sShortAlarmDescription: "Di_Call_Blocks"."OPC_UA"."PlcToEco"."StationDataToEco"."StationData"[x]."sShortAlarmDescription" 
+sAlarmSolution: "Di_Call_Blocks"."OPC_UA"."PlcToEco"."StationDataToEco"."StationData"[x]."sAlarmSolution" 
+iStationStatus: "Di_Call_Blocks"."OPC_UA"."PlcToEco"."StationDataToEco"."StationData"[x]."iStationStatus" 
+Handshake (structs):
+iRowNr: "Di_Call_Blocks"."OPC_UA"."PlcToEco"."StationDataToEco"."StationData"[x]."Handshake"."iRowNr" 
+iJobType: "Di_Call_Blocks"."OPC_UA"."PlcToEco"."StationDataToEco"."StationData"[x]."Handshake"."iJobType" 
+iCancelAssignment: "Di_Call_Blocks"."OPC_UA"."PlcToEco"."StationDataToEco"."StationData"[x]."iCancelAssignment" 
+
+iCancelAssignment - Integer for canceling assignment: 
+
 1 = Pickup assignment while tray is on forks
+
 2 = Destination out of reach
+
 3 = Origin out of reach
+
 4 = Destination and origin can’t be zero with a full move operation / Origin can’t be zero with a prepare or move operation
+
 5 = Lifts cross each other
+
 6 = Invalid assignment
+
 
 From EcoToPlc (EcoSystem to PLC):
 
-xWatchDog - Boolean watchdog variable
-Elevator1 and Elevator2 structs with:
-ElevatorEcoSystAssignment - structs with:
-iTaskType - Type of task
-iOrigination - Origin location
-iDestination - Destination location
-xAcknowledgeMovement - Boolean to acknowledge movement
-iCancelAssignment - Integer for canceling assignment: 
-1 = Pickup assignment while tray is on forks
-2 = Destination out of reach
-3 = Origin out of reach
-4 = Destination and origin can’t be zero with a full move operation / Origin can’t be zero with a prepare or move operation
-5 = Lifts cross each other
-6 = Invalid assignment
+xWatchDog: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."xWatchDog"
+Elevator1 (struct):
+Elevator1EcoSystAssignment (struct, with iTaskType, iOrigination and iDestination): "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator1"."Elevator1EcoSystAssignment"
+    iTaskType: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator1"."Elevator1EcoSystAssignment"."iTaskType"
+    iOrigination: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator1"."Elevator1EcoSystAssignment"."iOrigination"
+    iDestination: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator1"."Elevator1EcoSystAssignment"."iDestination"
+xAcknowledgeMovement: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator1"."xAcknowledgeMovement"
+iCancelAssignent: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator1"."iCancelAssignent"
+
+Elevator2 (struct):
+Elevator2EcoSystAssignment (struct, with iTaskType, iOrigination and iDestination): "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator2"."Elevator2EcoSystAssignment"
+    iTaskType: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator2"."Elevator2EcoSystAssignment"."iTaskType"
+    iOrigination: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator2"."Elevator2EcoSystAssignment"."iOrigination"
+    iDestination: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator2"."Elevator2EcoSystAssignment"."iDestination"
+xAcknowledgeMovement: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator2"."xAcknowledgeMovement"
+iCancelAssignent: "Di_Call_Blocks"."OPC_UA"."EcoToPlc"."Elevator2"."iCancelAssignent"
 
 
-Array van StationDataToEco bevat alle statusdata van de stations, statussen:
-iStationStatus:
-0 = Not Applicable
-1= OK
-2 = Notification
-3 = Warning
-4 = Error
-5 = Device is booting
-6 = Device is offline
-7 = Semi-Auto mode
-8= Teach mode
-9 = Hand mode
-10 = Home mode
-11 = Stop
 

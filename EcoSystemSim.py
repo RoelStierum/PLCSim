@@ -7,7 +7,7 @@ import time
 import collections # Added import
 from asyncua import ua
 from opcua_client import OPCUAClient
-from lift_visualization import LiftVisualizationManager, LIFTS # Import new manager and constants
+from lift_visualization import LiftVisualizationManager, LIFTS, LIFT1_ID, LIFT2_ID # Import new manager and constants
 
 # Define Cancel Reason Codes and Texts
 CANCEL_REASON_TEXTS = {
@@ -60,7 +60,7 @@ PLC_NS_URI = "http://gibas.com/plc/"
 SYS_RED_BRIGHT = '#FF0000'
 SYS_RED_DIM = '#8B0000'  # Dark Red
 SYS_YELLOW_BRIGHT = '#FFFF00'
-SYS_YELLOW_DIM = '#ADAD00' # Dark Yellow (adjusted for better visibility than #8B8B00)
+SYS_YELLOW_DIM = '#ADAD00' # Dark Yellow 
 SYS_GREEN_BRIGHT = '#00FF00'
 SYS_GREEN_DIM = '#006400'  # Dark Green
 SYS_BLACK = '#000000' # For border
@@ -85,6 +85,10 @@ class EcoSystemGUI_DualLift_ST:
         self.error_controls = {}
         self.lift_tray_status = {lift_id: False for lift_id in LIFTS} # Initialize tray status
         self.seq_step_history = {lift_id: collections.deque(maxlen=5) for lift_id in LIFTS} # Changed maxlen to 5
+
+        # OPC UA Path Constants
+        self.PLC_TO_ECO_BASE = "Di_Call_Blocks/OPC_UA/PlcToEco"
+        self.ECO_TO_PLC_BASE = "Di_Call_Blocks/OPC_UA/EcoToPlc"
 
         # For system stack light
         self.system_stack_light_canvas = None
@@ -121,6 +125,7 @@ class EcoSystemGUI_DualLift_ST:
         notebook_frame = ttk.Frame(self.main_controls_frame)
         notebook_frame.pack(side=tk.LEFT, expand=True, fill="both", padx=(0, 5), pady=0) 
         
+
         # Create Control Notebook in its dedicated frame
         self._create_control_notebook(notebook_frame) 
 
@@ -168,9 +173,9 @@ class EcoSystemGUI_DualLift_ST:
         self.endpoint_var = tk.StringVar(value=PLC_ENDPOINT)
         ttk.Entry(conn_frame, textvariable=self.endpoint_var, width=40).grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
         # Row 1 for buttons
-        self.connect_button = ttk.Button(conn_frame, text="Connect", command=self.connect_plc)
+        self.connect_button = ttk.Button(conn_frame, text="Connect", command=lambda: asyncio.create_task(self.connect_plc()))
         self.connect_button.grid(row=0, column=2, padx=5, pady=2)
-        self.disconnect_button = ttk.Button(conn_frame, text="Disconnect", command=self.disconnect_plc, state=tk.DISABLED)
+        self.disconnect_button = ttk.Button(conn_frame, text="Disconnect", command=lambda: asyncio.create_task(self.disconnect_plc()), state=tk.DISABLED)
         self.disconnect_button.grid(row=0, column=3, padx=5, pady=2)
         # Row 2 for status labels
         self.connection_status_label = ttk.Label(conn_frame, text="Status: Disconnected", foreground="red")
@@ -372,16 +377,21 @@ class EcoSystemGUI_DualLift_ST:
             asyncio.create_task(self.auto_mode_controller.stop_auto_mode())
             self._update_auto_mode_gui_status() # Update GUI immediately
             
+
     def _update_auto_mode_gui_status(self):
         if self.auto_mode_controller and self.auto_mode_status_label:
             if self.auto_mode_controller.is_running:
                 self.auto_mode_status_label.config(text="Auto Mode: RUNNING", foreground="green")
-                if self.start_auto_mode_button: self.start_auto_mode_button.config(state=tk.DISABLED)
-                if self.stop_auto_mode_button: self.stop_auto_mode_button.config(state=tk.NORMAL)
+                if self.start_auto_mode_button: 
+                    self.start_auto_mode_button.config(state=tk.DISABLED)
+                if self.stop_auto_mode_button: 
+                    self.stop_auto_mode_button.config(state=tk.NORMAL)
             else:
                 self.auto_mode_status_label.config(text="Auto Mode: OFF", foreground="red")
-                if self.start_auto_mode_button: self.start_auto_mode_button.config(state=tk.NORMAL if self.is_connected else tk.DISABLED)
-                if self.stop_auto_mode_button: self.stop_auto_mode_button.config(state=tk.DISABLED)
+                if self.start_auto_mode_button: 
+                    self.start_auto_mode_button.config(state=tk.NORMAL if self.is_connected else tk.DISABLED)
+                if self.stop_auto_mode_button: 
+                    self.stop_auto_mode_button.config(state=tk.DISABLED)
         # Call this also when connection status changes
         if not self.is_connected and self.start_auto_mode_button:
              self.start_auto_mode_button.config(state=tk.DISABLED)
@@ -467,6 +477,387 @@ class EcoSystemGUI_DualLift_ST:
 
     # --- GUI Layout and Element Creation End, Business Logic Methods Below ---
 
+    async def _reset_job_inputs_on_server_for_lift(self, lift_id: str):
+        """Resets iTaskType, iOrigination, and iDestination to 0 for a given lift on the OPC UA server."""
+        elevator_id_str = self._get_elevator_identifier(lift_id)
+        station_idx_for_opc_node = self._get_station_index(lift_id)
+
+        if elevator_id_str is None or station_idx_for_opc_node is None:
+            logger.error(f"Cannot determine OPC identifiers for GUI lift ID: {lift_id} in _reset_job_inputs_on_server_for_lift")
+            return
+
+        logger.info(f"Resetting job inputs on OPC server for {lift_id} ({elevator_id_str}).")
+        try:
+            # Path for ElevatorXEcoSystAssignment object
+            assignment_base_path = f"{self.ECO_TO_PLC_BASE}/{elevator_id_str}/Elevator{station_idx_for_opc_node + 1}EcoSystAssignment"
+            
+            # Reset TaskType, Origination, Destination to 0
+            # These are the variables the PLC reads for a new job.
+            success_type = await self.opcua_client.write_value(f"{assignment_base_path}/iTaskType", 0, ua.VariantType.Int64)
+            success_origin = await self.opcua_client.write_value(f"{assignment_base_path}/iOrigination", 0, ua.VariantType.Int64)
+            success_dest = await self.opcua_client.write_value(f"{assignment_base_path}/iDestination", 0, ua.VariantType.Int64)
+
+            if success_type and success_origin and success_dest:
+                logger.info(f"Successfully reset job inputs (TaskType, Origination, Destination) for {lift_id} on OPC server.")
+            else:
+                logger.error(f"Failed to fully reset job inputs for {lift_id} on OPC server. Success - Type: {success_type}, Origin: {success_origin}, Dest: {success_dest}")
+        except Exception as e:
+            logger.exception(f"Error resetting job inputs for {lift_id} on OPC server: {e}")
+
+
+    def _get_elevator_identifier(self, lift_id_gui: str) -> str:
+        """Converts GUI lift ID (e.g., 'Lift1') to PLC elevator ID (e.g., 'Elevator1')."""
+        if lift_id_gui == LIFT1_ID: # LIFT1_ID is 'Lift1' from lift_visualization
+            return "Elevator1"
+        elif lift_id_gui == LIFT2_ID: # LIFT2_ID is 'Lift2' from lift_visualization
+            return "Elevator2"
+        logger.error(f"Cannot determine elevator identifier for GUI ID: {lift_id_gui}")
+        return None
+
+    def _get_station_index(self, lift_id_gui: str) -> int:
+        """Converts GUI lift ID to a zero-based numeric index (0 or 1 for station addressing)."""
+        # PLC uses 0-based indexing for StationData arrays.
+        if lift_id_gui == LIFT1_ID:
+            return 0
+        elif lift_id_gui == LIFT2_ID:
+            return 1
+        logger.error(f"Cannot determine station index for GUI ID: {lift_id_gui}")
+        return None
+
+    async def _monitor_plc(self):
+        """Periodically reads data from the PLC and updates the GUI."""
+        # vars_to_read_map: GUI_KEY: (PATH_TYPE, path_template_or_exact_subpath)
+        # PATH_TYPE 'StationData': template uses {{idx}}, path is GVL_OPC/PlcToEco/StationData/{{idx}}/TEMPLATE
+        # PATH_TYPE 'Elevator': template is direct subpath, path is GVL_OPC/PlcToEco/{{elevator_id_str}}/TEMPLATE
+        vars_to_read_map = {
+            "iCycle": ("StationData", "iCycle"),
+            "iStatus": ("StationData", "iStationStatus"), # Maps to iStationStatus in interface.txt
+            "sSeq_Step_comment": ("Elevator", "sSeq_Step_comment"), # Corrected: Maps to ElevatorX/sSeq_Step_comment
+            "iJobType": ("StationData", "Handshake/iJobType"),
+            "iCancelAssignmentReasonCode": ("StationData", "iCancelAssignment"), # Maps to iCancelAssignment
+            "sErrorShortDescription": ("StationData", "sShortAlarmDescription"), # Maps to sShortAlarmDescription
+            "sErrorSolution": ("StationData", "sAlarmSolution"), # Maps to sAlarmSolution
+            
+            # These are expected by GUI but not in interface.txt's StationDataToEco. Reading from ElevatorX path.
+            "iElevatorRowLocation": ("Elevator", "iElevatorRowLocation"),
+            "xTrayInElevator": ("Elevator", "xTrayInElevator"),
+            "iCurrentForkSide": ("Elevator", "iCurrentForkSide"),
+            "iErrorCode": ("Elevator", "iErrorCode"), # GUI expects iErrorCode; PLCSim provides this path (No "Error/" subfolder)
+            "sErrorMessage": ("Elevator", "sSeq_Step_comment"), # PLCSim provides sSeq_Step_comment under ElevatorX, let's map GUI's sErrorMessage to this for now.
+                                                              # interface.txt does not specify sErrorMessage under PlcToEco/ElevatorX
+        }
+
+        while self.is_connected:
+            try:
+                any_update_failed = False
+                for lift_id in LIFTS: # LIFT1_ID, LIFT2_ID
+                    current_lift_data = self.all_lift_data_cache.get(lift_id, {}).copy() # Work with a copy
+                    station_idx_for_opc = self._get_station_index(lift_id) # 0 for Lift1, 1 for Lift2
+                    elevator_id_str = self._get_elevator_identifier(lift_id) # "Elevator1", "Elevator2"
+
+                    if station_idx_for_opc is None or elevator_id_str is None:
+                        logger.error(f"Cannot determine OPC identifiers for GUI lift ID: {lift_id}")
+                        any_update_failed = True
+                        continue
+
+                    for gui_key, (path_type, sub_path_template) in vars_to_read_map.items():
+                        full_opc_path = ""
+                        if path_type == "StationData":
+                            # Corrected path construction:
+                            full_opc_path = f"{self.PLC_TO_ECO_BASE}/StationData/{station_idx_for_opc}/{sub_path_template}"
+                        elif path_type == "Elevator":
+                            full_opc_path = f"{self.PLC_TO_ECO_BASE}/{elevator_id_str}/{sub_path_template}"
+                        else:
+                            logger.warning(f"Unknown path_type: {path_type} for gui_key: {gui_key}")
+                            any_update_failed = True
+                            continue
+                        
+                        # logger.debug(f"Attempting to read OPC variable: {full_opc_path} for lift {lift_id}, gui_key {gui_key}")
+                        value = await self.opcua_client.read_variable(full_opc_path)
+                        if value is not None:
+                            current_lift_data[gui_key] = value
+                        else:
+                            # logger.warning(f"Failed to read {full_opc_path} for {lift_id}. Value is None.")
+                            any_update_failed = True
+                            current_lift_data[gui_key] = None # Store None to indicate read failure for this var
+
+                    self.all_lift_data_cache[lift_id] = current_lift_data
+                    self._update_gui_for_lift(lift_id, current_lift_data)
+
+                self._determine_and_update_global_stack_light()
+                if any_update_failed:
+                    # logger.debug("One or more OPC reads failed in the cycle.") # Potentially log less frequently
+                    pass
+                
+                await asyncio.sleep(0.25)  # Read interval (e.g., 250ms)
+            except asyncio.CancelledError:
+                logger.info("PLC monitoring task was cancelled.")
+                break
+            except Exception as e:
+                logger.error(f"Error in PLC monitoring loop: {e}", exc_info=True)
+                # Decide if we should stop monitoring or just log and continue
+                await asyncio.sleep(2) # Wait a bit longer after a major error
+        logger.info("PLC monitoring stopped.")
+
+    def _update_gui_for_lift(self, lift_id: str, lift_data: dict):
+        """Updates all relevant GUI elements for a specific lift based on new data."""
+        if not self.root.winfo_exists(): return
+
+        # Update status labels (excluding sSeq_Step_comment, iTaskType, iOrigination, iDestination which are handled differently or not read here)
+        status_labels_to_update = ["iCycle", "iStatus", "iElevatorRowLocation", "xTrayInElevator", "iCurrentForkSide"]
+        for var_name in status_labels_to_update:
+            if lift_id in self.status_labels and var_name in self.status_labels[lift_id]:
+                value = lift_data.get(var_name)
+                display_value = str(value) if value is not None else "ErrorRead"
+                self.status_labels[lift_id][var_name].config(text=display_value)
+        
+        # Update sSeq_Step_comment (Text widget)
+        if lift_id in self.status_labels and "sSeq_Step_comment" in self.status_labels[lift_id]:
+            comment_widget = self.status_labels[lift_id]["sSeq_Step_comment"]
+            new_comment = lift_data.get("sSeq_Step_comment", "ErrorRead")
+            # Only update if different to avoid flicker and preserve history if that's desired
+            # For now, always update based on deque history
+            if new_comment != self.seq_step_history[lift_id][0] if self.seq_step_history[lift_id] else True:
+                self.seq_step_history[lift_id].appendleft(new_comment if new_comment is not None else "")
+                comment_widget.config(state=tk.NORMAL)
+                comment_widget.delete("1.0", tk.END)
+                comment_widget.insert("1.0", "\n".join(self.seq_step_history[lift_id]))
+                comment_widget.config(state=tk.DISABLED)
+
+        # Update tray presence status (for BringAway job validation and visualization)
+        # This read is from xTrayInElevator (PlcToEco)
+        tray_present_plc = lift_data.get("xTrayInElevator")
+        if tray_present_plc is not None:
+            self.lift_tray_status[lift_id] = bool(tray_present_plc)
+        # Visualization of tray is handled by lift_vis_manager based on this and other data
+
+        # Visualization update
+        # Prepare arguments for update_lift_visual_state
+        current_row_for_vis = self._safe_get_int_from_data(lift_data, "iElevatorRowLocation", default=1) # Default to row 1 if not found
+        has_tray_for_vis = bool(lift_data.get("xTrayInElevator", False)) # Default to False
+        fork_side_for_vis = self._safe_get_int_from_data(lift_data, "iCurrentForkSide", default=0) # Default to MiddenLocation (0)
+        is_error_for_vis = self._safe_get_int_from_data(lift_data, "iErrorCode", default=0) != 0
+        
+        if self.lift_vis_manager:
+            try:
+                self.lift_vis_manager.update_lift_visual_state(
+                    lift_id,
+                    current_row_for_vis,
+                    has_tray_for_vis,
+                    fork_side_for_vis,
+                    is_error_for_vis
+                )
+            except Exception as e:
+                logger.error(f"Error calling update_lift_visual_state for {lift_id}: {e}")
+
+        # Update Handshake/Acknowledge section
+        if lift_id in self.ack_controls:
+            ack_type = self._safe_get_int_from_data(lift_data, "iJobType") # From Handshake/iJobType
+            ack_button = self.ack_controls[lift_id]['ack_movement_button']
+            ack_label = self.ack_controls[lift_id]['ack_info_label']
+            if ack_type > 0: # PLC is awaiting some form of acknowledgement
+                ack_label.config(text=f"PLC Awaiting Ack (Type: {ack_type})", foreground="blue")
+                ack_button.config(state=tk.NORMAL)
+            else:
+                ack_label.config(text="PLC Awaiting Ack: No", foreground="grey")
+                ack_button.config(state=tk.DISABLED)
+
+        # Update Error Display section
+        # Error data is directly from lift_data which contains iErrorCode, sErrorShortDescription etc.
+        self._update_error_display(lift_id, lift_data) 
+
+        # Update Cancel Reason Display
+        if lift_id in self.status_labels and "iCancelAssignmentReasonCode" in self.status_labels[lift_id]:
+            reason_code = self._safe_get_int_from_data(lift_data, "iCancelAssignmentReasonCode")
+            self.status_labels[lift_id]["iCancelAssignmentReasonCode"].config(text=str(reason_code))
+            reason_text = CANCEL_REASON_TEXTS.get(reason_code, "Unknown or Invalid Code")
+            self.status_labels[lift_id]["sCancelAssignmentReasonText"].config(text=reason_text)
+
+        # The Lift Visualization is updated earlier in this method using the correctly prepared arguments.
+        # vis_data = {
+        #     'iElevatorRowLocation': lift_data.get('iElevatorRowLocation'),
+        #     'xTrayInElevator': self.lift_tray_status[lift_id], # Use the locally synced status
+        #     'iCurrentForkSide': lift_data.get('iCurrentForkSide'),
+        #     'iStatus': lift_data.get('iStatus'),
+        #     'iErrorCode': lift_data.get('iErrorCode') # Pass error code for visual indication
+        # }
+        # seq_comment_for_vis = lift_data.get("sSeq_Step_comment", "")
+        # if hasattr(self, 'lift_vis_manager') and self.lift_vis_manager:
+        #     self.lift_vis_manager.update_lift_visual_state(lift_id, vis_data, seq_comment_for_vis) # Changed method name
+        
+        # logger.debug(f"GUI updated for {lift_id} with data: {lift_data}")
+
+    def _safe_get_int_from_data(self, data_dict, key, default=0):
+        """Safely gets an integer from a dictionary, handling potential errors."""
+        try:
+            value = data_dict.get(key)
+            if value is None:
+                # logger.debug(f"Key '{key}' not found in data. Using default: {default}")
+                return default
+            return int(value)
+        except (ValueError, TypeError):
+            # logger.warning(f"Could not convert value for key '{key}' to int. Value: {repr(value)}. Using default: {default}")
+            return default
+
+    def _update_error_display(self, lift_id, error_data):
+        """Updates the error display section for a lift based on error_data from PLC."""
+        if lift_id not in self.error_controls:
+            logger.warning(f"_update_error_display: No error controls found for {lift_id}")
+            return
+
+        controls = self.error_controls[lift_id]
+        error_code = self._safe_get_int_from_data(error_data, "iErrorCode") # Use safe_get
+
+        if error_code != 0:
+            controls['error_status_label'].config(text=f"PLC Error State: Yes ({error_code})", foreground="red")
+            controls['short_description'].config(text=error_data.get("sErrorShortDescription", "Unknown"), foreground="red")
+            
+            for widget_key, data_key in [('message', "sErrorMessage"), ('solution', "sErrorSolution")]:
+                text_widget = controls.get(widget_key)
+                if text_widget:
+                    text_widget.config(state=tk.NORMAL)
+                    text_widget.delete("1.0", tk.END)
+                    text_widget.insert("1.0", error_data.get(data_key, "No details." if widget_key == 'message' else "No solution provided."))
+                    text_widget.config(state=tk.DISABLED)
+        else:
+            controls['error_status_label'].config(text="PLC Error State: No", foreground="green")
+            controls['short_description'].config(text="None", foreground="gray")
+
+            for widget_key in ['message', 'solution']:
+                text_widget = controls.get(widget_key)
+                if text_widget:
+                    text_widget.config(state=tk.NORMAL)
+                    text_widget.delete("1.0", tk.END)
+                    text_widget.insert("1.0", "N/A")
+                    text_widget.config(state=tk.DISABLED)
+        # logger.debug(f"Error display updated for {lift_id}: Code {error_code}")
+
+
+    async def connect_plc(self):
+        endpoint_url = self.endpoint_var.get()
+        logger.info(f"Attempting to connect to PLC at {endpoint_url}...")
+        self.connection_status_label.config(text="Status: Connecting...", foreground="orange")
+        self.update_system_stack_light('busy') 
+
+        try:
+            self.opcua_client.endpoint_url = endpoint_url # Ensure the client uses the potentially updated endpoint URL
+            connection_successful = await self.opcua_client.connect() 
+
+            if connection_successful:
+                self.is_connected = True
+                self.connection_status_label.config(text="Status: Connected", foreground="green")
+                self.connect_button.config(state=tk.DISABLED)
+                self.disconnect_button.config(state=tk.NORMAL)
+                
+                for lift_id in LIFTS:
+                    if lift_id in self.job_controls:
+                        self.job_controls[lift_id]['send_job_button'].config(state=tk.NORMAL)
+                        self.job_controls[lift_id]['clear_task_button'].config(state=tk.NORMAL)
+                # ack_controls button state is typically managed by _monitor_plc based on PLC state
+
+                # Clear job inputs on OPC server for all lifts to prevent immediate job start
+                logger.info("Connection successful. Resetting job inputs on OPC server for all lifts...")
+                for lift_id_to_clear in LIFTS:
+                    await self._reset_job_inputs_on_server_for_lift(lift_id_to_clear)
+                logger.info("Finished resetting job inputs on OPC server for all lifts.")
+
+                logger.info(f"Successfully connected to PLC at {endpoint_url}.")
+                self.update_system_stack_light('connected_idle')
+
+                if self.monitoring_task:
+                    self.monitoring_task.cancel()
+                    try:
+                        await self.monitoring_task
+                    except asyncio.CancelledError:
+                        logger.info("Previous monitoring task cancelled before starting new one.")
+                    except Exception as e_task_cancel:
+                        logger.error(f"Error awaiting previous monitoring task cancellation: {e_task_cancel}")
+
+                if hasattr(self, '_monitor_plc') and callable(self._monitor_plc):
+                    self.monitoring_task = asyncio.create_task(self._monitor_plc())
+                    logger.info("PLC monitoring task started.")
+                else:
+                    logger.error("CRITICAL: _monitor_plc method is not defined. GUI will not update PLC data.")
+                    messagebox.showerror("Internal Error", "_monitor_plc method is missing. Cannot monitor PLC.")
+                    self.update_system_stack_light('error')
+            else:
+                # Connection failed as reported by opcua_client.connect()
+                self.is_connected = False
+                logger.error(f"Failed to connect to PLC at {endpoint_url} (opcua_client.connect returned False).")
+                self.connection_status_label.config(text="Status: Connection Failed", foreground="red")
+                messagebox.showerror("Connection Error", f"Could not connect to PLC at {endpoint_url}. Check logs.")
+                self.update_system_stack_light('error') 
+                self.connect_button.config(state=tk.NORMAL)
+                self.disconnect_button.config(state=tk.DISABLED)
+
+        except Exception as e:
+            self.is_connected = False
+            logger.error(f"Failed to connect to PLC: {e}", exc_info=True)
+            self.connection_status_label.config(text=f"Status: Error - Check Logs", foreground="red")
+            messagebox.showerror("Connection Error", f"Could not connect to PLC: {e}")
+            self.update_system_stack_light('error') 
+            self.connect_button.config(state=tk.NORMAL)
+            self.disconnect_button.config(state=tk.DISABLED)
+
+    async def disconnect_plc(self):
+        logger.info("Attempting to disconnect from PLC...")
+        self.update_system_stack_light('busy')
+
+        if self.monitoring_task:
+            logger.info("Cancelling PLC monitoring task...")
+            self.monitoring_task.cancel()
+            try:
+                await self.monitoring_task 
+            except asyncio.CancelledError:
+                logger.info("Monitoring task successfully cancelled.")
+            except Exception as e:
+                logger.error(f"Error during monitoring task cancellation: {e}", exc_info=True)
+            self.monitoring_task = None
+        
+        if self.opcua_client and self.opcua_client.is_connected:
+            try:
+                await self.opcua_client.disconnect()
+                logger.info("Successfully disconnected from PLC.")
+            except Exception as e:
+                logger.error(f"Error during OPC UA disconnect: {e}", exc_info=True)
+        
+        self.is_connected = False
+        self.connection_status_label.config(text="Status: Disconnected", foreground="red")
+        self.connect_button.config(state=tk.NORMAL)
+        self.disconnect_button.config(state=tk.DISABLED)
+        
+        for lift_id in LIFTS:
+            if lift_id in self.job_controls:
+                self.job_controls[lift_id]['send_job_button'].config(state=tk.DISABLED)
+                self.job_controls[lift_id]['clear_task_button'].config(state=tk.DISABLED)
+            if lift_id in self.ack_controls:
+                 self.ack_controls[lift_id]['ack_movement_button'].config(state=tk.DISABLED)
+                 self.ack_controls[lift_id]['ack_info_label'].config(text="PLC Awaiting Ack: No", foreground="grey")
+
+            if lift_id in self.status_labels:
+                for var_name, label_widget in self.status_labels[lift_id].items():
+                    if var_name == "sSeq_Step_comment" and isinstance(label_widget, tk.Text):
+                        label_widget.config(state=tk.NORMAL)
+                        label_widget.delete("1.0", tk.END)
+                        label_widget.insert("1.0", "N/A")
+                        label_widget.config(state=tk.DISABLED)
+                    elif isinstance(label_widget, ttk.Label):
+                        label_widget.config(text="N/A")
+            
+            if lift_id in self.error_controls: # Reset error display
+                self._update_error_display(lift_id, {"iErrorCode": 0}) # Pass data that signifies no error
+
+            # Reset visualization for the lift if manager supports it
+            if hasattr(self.lift_vis_manager, 'reset_lift_visualization'):
+                 self.lift_vis_manager.reset_lift_visualization(lift_id)
+            elif hasattr(self.lift_vis_manager, 'update_lift_visualization'): # Or update with default/empty data
+                 self.lift_vis_manager.update_lift_visualization(lift_id, {}, "N/A")
+
+
+        self.all_lift_data_cache = {lift_id: {} for lift_id in LIFTS} # Clear cache
+        self.update_system_stack_light('off') 
+        logger.info("GUI state reset to disconnected.")
+
     def _on_task_type_change(self, lift_id):
         """Callback when the task type radio button changes."""
         if lift_id not in self.job_controls: return
@@ -491,636 +882,172 @@ class EcoSystemGUI_DualLift_ST:
     def _toggle_tray_presence(self, lift_id):
         """Toggles the simulated tray presence for a lift, updates visualization, and writes to PLC."""
         if not self.is_connected:
-            messagebox.showwarning("OPC UA", "Not connected to PLC. Cannot update PLC tray status.")
+            messagebox.showwarning("OPC UA", "Not connected to PLC.")
             # Still allow local toggle for visual testing if not connected?
             # For now, let's prevent local toggle if not connected to avoid desync perception.
             return
 
-        new_tray_status = not self.lift_tray_status[lift_id]
-        logger.info(f"Attempting to toggle tray presence for {lift_id} to: {new_tray_status} on PLC and GUI.")
+        elevator_id = self._get_elevator_identifier(lift_id)
+        if not elevator_id:
+            messagebox.showerror("GUI Error", f"Could not determine elevator identifier for {lift_id}.")
+            return
+
+        new_tray_status = not self.lift_tray_status[lift_id] # Toggle local GUI belief
+        logger.info(f"Attempting to toggle tray presence for {lift_id} ({elevator_id}) to: {new_tray_status} on PLC and GUI.")
 
         async def async_write_tray_status():
-            opc_path = f"{lift_id}/xTrayInElevator"
+            # This path writes to the PLC's output variable, effectively overriding the PLC state.
+            opc_path = f"{self.PLC_TO_ECO_BASE}/{elevator_id}/xTrayInElevator"
             success = await self.opcua_client.write_value(opc_path, new_tray_status, ua.VariantType.Boolean)
             if success:
-                self.lift_tray_status[lift_id] = new_tray_status # Update local state only if PLC write succeeds
-                logger.info(f"Successfully wrote {opc_path} = {new_tray_status} to PLC.")
-                messagebox.showinfo("Tray Status", f"Tray presence for {lift_id} set to: {new_tray_status} on PLC and GUI.")
-                
-                # Update visualization immediately after successful PLC write and local state update
-                current_plc_data = self.all_lift_data_cache.get(lift_id, {})
-                current_row = self._safe_get_int_from_data(current_plc_data, "iElevatorRowLocation", self.lift_vis_manager.last_position.get(lift_id, 1))
-                fork_side = self._safe_get_int_from_data(current_plc_data, "iCurrentForkSide", 0)
-                is_error = self._safe_get_int_from_data(current_plc_data, "iErrorCode") != 0
-                self.lift_vis_manager.update_lift_visual_state(lift_id, current_row, self.lift_tray_status[lift_id], fork_side, is_error)
+                # self.lift_tray_status[lift_id] = new_tray_status # Local state updated by monitor loop from PLC read
+                logger.info(f"Successfully wrote {opc_path} = {new_tray_status} to PLC (overriding PLC state). Waiting for monitor to confirm.")
+                messagebox.showinfo("Tray Status", f"Tray presence for {lift_id} set to: {new_tray_status} on PLC. GUI will update on next read.")
+                # The GUI will visually update once the _monitor_plc loop reads this new value back.
             else:
                 logger.error(f"Failed to write {opc_path} = {new_tray_status} to PLC.")
                 messagebox.showerror("OPC UA Error", f"Failed to update tray status for {lift_id} on the PLC.")
         
         asyncio.create_task(async_write_tray_status())
 
-    def _safe_get_int_from_data(self, plc_data, key, default=0):
-        """Safely get an integer from PLC data dictionary."""
-        val = plc_data.get(key, default)
-        if val is None or isinstance(val, str) or not isinstance(val, (int, float)):
-            return default
-        try:
-            return int(val)
-        except (ValueError, TypeError):
-            return default
-
-    def _update_lift_text_labels(self, lift_id, plc_data):
-        """Updates the text-based status labels for a given lift."""
-        for name, label_widget in self.status_labels[lift_id].items():
-            # Special handling for the reason text label, as its content is derived,
-            # not directly from plc_data[name]. It's updated when iCancelAssignmentReasonCode is processed.
-            if name == "sCancelAssignmentReasonText":
-                continue  # Skip generic update for this label, it's handled below
-
-            value = plc_data.get(name, "N/A")
-            
-            if name == "sSeq_Step_comment":
-                new_comment = str(value).strip()
-                if not new_comment: new_comment = "(No comment)"
-                
-                # Replace literal \n with actual line breaks
-                new_comment = new_comment.replace("\\n", "\n")
-                
-                # Update history only if the new comment is different from the last one
-                if not self.seq_step_history[lift_id] or self.seq_step_history[lift_id][-1] != new_comment:
-                    self.seq_step_history[lift_id].append(new_comment)
-                
-                # Format display text from history - join with actual newlines, not "\\n"
-                display_text = "\n".join(list(self.seq_step_history[lift_id]))
-                value = display_text # This will be written to the Text widget
-
-            elif name.startswith("s") and isinstance(value, bytes): 
-                value = value.decode('utf-8', 'ignore').strip()
-            
-            if isinstance(value, float): value = f"{value:.2f}"
-            
-            # Handle cancel reason code and update corresponding text label
-            if name == "iCancelAssignmentReasonCode":
-                # The actual data from PLC is stored under "iCancelAssignmentReson" in plc_data
-                reason_code = self._safe_get_int_from_data(plc_data, "iCancelAssignmentReson", 0)
-                value = reason_code # This value (the code) will be set to the iCancelAssignmentReasonCode label
-                
-                # Update the separate sCancelAssignmentReasonText label
-                text_label_widget_for_reason = self.status_labels[lift_id].get("sCancelAssignmentReasonText")
-                if text_label_widget_for_reason:
-                    reason_text = CANCEL_REASON_TEXTS.get(reason_code, f"Unknown reason code ({reason_code})")
-                    text_label_widget_for_reason.config(text=reason_text)
-
-            if isinstance(label_widget, tk.Text):
-                label_widget.config(state=tk.NORMAL)
-                label_widget.delete("1.0", tk.END)
-                label_widget.insert("1.0", str(value)) # Value is now potentially multi-line for sSeq_Step_comment
-                label_widget.config(state=tk.DISABLED)
-            else:
-                label_widget.config(text=str(value))
-
-    def _update_lift_button_states(self, lift_id, plc_data):
-        """Updates the state of buttons (ack, job) and error display for a given lift."""
-        # Gebruik de correcte interface-variabelen volgens interface.txt
-        ack_type = self._safe_get_int_from_data(plc_data, "iJobType")  # Deel van Handshake struct
-        ack_row = self._safe_get_int_from_data(plc_data, "iRowNr")     # Deel van Handshake struct
-        ack_needed = ack_type > 0
-        error_code = self._safe_get_int_from_data(plc_data, "iErrorCode")
-        is_error = error_code != 0
-        plc_cycle = self._safe_get_int_from_data(plc_data, "iCycle", -1)
-
-        # Ack controls
-        ack_info_text = "PLC Awaiting Ack: No"
-        ack_button_state = tk.DISABLED
-        ack_label_color = "grey"
-        if ack_needed and self.is_connected:
-            ack_type_str = "GetTray" if ack_type == 1 else "SetTray" if ack_type == 2 else f"Type {ack_type}"
-            ack_info_text = f"PLC Awaiting Ack: {ack_type_str} @ Row {ack_row}"
-            ack_button_state = tk.NORMAL
-            ack_label_color = "orange"
-        if lift_id in self.ack_controls:
-             self.ack_controls[lift_id]['ack_info_label'].config(text=ack_info_text, foreground=ack_label_color)
-             self.ack_controls[lift_id]['ack_movement_button'].config(state=ack_button_state)
-
-        # Error controls
-        error_info_text = f"PLC Error State: No (Code: {error_code})"
-        # error_button_state = tk.DISABLED # Removed
-        error_label_color = "green"
-        if is_error and self.is_connected:
-            error_info_text = f"PLC Error State: YES (Code: {error_code})"
-            # error_button_state = tk.NORMAL # Removed
-            error_label_color = "red"
-            
-            # Vul de error details secties
-            if lift_id in self.error_controls:
-                # Haal de foutbeschrijvingen op uit de PLC data
-                short_desc = plc_data.get("sShortAlarmDescription", "")
-                if isinstance(short_desc, bytes):
-                    short_desc = short_desc.decode('utf-8', 'ignore').strip()
-                
-                error_msg = plc_data.get("sAlarmMessage", "")
-                if isinstance(error_msg, bytes):
-                    error_msg = error_msg.decode('utf-8', 'ignore').strip()
-                    
-                solution = plc_data.get("sAlarmSolution", "")
-                if isinstance(solution, bytes):
-                    solution = solution.decode('utf-8', 'ignore').strip()
-                
-                # Vul de error details widgets
-                self.error_controls[lift_id]['short_description'].config(text=short_desc or "Unknown error", foreground="red")
-                
-                # Bijwerken van de message textbox
-                msg_widget = self.error_controls[lift_id]['message']
-                msg_widget.config(state=tk.NORMAL)
-                msg_widget.delete("1.0", tk.END)
-                msg_widget.insert("1.0", error_msg or "Geen details beschikbaar")
-                msg_widget.config(state=tk.DISABLED)
-                
-                # Bijwerken van de solution textbox
-                sol_widget = self.error_controls[lift_id]['solution']
-                sol_widget.config(state=tk.NORMAL)
-                sol_widget.delete("1.0", tk.END)
-                sol_widget.insert("1.0", solution or "Geen oplossing beschikbaar")
-                sol_widget.config(state=tk.DISABLED)
-        else:
-            # Reset error details als er geen fout is
-            if lift_id in self.error_controls:
-                self.error_controls[lift_id]['short_description'].config(text="None", foreground="gray")
-                
-                # Reset message textbox
-                msg_widget = self.error_controls[lift_id]['message']
-                msg_widget.config(state=tk.NORMAL)
-                msg_widget.delete("1.0", tk.END)
-                msg_widget.insert("1.0", "")
-                msg_widget.config(state=tk.DISABLED)
-                
-                # Reset solution textbox
-                sol_widget = self.error_controls[lift_id]['solution']
-                sol_widget.config(state=tk.NORMAL)
-                sol_widget.delete("1.0", tk.END)
-                sol_widget.insert("1.0", "")
-                sol_widget.config(state=tk.DISABLED)
-                
-        if lift_id in self.error_controls:
-             self.error_controls[lift_id]['error_status_label'].config(text=error_info_text, foreground=error_label_color)
-             # self.error_controls[lift_id]['clear_error_button'].config(state=error_button_state) # Removed
-
-        # Job controls - Wijziging: Niet automatisch een nieuwe job sturen na voltooiing
-        # Wanneer de PLC in de gereedstatus is (iCycle = 10), sturen we ALLEEN een nieuwe job
-        # als de gebruiker expliciet op de knop drukt
-        can_send_job = self.is_connected and not is_error and plc_cycle == 10
-        job_button_state = tk.NORMAL if can_send_job else tk.DISABLED
-        
-        if lift_id in self.job_controls:
-             self.job_controls[lift_id]['send_job_button'].config(state=job_button_state)
-
-        waiting_clear_comment = str(plc_data.get("sSeq_Step_comment", ""))
-        waiting_clear = ("Done - Waiting" in waiting_clear_comment or "Rejected" in waiting_clear_comment)
-        needs_clear = self.is_connected and ((plc_cycle not in [0, 10] and plc_cycle > 0) or waiting_clear)
-        clear_button_state = tk.NORMAL if needs_clear else tk.DISABLED
-        if lift_id in self.job_controls:
-            self.job_controls[lift_id]['clear_task_button'].config(state=clear_button_state)
-
-    def _update_gui_status(self, lift_id, plc_data):
-        if lift_id not in self.status_labels: return
-
-        # Cache the latest data for this lift
-        self.all_lift_data_cache[lift_id] = plc_data
-
-        self._update_lift_text_labels(lift_id, plc_data)
-        self._update_lift_button_states(lift_id, plc_data)
-
-        # Delegate Visualization Update to LiftVisualizationManager
-        current_row = self._safe_get_int_from_data(plc_data, "iElevatorRowLocation")
-        has_tray = plc_data.get("xTrayInElevator", False)
-        fork_side = self._safe_get_int_from_data(plc_data, "iCurrentForkSide", 0)
-        is_error = self._safe_get_int_from_data(plc_data, "iErrorCode") != 0
-        plc_cycle = self._safe_get_int_from_data(plc_data, "iCycle", -1) # Get iCycle
-
-        # Update visualization
-        # stoplight_status = "off" # This local variable is no longer used for individual lift viz
-        # if is_error:
-            # stoplight_status = "red"
-        # elif has_tray:
-            # stoplight_status = "yellow" # Or another color indicating loaded
-        # else: # Potentially green if idle and no error, or just off
-            # stoplight_status = "green"
-
-        self.lift_vis_manager.update_lift_visual_state(lift_id, current_row, has_tray, fork_side, is_error)
-        # Global stack light is updated in _monitor_plc after all data is processed
-
-    async def _monitor_plc(self):
-        logger.info("Starting Dual Lift PLC monitoring task (ST Logic).")
-        
-        interface_vars = [
-            "iAmountOfSations", 
-            "iMainStatus",
-            "iCancelAssignmentReson" 
-        ]
-        station_vars = [
-            "StationData.iCycle",
-            "StationData.iStationStatus", 
-            "StationData.sStationStateDescription",
-            "StationData.sShortAlarmDescription", 
-            "StationData.sAlarmSolution",
-            "StationData.Handshake.iRowNr",
-            "StationData.Handshake.iJobType"
-        ]
-        internal_vars = [
-            "iElevatorRowLocation",
-            "xTrayInElevator",
-            "iCurrentForkSide",
-            "iErrorCode",
-            "sSeq_Step_comment"
-        ]
-        eco_assignment_vars = [
-            "ElevatorEcoSystAssignment.iTaskType",
-            "ElevatorEcoSystAssignment.iOrigination",
-            "ElevatorEcoSystAssignment.iDestination",
-            "ElevatorEcoSystAssignment.xAcknowledgeMovement",
-            "ElevatorEcoSystAssignment.iCancelAssignmentReson"
-        ]
-        active_job_vars_to_read_and_map = {
-            "ActiveElevatorAssignment_iTaskType": "iTaskType",
-            "ActiveElevatorAssignment_iOrigination": "iOrigination",
-            "ActiveElevatorAssignment_iDestination": "iDestination"
-        } 
-
-        logger.info(f"Monitoring system interface variables: {interface_vars}")
-        logger.info(f"Monitoring station data variables: {station_vars}")
-        logger.info(f"Monitoring EcoSystem assignment variables: {eco_assignment_vars}")
-        logger.info(f"Internal visualization variables (not monitored directly): {internal_vars}")
-
-        # Test the connection with a system variable
-        test_id = "iMainStatus"
-        logger.info(f"Testing initial connection with {test_id}")
-        test_val = await self.opcua_client.read_value(test_id)
-        if test_val is None:
-            logger.error(f"INITIAL READ FAILED for {test_id}. Aborting monitor.")
-            self._handle_connection_error()
-            return
-        else:
-            logger.info(f"Initial read successful: {test_id} = {test_val}")
-        
-        # Main monitoring loop
-        while self.opcua_client.is_connected: 
-            try:
-                any_critical_read_failed = False # Initialize here
-                sys_data = {} # Initialize here
-
-                # Send EcoSystem watchdog signal to PLC
-                ecosystem_watchdog_sent_ok = await self.opcua_client.write_value("xWatchDog", True, ua.VariantType.Boolean)
-                if not ecosystem_watchdog_sent_ok:
-                    logger.warning("Failed to send EcoSystem watchdog signal (xWatchDog) to PLC. Assuming connection issue.")
-                    any_critical_read_failed = True 
-                    # self._handle_connection_error() # More direct handling
-                    # break # Exit monitoring loop on critical failure
-
-                # Read system variables first
-                for var_name in interface_vars:
-                    value = await self.opcua_client.read_value(var_name)
-                    if value is not None:
-                        sys_data[var_name] = value
-                    elif var_name in ["iMainStatus"]: # Example of a critical variable to check for None
-                        logger.error(f"CRITICAL READ FAILED for system variable {var_name}. Aborting monitor for this cycle.")
-                        any_critical_read_failed = True
-                        break # Break from reading system vars
-                
-                if any_critical_read_failed:
-                    self._handle_connection_error()
-                    break
-
-                current_cycle_all_lift_data = {}
-
-                # Read station data for each lift
-                for lift_id_loop in LIFTS:
-                    lift_data = {} 
-                    for key, value in sys_data.items(): 
-                        lift_data[key] = value
-                    
-                    # Read StationData variables
-                    for var_name_full_path in station_vars:
-                        base_name = var_name_full_path.split('.')[-1]
-                        object_structure = var_name_full_path.rsplit('.', 1)[0]
-                        path_to_try = f"{lift_id_loop}/{object_structure.replace('.', '/')}/{base_name}"
-                        value = await self.opcua_client.read_value(path_to_try)
-                        if value is not None: lift_data[base_name] = value
-                        else: logger.warning(f"Failed to read {var_name_full_path} for {lift_id_loop} path: {path_to_try}")
-
-                    # Read ElevatorEcoSystAssignment variables
-                    for var_name_full_path in eco_assignment_vars:
-                        base_name = var_name_full_path.split('.')[-1]
-                        path_to_try = f"{lift_id_loop}/ElevatorEcoSystAssignment/{base_name}"
-                        value = await self.opcua_client.read_value(path_to_try)
-                        if value is not None: lift_data[base_name] = value
-                        else: logger.warning(f"Failed to read {var_name_full_path} for {lift_id_loop} path: {path_to_try}")
-                    
-                    # Read PLC's actual active job parameters
-                    for plc_var_name, display_key in active_job_vars_to_read_and_map.items():
-                        path_to_try = f"{lift_id_loop}/{plc_var_name}"
-                        value = await self.opcua_client.read_value(path_to_try)
-                        if value is not None: lift_data[display_key] = value
-                        else:
-                            logger.warning(f"Failed to read PLC active job parameter {plc_var_name} for {lift_id_loop} (path: {path_to_try}).")
-                            if display_key not in lift_data or lift_data[display_key] is None: lift_data[display_key] = 0
-                    
-                    # Read other internal variables
-                    for var_name in internal_vars:
-                        paths_to_try = [f"{lift_id_loop}/{var_name}", f"{lift_id_loop}.{var_name}"]
-                        value = None
-                        for path in paths_to_try:
-                            value = await self.opcua_client.read_value(path)
-                            if value is not None: break
-                        if value is not None: lift_data[var_name] = value
-                        # else: logger.warning(f"Failed to read internal var {var_name} for {lift_id_loop}") # Optional: log if needed
-
-                    current_cycle_all_lift_data[lift_id_loop] = lift_data
-                    self.all_lift_data_cache[lift_id_loop] = lift_data # Update cache for _determine_and_update_global_stack_light
-
-                # Update GUI with collected data
-                for lift_id_gui, data_gui in current_cycle_all_lift_data.items():
-                    if data_gui: 
-                        self.root.after(0, self._update_gui_status, lift_id_gui, data_gui)
-                
-                # Determine and update global stack light AFTER all lift data for the cycle is processed
-                self.root.after(0, self._determine_and_update_global_stack_light)
-                
-                await asyncio.sleep(0.2) # OPCUA read interval
-            except asyncio.CancelledError:
-                logger.info("PLC monitoring task cancelled.")
-                break
-            except Exception as e:
-                logger.exception(f"Error in PLC monitoring loop: {e}")
-                self._handle_connection_error()
-                break
-
-        logger.info("PLC monitoring task stopped.")
-        if self.opcua_client.is_connected:
-             self._update_connection_status(False)
-
-    async def _async_connect(self):
-        try:
-            self.opcua_client.endpoint_url = self.endpoint_var.get()
-            connected = await self.opcua_client.connect()
-            if connected:
-                # await asyncio.sleep(1.0) # Keep this sleep, remove only the commented log # Original comment
-                self._update_connection_status(True) # This will trigger stack light update
-                if self.monitoring_task: self.monitoring_task.cancel()
-                self.monitoring_task = asyncio.create_task(self._monitor_plc())
-            else:
-                messagebox.showerror("Connection Failed", f"Could not connect to {self.endpoint_var.get()}\nError: OPCUAClient connection failed.")
-                self._update_connection_status(False)
-        except Exception as e:
-            logger.error(f"Connection failed: {e}")
-            messagebox.showerror("Connection Failed", f"Could not connect to {self.endpoint_var.get()}\nError: {e}")
-            await self.opcua_client.disconnect()
-            self._update_connection_status(False)
-
-    def _handle_connection_error(self):
-         if self.opcua_client.is_connected:
-             logger.error("Connection error detected.")
-
-    def _reset_lift_gui_elements(self, lift_id):
-        """Resets all GUI elements for a specific lift to their default/disconnected state."""
-        # Reset status labels to N/A
-        empty_data = {name: "N/A" for name in self.status_labels[lift_id].keys()}
-        self._update_lift_text_labels(lift_id, empty_data)
-
-        # Reset visualization to default (row 1, no tray, no error)
-        self.lift_vis_manager.update_lift_visual_state(lift_id, 1, False, 0, False)
-        self.lift_vis_manager.last_position[lift_id] = 1 # Also reset logical position in manager
-
-        # Disable buttons and reset associated labels
-        if lift_id in self.job_controls:
-            self.job_controls[lift_id]['send_job_button'].config(state=tk.DISABLED)
-            self.job_controls[lift_id]['clear_task_button'].config(state=tk.DISABLED)
-        if lift_id in self.ack_controls:
-            self.ack_controls[lift_id]['ack_movement_button'].config(state=tk.DISABLED)
-            self.ack_controls[lift_id]['ack_info_label'].config(text="PLC Awaiting Ack: No", foreground="grey")
-        if lift_id in self.error_controls:
-            # self.error_controls[lift_id]['clear_error_button'].config(state=tk.DISABLED) # Removed
-            self.error_controls[lift_id]['error_status_label'].config(text="PLC Error State: No", foreground="green")
-
-    def _update_connection_status(self, connected):
-        self.is_connected = connected
-        status_text = "Status: Connected" if connected else "Status: Disconnected"
-        status_color = "green" if connected else "red"
-        btn_conn_state = tk.DISABLED if connected else tk.NORMAL
-        btn_disconn_state = tk.NORMAL if connected else tk.DISABLED
-
-        if self.root.winfo_exists():
-            if self.connection_status_label:
-                self.connection_status_label.config(text=status_text, foreground=status_color)
-            if self.connect_button:
-                self.connect_button.config(state=btn_conn_state)
-            if self.disconnect_button:
-                self.disconnect_button.config(state=btn_disconn_state)
-            
-            for lift_id in LIFTS:
-                self._reset_lift_gui_elements(lift_id) 
-            
-            self._determine_and_update_global_stack_light() 
-            # self._update_auto_mode_gui_status() # Update auto mode buttons based on connection - REMOVED
-
-        else:
-            logger.warning("_update_connection_status called but root window does not exist.")
-
-    def connect_plc(self):
-        endpoint = self.endpoint_var.get()
-        logger.info(f"Attempting to connect to {endpoint}")
-        self.opcua_client.endpoint_url = endpoint
-        # Initialize last_watchdog_time for System upon connection attempt - REMOVED
-        # self.last_watchdog_time["System"] = time.time() 
-        asyncio.create_task(self._async_connect())
-
-    async def _async_disconnect(self):
-         logger.info("Async disconnect initiated.")
-         self._disconnecting_flag = True
-         await self.opcua_client.disconnect()
-         self._update_connection_status(False) # This will call _reset_lift_gui_elements
-         logger.info("Async disconnect completed.")
-         if hasattr(self, '_disconnecting_flag'): # Clean up flag
-            delattr(self, '_disconnecting_flag')
-
-    def disconnect_plc(self):
-        logger.info("Disconnecting from PLC...")
-        if self.monitoring_task:
-            self.monitoring_task.cancel()
-            self.monitoring_task = None
-        if self.opcua_client.is_connected:
-            asyncio.create_task(self._async_disconnect())
-        else:
-            # Ensure GUI is reset even if opcua_client thought it was already disconnected
-            self._update_connection_status(False)
-
-    def is_lift_ready_for_job(self, lift_id: str) -> bool:
-        """Checks if the specified lift is ready to receive a new job."""
-        if not self.is_connected:
-            return False
-        
-        lift_data = self.all_lift_data_cache.get(lift_id, {})
-        plc_cycle = self._safe_get_int_from_data(lift_data, "iCycle", -1)
-        error_code = self._safe_get_int_from_data(lift_data, "iErrorCode", 0)
-        
-        # Lift is ready if iCycle is 10 (idle/ready state) and no error
-        is_ready = (plc_cycle == 10 and error_code == 0)
-        if not is_ready:
-            logger.debug(f"Lift {lift_id} not ready: iCycle={plc_cycle}, iErrorCode={error_code}")
-        return is_ready
-
     def send_job(self, lift_id: str):
-        """Sends a job request to the PLC based on GUI inputs."""
+        if not self.is_connected:
+            messagebox.showwarning("Send Job", "Not connected to PLC.")
+            return
+
+        controls = self.job_controls.get(lift_id)
+        if not controls:
+            logger.error(f"Job controls not found for {lift_id}")
+            return
+
+        try:
+            task_type = controls['task_type_var'].get()
+            origin_str = controls['origin_entry'].get()
+            destination_str = controls['destination_entry'].get()
+
+            origin = int(origin_str) if origin_str else 0
+            destination = int(destination_str) if destination_str else 0
+        except ValueError:
+            messagebox.showerror("Input Error", "Origin and Destination must be valid integers.")
+            return
+        except Exception as e:
+            messagebox.showerror("Input Error", f"Error reading job parameters: {e}")
+            return
+
+        elevator_id_str = self._get_elevator_identifier(lift_id)
+        station_idx_for_opc_node = self._get_station_index(lift_id) # 0 for Lift1, 1 for Lift2
+
+        if elevator_id_str is None or station_idx_for_opc_node is None:
+            logger.error(f"Cannot determine OPC identifiers for GUI lift ID: {lift_id}")
+            messagebox.showerror("Internal Error", "Could not determine OPC identifiers.")
+            return
+
+        logger.info(f"Sending Job to {lift_id} ({elevator_id_str}): TaskType={task_type}, Origin={origin}, Destination={destination}")
+
+        async def _send_job_async():
+            try:
+                # Path for ElevatorXEcoSystAssignment object
+                assignment_base_path = f"{self.ECO_TO_PLC_BASE}/{elevator_id_str}/Elevator{station_idx_for_opc_node + 1}EcoSystAssignment"
+                # Path for variables directly under ElevatorX object
+                lift_base_path = f"{self.ECO_TO_PLC_BASE}/{elevator_id_str}"
+
+                # Determine the correct OPC UA name for iCancelAssignment
+                cancel_assignment_opc_name = "iCancelAssignment" # Default correct spelling
+                if lift_id == LIFT1_ID: # LIFT1_ID is 'Lift1' from lift_visualization
+                    cancel_assignment_opc_name = "iCancelAssignent" # Typo for LIFT1_ID
+
+                # Write to ElevatorXEcoSystAssignment
+                success_type = await self.opcua_client.write_value(f"{assignment_base_path}/iTaskType", task_type, ua.VariantType.Int64)
+                success_origin = await self.opcua_client.write_value(f"{assignment_base_path}/iOrigination", origin, ua.VariantType.Int64)
+                success_dest = await self.opcua_client.write_value(f"{assignment_base_path}/iDestination", destination, ua.VariantType.Int64)
+                
+                # Write directly under ElevatorX
+                success_ack = await self.opcua_client.write_value(f"{lift_base_path}/xAcknowledgeMovement", False, ua.VariantType.Boolean)
+                success_cancel = await self.opcua_client.write_value(f"{lift_base_path}/{cancel_assignment_opc_name}", 0, ua.VariantType.Int64) # Changed to Int64
+
+                if success_type and success_origin and success_dest and success_ack and success_cancel:
+                    logger.info(f"Successfully sent job to {lift_id} ({elevator_id_str}).")
+                    # Optionally provide user feedback, though logs are primary for now
+                else:
+                    logger.error(f"Failed to send job to {lift_id} ({elevator_id_str}). Check OPC UA server/logs.")
+                    # messagebox.showerror("OPC UA Error", f"Failed to send job to {lift_id}. Check logs.")
+            except Exception as e:
+                logger.exception(f"Error sending job to {lift_id}: {e}")
+                messagebox.showerror("Job Send Error", f"An error occurred while sending job to {lift_id}: {e}")
+        
+        asyncio.create_task(_send_job_async())
+
+    def acknowledge_job_step(self, lift_id: str):
+        """Acknowledges a job step (movement) for the PLC."""
         if not self.opcua_client.is_connected:
             messagebox.showwarning("OPC UA", "Not connected to PLC.")
             return
-
-        if lift_id not in self.job_controls:
-            logger.error(f"Job controls for {lift_id} not found.")
-            messagebox.showerror("GUI Error", f"Could not find job controls for {lift_id}.")
+        
+        elevator_id = self._get_elevator_identifier(lift_id)
+        if not elevator_id:
+            messagebox.showerror("GUI Error", f"Could not determine elevator identifier for {lift_id}.")
             return
 
-        controls = self.job_controls[lift_id]
-        task_type = controls['task_type_var'].get()
-        origin = controls['origin_var'].get()
-        destination = controls['destination_var'].get()
-
-        # Validate inputs based on task type
-        if task_type == 1: # FullAssignment
-            if origin == 0 or destination == 0:
-                messagebox.showwarning("Job Error", "For Full Assignment, Origin and Destination must be non-zero.")
-                return
-            logger.info(f"Sending Job to {lift_id}: TaskType={task_type}, Origin={origin}, Destination={destination}")
-        elif task_type == 2: # MoveToAssignment (PLC uses iOrigination as the target for MoveTo)
-            if origin == 0:
-                messagebox.showwarning("Job Error", "For Move To Assignment, Origin (target row) must be non-zero.")
-                return
-            # Destination is not used by PLC for MoveTo, but GUI might still have a value. We send what's in origin.
-            logger.info(f"Sending Job to {lift_id}: TaskType={task_type}, Origin(Target)={origin}")
-        elif task_type == 3: # PreparePickUp
-            if origin == 0:
-                messagebox.showwarning("Job Error", "For Prepare PickUp, Origin must be non-zero.")
-                return
-            # Destination is not used by PLC for PreparePickUp
-            logger.info(f"Sending Job to {lift_id}: TaskType={task_type}, Origin={origin}")
-        elif task_type == 4: # BringAway
-            if destination == 0:
-                messagebox.showwarning("Job Error", "For Bring Away, Destination must be non-zero.")
-                return
-            # Origin is not used by PLC for BringAway (uses current pos)
-            # Check for tray presence (using the GUI's simulated status for now)
-            if not self.lift_tray_status[lift_id]:
-                messagebox.showwarning("Job Error", f"Cannot send 'Bring Away' for {lift_id}: No tray present (simulated). Toggle tray first.")
-                return
-            logger.info(f"Sending Job to {lift_id}: TaskType={task_type}, Destination={destination}")
-        else:
-            messagebox.showerror("Job Error", f"Unknown task type: {task_type}")
-            return
-
-        async def job_write_sequence():
-            path_prefix = f"{lift_id}/ElevatorEcoSystAssignment/"
-            success_type = await self.opcua_client.write_value(f"{path_prefix}iTaskType", task_type, ua.VariantType.Int64)
-            success_origin = True
-            success_dest = True
-            success_send_job = False # Initialize
-
-            if task_type == 1: # FullAssignment
-                success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)
-                success_dest = await self.opcua_client.write_value(f"{path_prefix}iDestination", destination, ua.VariantType.Int64)
-            elif task_type == 2: # MoveToAssignment (PLC uses iOrigination as the target for MoveTo)
-                success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)
-                # Destination is not used by PLC for MoveTo
-            elif task_type == 3: # PreparePickUp
-                success_origin = await self.opcua_client.write_value(f"{path_prefix}iOrigination", origin, ua.VariantType.Int64)
-                # Destination is not used by PLC for PreparePickUp
-            elif task_type == 4: # BringAway
-                success_dest = await self.opcua_client.write_value(f"{path_prefix}iDestination", destination, ua.VariantType.Int64)
-                # Origin is not used by PLC for BringAway (uses current pos)
-
-            if success_type and success_origin and success_dest:
-                # After setting parameters, trigger the job by setting xSendJob to True
-                # Assuming xSendJob is at the same level as iTaskType, iOrigination etc.
-                # If xSendJob is at a different path, this needs to be adjusted.
-                # For ST Logic, typically setting iTaskType is enough, and xSendJob might not be needed
-                # or might be part of a different structure.
-                # For now, let's assume setting iTaskType is the primary trigger.
-                # If a separate "send job" boolean is required by the PLC:
-                # success_send_job = await self.opcua_client.write_value(f\"{path_prefix}xSendJob\", True, ua.VariantType.Boolean)
-                # if not success_send_job:
-                #    logger.error(f\"Failed to set xSendJob for {lift_id}.\")
-
-                # For many PLC programs, just writing the task type and parameters is enough.
-                # If xSendJob is not used, we can consider this successful.
-                success_send_job = True # Assuming setting params is enough or xSendJob is handled differently
-                logger.info(f"Job parameters (Type {task_type}) sent successfully to {lift_id} via ElevatorEcoSystAssignment interface.")
-                # Optionally, provide user feedback
-                # messagebox.showinfo(\"Job Sent\", f\"Job (Type {task_type}) sent to {lift_id}.\")
+        logger.info(f"Acknowledging job step for {lift_id} ({elevator_id}).")
+        async def async_ack():
+            # Corrected path: Directly under the ElevatorX object
+            path = f"{self.ECO_TO_PLC_BASE}/{elevator_id}/xAcknowledgeMovement"
+            success = await self.opcua_client.write_value(path, True, ua.VariantType.Boolean)
+            if success:
+                logger.info(f"Successfully sent acknowledge for {lift_id} ({elevator_id}).")
+                # Optionally, reset the GUI ack button or status here, though monitoring loop should update it
             else:
-                logger.error(f"Failed to send job (Type {task_type}) to {lift_id} using ElevatorEcoSystAssignment interface. Check individual write successes.")
-                messagebox.showerror("OPC UA Error", f"Failed to send job parameters to {lift_id}.")
-        
-        asyncio.create_task(job_write_sequence())
+                logger.error(f"Failed to send acknowledge for {lift_id} ({elevator_id}).")
+                messagebox.showerror("OPC UA Error", f"Failed to send acknowledge for {lift_id}.")
+        asyncio.create_task(async_ack())
 
-    def acknowledge_job_step(self, lift_id):
-        """Stuurt een acknowledge signaal naar de PLC volgens de interface specificatie"""
-        if not self.opcua_client.is_connected:
-             messagebox.showwarning("OPC UA", "Not connected to PLC.")
-             return
-        logger.info(f"Sending handshake acknowledge for {lift_id} (xAcknowledgeMovement = True)")
-        async def send_acknowledge():
-            # Probeer beide paden voor de xAcknowledgeMovement variabele
-            # Eerste poging met pad volgens interface.txt
-            path1 = f"{lift_id}/ElevatorEcoSystAssignment/xAcknowledgeMovement"
-            success1 = await self.opcua_client.write_value(path1, True, ua.VariantType.Boolean)
-            
-            # Als dat mislukt, probeer alternatief pad
-            if not success1:
-                path2 = f"{lift_id}.ElevatorEcoSystAssignment.xAcknowledgeMovement"
-                success2 = await self.opcua_client.write_value(path2, True, ua.VariantType.Boolean)
-                
-                # Als ook dat mislukt, probeer legacy pad
-                if not success2:
-                    path3 = f"{lift_id}/EcoAck_xAknowledeFromEco"
-                    success3 = await self.opcua_client.write_value(path3, True, ua.VariantType.Boolean)
-                    
-                    if not success3:
-                        messagebox.showerror("OPC UA Error", f"Failed to send acknowledge for {lift_id} - all paths failed.")
-                        return
-            
-            logger.info(f"Handshake acknowledge signal sent to {lift_id} via interface variable.")
-        
-        asyncio.create_task(send_acknowledge())
-
-    def clear_task(self, lift_id):
-        """Stuurt een taak-reset commando naar de PLC volgens de interface.txt specificatie"""
-        if not self.opcua_client.is_connected:
-            messagebox.showwarning("OPC UA", "Not connected to PLC.")
+    def clear_task(self, lift_id: str):
+        """Clears the current task on the PLC by sending TaskType 0."""
+        if not self.is_connected:
+            messagebox.showwarning("Clear Task", "Not connected to PLC.")
             return
-        logger.info(f"Stuur Clear Task via interface variabele iTaskType=0 naar {lift_id}")
-        
-        async def clear_task_sequence():
-            # Probeer meerdere paden naar de iTaskType variabele
-            paths_to_try = [
-                f"{lift_id}/ElevatorEcoSystAssignment/iTaskType",
-                f"{lift_id}.ElevatorEcoSystAssignment.iTaskType",
-                f"{lift_id}/Eco_iTaskType"
-            ]
+
+        elevator_id_str = self._get_elevator_identifier(lift_id)
+        station_idx_for_opc_node = self._get_station_index(lift_id)
+
+        if elevator_id_str is None or station_idx_for_opc_node is None:
+            logger.error(f"Cannot determine OPC identifiers for GUI lift ID: {lift_id} in clear_task")
+            messagebox.showerror("Internal Error", "Could not determine OPC identifiers for clear_task.")
+            return
             
-            success = False
-            for path in paths_to_try:
-                # Use Int64 for task type reset as well, to be consistent
-                result = await self.opcua_client.write_value(path, 0, ua.VariantType.Int64)
-                if result:
-                    logger.info(f"Successfully cleared task via {path}")
-                    success = True
-                    break
-            
-            if not success:
-                messagebox.showerror("OPC UA Error", f"Failed to clear task for {lift_id} - all paths failed.")
-                return
+        logger.info(f"Clearing task for {lift_id} ({elevator_id_str})")
+
+        async def _clear_task_async():
+            try:
+                # Path for ElevatorXEcoSystAssignment object
+                assignment_base_path = f"{self.ECO_TO_PLC_BASE}/{elevator_id_str}/Elevator{station_idx_for_opc_node + 1}EcoSystAssignment"
+                # Path for variables directly under ElevatorX object
+                lift_base_path = f"{self.ECO_TO_PLC_BASE}/{elevator_id_str}"
+
+                # Determine the correct OPC UA name for iCancelAssignment
+                cancel_assignment_opc_name = "iCancelAssignment" # Default correct spelling
+                if lift_id == LIFT1_ID: # LIFT1_ID is 'Lift1' from lift_visualization
+                    cancel_assignment_opc_name = "iCancelAssignent" # Typo for LIFT1_ID
+
+                # Reset task type in ElevatorXEcoSystAssignment
+                success_task_type = await self.opcua_client.write_value(f"{assignment_base_path}/iTaskType", 0, ua.VariantType.Int64)
                 
-            logger.info(f"Clear Task signal sent successfully to {lift_id}.")
-            
-        asyncio.create_task(clear_task_sequence())
+                # Reset cancel assignment directly under ElevatorX
+                success_cancel = await self.opcua_client.write_value(f"{lift_base_path}/{cancel_assignment_opc_name}", 0, ua.VariantType.Int64) # Changed to Int64
+                
+                # Also reset xAcknowledgeMovement if it's part of a "clear" operation's intent
+                success_ack = await self.opcua_client.write_value(f"{lift_base_path}/xAcknowledgeMovement", False, ua.VariantType.Boolean)
+
+
+                if success_task_type and success_cancel and success_ack:
+                    logger.info(f"Task cleared successfully for {lift_id} ({elevator_id_str}).")
+                else:
+                    logger.error(f"Failed to fully clear task for {lift_id} ({elevator_id_str}). Some OPC UA writes might have failed.")
+            except Exception as e:
+                logger.exception(f"Error clearing task for {lift_id}: {e}")
+                messagebox.showerror("Clear Task Error", f"An error occurred while clearing task for {lift_id}: {e}")
+
+        asyncio.create_task(_clear_task_async())
 
 async def run_gui(root):
     while True:

@@ -1,105 +1,570 @@
-2025-05-15 09:52:56,931 - PLCSim_DualLift - INFO - Starting PLC Simulator (Dual Lift)
-2025-05-15 09:52:56,932 - PLCSim_DualLift - INFO - Setting up dual-lift server on endpoint: opc.tcp://127.0.0.1:4860/gibas/plc/
-2025-05-15 09:52:59,321 - PLCSim_DualLift - INFO - Registered namespace with index: 2
-2025-05-15 09:52:59,836 - PLCSim_DualLift - INFO - Created LiftSystem object node
-2025-05-15 09:52:59,837 - PLCSim_DualLift - INFO - Creating system-level variables
-2025-05-15 09:52:59,837 - PLCSim_DualLift - INFO -   Created system variable iAmountOfSations (Int16) with value 2
-2025-05-15 09:52:59,838 - PLCSim_DualLift - INFO -   Created system variable iMainStatus (Int16) with value 1
-2025-05-15 09:52:59,838 - PLCSim_DualLift - INFO -   Created system variable iCancelAssignmentReson (Int16) with value 0
-2025-05-15 09:52:59,838 - PLCSim_DualLift - INFO -   Created system variable xWatchDog (Boolean) with value False
-2025-05-15 09:52:59,839 - PLCSim_DualLift - INFO - Creating variables for Lift1
-2025-05-15 09:52:59,839 - PLCSim_DualLift - INFO - Created StationData object for Lift1
-2025-05-15 09:52:59,839 - PLCSim_DualLift - INFO - Created Handshake object for Lift1
-2025-05-15 09:52:59,839 - PLCSim_DualLift - INFO -   Created variable iMainStatus (Int16) for Lift1
-2025-05-15 09:52:59,840 - PLCSim_DualLift - INFO -   Created variable iCancelAssignmentReson (String) for Lift1
-2025-05-15 09:52:59,840 - PLCSim_DualLift - INFO -   Created variable iElevatorRowLocation (Int16) for Lift1
-2025-05-15 09:52:59,840 - PLCSim_DualLift - INFO -   Created variable xTrayInElevator (Boolean) for Lift1
-2025-05-15 09:52:59,841 - PLCSim_DualLift - INFO -   Created variable iCurrentForkSide (Int16) for Lift1
-2025-05-15 09:52:59,841 - PLCSim_DualLift - INFO -   Created variable iErrorCode (Int16) for Lift1
-2025-05-15 09:52:59,841 - PLCSim_DualLift - INFO -   Created variable xClearError (Boolean) for Lift1
-2025-05-15 09:52:59,842 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iTaskType (Int16) for Lift1
-2025-05-15 09:52:59,842 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iOrigination (Int16) for Lift1
-2025-05-15 09:52:59,842 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iDestination (Int16) for Lift1
-2025-05-15 09:52:59,842 - PLCSim_DualLift - INFO -   Created variable sSeq_Step_comment (String) for Lift1
-2025-05-15 09:52:59,843 - PLCSim_DualLift - INFO -   Created variable StationData.iCycle (Int16) for Lift1
-2025-05-15 09:52:59,843 - PLCSim_DualLift - INFO -   Created variable StationData.iStationStatus (Int16) for Lift1
-2025-05-15 09:52:59,843 - PLCSim_DualLift - INFO -   Created variable StationData.sStationStateDescription (String) for Lift1
-2025-05-15 09:52:59,844 - PLCSim_DualLift - INFO -   Created variable StationData.sShortAlarmDescription (String) for Lift1
-2025-05-15 09:52:59,845 - PLCSim_DualLift - INFO -   Created variable StationData.sAlarmSolution (String) for Lift1
-2025-05-15 09:52:59,845 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iRowNr (Int16) for Lift1
-2025-05-15 09:52:59,845 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iJobType (Int16) for Lift1
-2025-05-15 09:52:59,846 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iTaskType (Int64) for Lift1
-2025-05-15 09:52:59,846 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iOrigination (Int64) for Lift1
-2025-05-15 09:52:59,847 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iDestination (Int64) for Lift1
-2025-05-15 09:52:59,847 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.xAcknowledgeMovement (Boolean) for Lift1
-2025-05-15 09:52:59,847 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iCancelAssignmentReson (Int16) for Lift1
-2025-05-15 09:52:59,848 - PLCSim_DualLift - INFO - Creating variables for Lift2
-2025-05-15 09:52:59,848 - PLCSim_DualLift - INFO - Created StationData object for Lift2
-2025-05-15 09:52:59,848 - PLCSim_DualLift - INFO - Created Handshake object for Lift2
-2025-05-15 09:52:59,849 - PLCSim_DualLift - INFO -   Created variable iMainStatus (Int16) for Lift2
-2025-05-15 09:52:59,849 - PLCSim_DualLift - INFO -   Created variable iCancelAssignmentReson (String) for Lift2
-2025-05-15 09:52:59,849 - PLCSim_DualLift - INFO -   Created variable iElevatorRowLocation (Int16) for Lift2
-2025-05-15 09:52:59,850 - PLCSim_DualLift - INFO -   Created variable xTrayInElevator (Boolean) for Lift2
-2025-05-15 09:52:59,850 - PLCSim_DualLift - INFO -   Created variable iCurrentForkSide (Int16) for Lift2
-2025-05-15 09:52:59,850 - PLCSim_DualLift - INFO -   Created variable iErrorCode (Int16) for Lift2
-2025-05-15 09:52:59,851 - PLCSim_DualLift - INFO -   Created variable xClearError (Boolean) for Lift2
-2025-05-15 09:52:59,851 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iTaskType (Int16) for Lift2
-2025-05-15 09:52:59,851 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iOrigination (Int16) for Lift2
-2025-05-15 09:52:59,852 - PLCSim_DualLift - INFO -   Created variable ActiveElevatorAssignment_iDestination (Int16) for Lift2
-2025-05-15 09:52:59,852 - PLCSim_DualLift - INFO -   Created variable sSeq_Step_comment (String) for Lift2
-2025-05-15 09:52:59,852 - PLCSim_DualLift - INFO -   Created variable StationData.iCycle (Int16) for Lift2
-2025-05-15 09:52:59,853 - PLCSim_DualLift - INFO -   Created variable StationData.iStationStatus (Int16) for Lift2
-2025-05-15 09:52:59,853 - PLCSim_DualLift - INFO -   Created variable StationData.sStationStateDescription (String) for Lift2
-2025-05-15 09:52:59,853 - PLCSim_DualLift - INFO -   Created variable StationData.sShortAlarmDescription (String) for Lift2
-2025-05-15 09:52:59,854 - PLCSim_DualLift - INFO -   Created variable StationData.sAlarmSolution (String) for Lift2
-2025-05-15 09:52:59,854 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iRowNr (Int16) for Lift2
-2025-05-15 09:52:59,854 - PLCSim_DualLift - INFO -   Created variable StationData.Handshake.iJobType (Int16) for Lift2
-2025-05-15 09:52:59,855 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iTaskType (Int64) for Lift2
-2025-05-15 09:52:59,855 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iOrigination (Int64) for Lift2
-2025-05-15 09:52:59,856 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iDestination (Int64) for Lift2
-2025-05-15 09:52:59,856 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.xAcknowledgeMovement (Boolean) for Lift2
-2025-05-15 09:52:59,856 - PLCSim_DualLift - INFO -   Created variable ElevatorEcoSystAssignment.iCancelAssignmentReson (Int16) for Lift2
-2025-05-15 09:52:59,856 - PLCSim_DualLift - INFO - OPC UA Server Variables Initialized
-2025-05-15 09:52:59,857 - PLCSim_DualLift - INFO - Dual Lift PLC Simulator Server Started.
-2025-05-15 09:53:04,018 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=1, Origin=5, Dest=76
-2025-05-15 09:53:04,020 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 10 -> 25
-2025-05-15 09:53:04,210 - PLCSim_DualLift - INFO - [Lift1] Cycle 25: Routing TaskType 1. Origin: 5, Dest: 76
-2025-05-15 09:53:04,210 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 25 -> 90
-2025-05-15 09:53:04,415 - PLCSim_DualLift - INFO - [Lift1] FullAssignment: Job accepted. Signaling EcoSystem for origin 5.
-2025-05-15 09:53:04,416 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 90 -> 95
-2025-05-15 09:53:05,768 - PLCSim_DualLift - INFO - [Lift1] FullAssignment: Acknowledge for origin 5 received. Proceeding.
-2025-05-15 09:53:05,768 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 95 -> 100
-2025-05-15 09:53:05,981 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 100 -> 102
-2025-05-15 09:53:06,199 - PLCSim_DualLift - INFO - [Lift1] Already at Origin 5
-2025-05-15 09:53:06,199 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 102 -> 150
-2025-05-15 09:53:06,377 - PLCSim_DualLift - INFO - [Lift1] Moving forks to 1 for pickup
-2025-05-15 09:53:07,383 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 1
-2025-05-15 09:53:07,565 - PLCSim_DualLift - INFO - [Lift1] Forks already at correct side for pickup
-2025-05-15 09:53:07,565 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 150 -> 155
-2025-05-15 09:53:07,786 - PLCSim_DualLift - INFO - [Lift1] Picked up load
-2025-05-15 09:53:07,787 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 155 -> 160
-2025-05-15 09:53:08,004 - PLCSim_DualLift - INFO - [Lift1] Moving forks to middle position
-2025-05-15 09:53:08,189 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 0
-2025-05-15 09:53:08,378 - PLCSim_DualLift - INFO - [Lift1] Forks at middle position after pickup.
-2025-05-15 09:53:08,379 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 160 -> 190
-2025-05-15 09:53:08,594 - PLCSim_DualLift - INFO - [Lift1] FullAssignment: Forks at middle. Signaling move to destination 76.
-2025-05-15 09:53:08,594 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 190 -> 195
-2025-05-15 09:53:09,956 - PLCSim_DualLift - INFO - [Lift1] FullAssignment: Acknowledge for destination 76 received. Proceeding.
-2025-05-15 09:53:09,957 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 195 -> 400
-2025-05-15 09:53:10,171 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 400 -> 410
-2025-05-15 09:53:10,346 - PLCSim_DualLift - INFO - [Lift1] BringAway: Initiating engine move from 5 to 76
-2025-05-15 09:53:12,502 - PLCSim_DualLift - INFO - [Lift1] Engine movement finished. Reached: 76
-2025-05-15 09:53:12,714 - PLCSim_DualLift - INFO - [Lift1] BringAway: Engine movement to 76 complete or already there.
-2025-05-15 09:53:12,715 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 410 -> 420
-2025-05-15 09:53:15,334 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 420 -> 430
-2025-05-15 09:53:15,736 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 2
-2025-05-15 09:53:15,953 - PLCSim_DualLift - INFO - [Lift1] BringAway: Forks already at side 2 for placing.
-2025-05-15 09:53:15,954 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 430 -> 435
-2025-05-15 09:53:16,143 - PLCSim_DualLift - INFO - [Lift1] BringAway: Forks at side. Placing tray at 76.
-2025-05-15 09:53:16,143 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 435 -> 440
-2025-05-15 09:53:16,562 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 0
-2025-05-15 09:53:16,738 - PLCSim_DualLift - INFO - [Lift1] BringAway: Forks already at middle after placing.
-2025-05-15 09:53:16,738 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 440 -> 450
-2025-05-15 09:53:16,953 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 450 -> 460
-2025-05-15 09:53:17,156 - PLCSim_DualLift - INFO - [Lift1] Job type 1 (BringAway) fully completed. Clearing active and EcoSystem job.
-2025-05-15 09:53:17,157 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 460 -> 10
+2025-05-16 16:15:35,422 - PLCSim_DualLift - INFO - Starting PLC Simulator (Dual Lift)
+2025-05-16 16:15:35,423 - PLCSim_DualLift - INFO - Setting up dual-lift server on endpoint: opc.tcp://127.0.0.1:4860/gibas/plc/ with Di_Call_Blocks/OPC_UA structure
+2025-05-16 16:15:37,557 - PLCSim_DualLift - INFO - Registered namespace 'http://gibas.com/plc/' with index: 2
+2025-05-16 16:15:37,560 - PLCSim_DualLift - INFO -   Created Di_Call_Blocks/OPC_UA/PlcToEco/iAmountOfSations
+2025-05-16 16:15:37,560 - PLCSim_DualLift - INFO -   Created Di_Call_Blocks/OPC_UA/PlcToEco/iMainStatus
+2025-05-16 16:15:37,561 - PLCSim_DualLift - INFO -   Created Di_Call_Blocks/OPC_UA/EcoToPlc/xWatchDog
+2025-05-16 16:15:37,562 - PLCSim_DualLift - INFO -   Created Di_Call_Blocks/OPC_UA/PlcToEco/StationData/0 for Lift1
+2025-05-16 16:15:37,562 - PLCSim_DualLift - INFO -     Var: iCycle under StationData/0
+2025-05-16 16:15:37,563 - PLCSim_DualLift - INFO -     Var: iStationStatus under StationData/0
+2025-05-16 16:15:37,563 - PLCSim_DualLift - INFO -     Var: sStationStateDescription under StationData/0
+2025-05-16 16:15:37,564 - PLCSim_DualLift - INFO -     Var: sShortAlarmDescription under StationData/0
+2025-05-16 16:15:37,564 - PLCSim_DualLift - INFO -     Var: sAlarmSolution under StationData/0
+2025-05-16 16:15:37,565 - PLCSim_DualLift - INFO -     Var: iCancelAssignment under StationData/0
+2025-05-16 16:15:37,565 - PLCSim_DualLift - INFO -     Var: Handshake/iRowNr under StationData/0
+2025-05-16 16:15:37,567 - PLCSim_DualLift - INFO -     Var: Handshake/iJobType under StationData/0
+2025-05-16 16:15:37,567 - PLCSim_DualLift - INFO -   Created Di_Call_Blocks/OPC_UA/PlcToEco/Elevator1 for Lift1
+2025-05-16 16:15:37,568 - PLCSim_DualLift - INFO -     Var: iElevatorRowLocation under PlcToEco/Elevator1
+2025-05-16 16:15:37,568 - PLCSim_DualLift - INFO -     Var: xTrayInElevator under PlcToEco/Elevator1
+2025-05-16 16:15:37,569 - PLCSim_DualLift - INFO -     Var: iCurrentForkSide under PlcToEco/Elevator1
+2025-05-16 16:15:37,569 - PLCSim_DualLift - INFO -     Var: iErrorCode under PlcToEco/Elevator1
+2025-05-16 16:15:37,570 - PLCSim_DualLift - INFO -     Var: sSeq_Step_comment under PlcToEco/Elevator1
+2025-05-16 16:15:37,571 - PLCSim_DualLift - INFO -   Created Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment for Lift1
+2025-05-16 16:15:37,572 - PLCSim_DualLift - INFO -     Var: iTaskType under EcoToPlc/Elevator1/Elevator1EcoSystAssignment
+2025-05-16 16:15:37,573 - PLCSim_DualLift - INFO -     Var: iOrigination under EcoToPlc/Elevator1/Elevator1EcoSystAssignment
+2025-05-16 16:15:37,573 - PLCSim_DualLift - INFO -     Var: iDestination under EcoToPlc/Elevator1/Elevator1EcoSystAssignment
+2025-05-16 16:15:37,574 - PLCSim_DualLift - INFO -     Var: xAcknowledgeMovement under EcoToPlc/Elevator1
+2025-05-16 16:15:37,574 - PLCSim_DualLift - INFO -     Var: iCancelAssignent under EcoToPlc/Elevator1
+2025-05-16 16:15:37,574 - PLCSim_DualLift - INFO -   Created Di_Call_Blocks/OPC_UA/PlcToEco/StationData/1 for Lift2
+2025-05-16 16:15:37,575 - PLCSim_DualLift - INFO -     Var: iCycle under StationData/1
+2025-05-16 16:15:37,575 - PLCSim_DualLift - INFO -     Var: iStationStatus under StationData/1
+2025-05-16 16:15:37,576 - PLCSim_DualLift - INFO -     Var: sStationStateDescription under StationData/1
+2025-05-16 16:15:37,576 - PLCSim_DualLift - INFO -     Var: sShortAlarmDescription under StationData/1
+2025-05-16 16:15:37,576 - PLCSim_DualLift - INFO -     Var: sAlarmSolution under StationData/1
+2025-05-16 16:15:37,577 - PLCSim_DualLift - INFO -     Var: iCancelAssignment under StationData/1
+2025-05-16 16:15:37,577 - PLCSim_DualLift - INFO -     Var: Handshake/iRowNr under StationData/1
+2025-05-16 16:15:37,578 - PLCSim_DualLift - INFO -     Var: Handshake/iJobType under StationData/1
+2025-05-16 16:15:37,578 - PLCSim_DualLift - INFO -   Created Di_Call_Blocks/OPC_UA/PlcToEco/Elevator2 for Lift2
+2025-05-16 16:15:37,579 - PLCSim_DualLift - INFO -     Var: iElevatorRowLocation under PlcToEco/Elevator2
+2025-05-16 16:15:37,579 - PLCSim_DualLift - INFO -     Var: xTrayInElevator under PlcToEco/Elevator2
+2025-05-16 16:15:37,580 - PLCSim_DualLift - INFO -     Var: iCurrentForkSide under PlcToEco/Elevator2
+2025-05-16 16:15:37,580 - PLCSim_DualLift - INFO -     Var: iErrorCode under PlcToEco/Elevator2
+2025-05-16 16:15:37,581 - PLCSim_DualLift - INFO -     Var: sSeq_Step_comment under PlcToEco/Elevator2
+2025-05-16 16:15:37,581 - PLCSim_DualLift - INFO -   Created Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment for Lift2
+2025-05-16 16:15:37,582 - PLCSim_DualLift - INFO -     Var: iTaskType under EcoToPlc/Elevator2/Elevator2EcoSystAssignment
+2025-05-16 16:15:37,582 - PLCSim_DualLift - INFO -     Var: iOrigination under EcoToPlc/Elevator2/Elevator2EcoSystAssignment
+2025-05-16 16:15:37,582 - PLCSim_DualLift - INFO -     Var: iDestination under EcoToPlc/Elevator2/Elevator2EcoSystAssignment
+2025-05-16 16:15:37,583 - PLCSim_DualLift - INFO -     Var: xAcknowledgeMovement under EcoToPlc/Elevator2
+2025-05-16 16:15:37,583 - PLCSim_DualLift - INFO -     Var: iCancelAssignment under EcoToPlc/Elevator2
+2025-05-16 16:15:37,583 - PLCSim_DualLift - INFO - OPC UA Server Variables Initialized with Di_Call_Blocks/OPC_UA structure
+2025-05-16 16:15:37,584 - PLCSim_DualLift - INFO - Dual Lift PLC Simulator Server Started.
+2025-05-16 16:16:01,548 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=1, Origin=5, Dest=80
+2025-05-16 16:16:01,548 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 10 -> 25
+2025-05-16 16:16:01,757 - PLCSim_DualLift - INFO - [Lift1] Cycle 25: Routing TaskType 1. Origin: 5, Dest: 80
+2025-05-16 16:16:01,757 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 25 -> 90
+2025-05-16 16:16:01,938 - PLCSim_DualLift - INFO - [Lift1] FullAssignment: Job accepted. Signaling EcoSystem for origin 5.
+2025-05-16 16:16:01,938 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 90 -> 95
+2025-05-16 16:16:04,171 - PLCSim_DualLift - INFO - [Lift1] FullAssignment: Acknowledge for origin 5 received. Proceeding.
+2025-05-16 16:16:04,172 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 95 -> 100
+2025-05-16 16:16:04,389 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 100 -> 102
+2025-05-16 16:16:04,595 - PLCSim_DualLift - INFO - [Lift1] Already at Origin 5
+2025-05-16 16:16:04,596 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 102 -> 150
+2025-05-16 16:16:04,818 - PLCSim_DualLift - INFO - [Lift1] Moving forks to 1 for pickup
+2025-05-16 16:16:05,996 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 1
+2025-05-16 16:16:06,175 - PLCSim_DualLift - INFO - [Lift1] Forks already at correct side for pickup
+2025-05-16 16:16:06,175 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 150 -> 155
+2025-05-16 16:16:06,380 - PLCSim_DualLift - INFO - [Lift1] Picked up load
+2025-05-16 16:16:06,380 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 155 -> 160
+2025-05-16 16:16:06,573 - PLCSim_DualLift - INFO - [Lift1] Moving forks to middle position
+2025-05-16 16:16:06,779 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 0
+2025-05-16 16:16:06,955 - PLCSim_DualLift - INFO - [Lift1] Forks at middle position after pickup.
+2025-05-16 16:16:06,955 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 160 -> 190
+2025-05-16 16:16:07,165 - PLCSim_DualLift - INFO - [Lift1] FullAssignment: Forks at middle. Signaling move to destination 80.
+2025-05-16 16:16:07,165 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 190 -> 195
+2025-05-16 16:16:35,389 - PLCSim_DualLift - INFO - [Lift1] FullAssignment: Acknowledge for destination 80 received. Proceeding.
+2025-05-16 16:16:35,390 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 195 -> 400
+2025-05-16 16:16:35,592 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 400 -> 410
+2025-05-16 16:16:35,795 - PLCSim_DualLift - INFO - [Lift1] BringAway: Initiating engine move from 5 to 80
+2025-05-16 16:16:37,819 - PLCSim_DualLift - INFO - [Lift1] Engine movement finished. Reached: 80
+2025-05-16 16:16:38,000 - PLCSim_DualLift - INFO - [Lift1] BringAway: Engine movement to 80 complete or already there.
+2025-05-16 16:16:38,001 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 410 -> 420
+2025-05-16 16:16:39,976 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 420 -> 430
+2025-05-16 16:16:40,364 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 2
+2025-05-16 16:16:40,547 - PLCSim_DualLift - INFO - [Lift1] BringAway: Forks already at side 2 for placing.
+2025-05-16 16:16:40,548 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 430 -> 435
+2025-05-16 16:16:40,755 - PLCSim_DualLift - INFO - [Lift1] BringAway: Forks at side. Placing tray at 80.
+2025-05-16 16:16:40,755 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 435 -> 440
+2025-05-16 16:16:41,163 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 0
+2025-05-16 16:16:41,344 - PLCSim_DualLift - INFO - [Lift1] BringAway: Forks already at middle after placing.
+2025-05-16 16:16:41,345 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 440 -> 450
+2025-05-16 16:16:41,553 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 450 -> 460
+2025-05-16 16:16:41,735 - PLCSim_DualLift - INFO - [Lift1] Job type 1 (BringAway or FullAssignment) fully completed. Clearing active and EcoSystem job.
+2025-05-16 16:16:41,736 - PLCSim_DualLift - INFO - [Lift1] DIAGNOSTIC: Reading back Eco_iTaskType after attempting to clear.
+2025-05-16 16:16:41,736 - PLCSim_DualLift - ERROR - [Lift1] DIAGNOSTIC: Error reading back Eco_iTaskType: 'PLCSimulator_DualLift' object has no attribute '_get_node_path'
+2025-05-16 16:16:41,737 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 460 -> 10
+2025-05-16 16:20:26,020 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:26,020 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:26,020 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:26,020 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:26,224 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:26,225 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:26,225 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:26,225 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:26,439 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:26,439 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:26,439 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:26,441 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:26,627 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:26,627 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:26,627 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:26,628 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:26,829 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:26,830 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:26,831 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:26,831 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:27,017 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:27,017 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:27,018 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:27,018 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:27,220 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:27,221 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:27,221 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:27,221 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:27,408 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:27,408 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:27,408 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:27,409 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:27,624 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:27,624 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:27,625 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:27,625 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:27,814 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:27,814 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:27,814 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:27,814 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:28,017 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:28,017 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:28,017 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:28,017 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:28,204 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:28,204 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:28,204 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:28,205 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:28,421 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:28,422 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:28,422 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:28,422 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:28,610 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:28,611 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:28,611 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:28,611 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:28,826 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:28,826 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:28,827 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:28,827 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:29,002 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:29,002 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:29,002 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:29,003 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:29,230 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:29,231 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:29,231 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:29,231 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:29,407 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:29,408 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:29,408 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:29,408 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:29,621 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:29,622 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:29,622 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:29,622 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:29,824 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:29,824 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:29,825 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:29,825 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:30,026 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:30,027 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:30,027 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:30,028 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:30,227 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:30,228 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:30,228 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:30,228 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:30,430 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:30,431 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:30,431 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:30,432 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:30,648 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:30,649 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:30,649 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:30,649 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:30,830 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:30,830 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:30,830 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:30,830 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:31,027 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:31,027 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:31,028 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:31,028 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:31,228 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:31,230 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:31,230 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:31,230 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:31,446 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:31,446 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:31,446 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:31,447 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:31,625 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:31,626 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:31,626 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:31,626 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:31,838 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:31,839 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:31,839 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:31,839 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:32,029 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:32,029 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:32,029 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:32,029 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:32,245 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:32,245 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:32,246 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:32,246 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:32,422 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:32,423 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:32,423 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:32,423 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:32,651 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:32,651 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:32,652 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:32,652 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:32,829 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:32,829 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:32,829 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:32,830 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:33,027 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:33,027 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:33,027 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:33,028 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:33,204 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:33,205 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:33,205 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:33,205 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:33,416 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:33,417 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:33,417 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:33,417 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:33,594 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:33,594 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:33,594 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:33,595 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:33,804 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:33,805 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:33,805 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:33,805 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:33,985 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:33,985 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:33,986 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:33,986 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:34,193 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:34,195 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:34,195 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:34,195 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:34,376 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:34,376 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:34,376 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:34,376 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:34,584 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:34,585 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:34,585 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:34,585 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:34,765 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:34,766 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:34,766 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:34,767 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:34,976 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:34,976 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:34,977 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:34,977 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:35,158 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:35,158 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:35,159 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:35,159 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:35,380 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:35,381 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:35,381 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:35,381 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:35,564 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:35,564 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:35,564 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:35,564 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:35,767 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:35,768 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:35,768 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:35,768 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:35,955 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:35,955 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:35,956 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:35,956 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:36,174 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:36,175 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:36,175 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:36,175 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:36,360 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:36,360 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:36,361 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:36,361 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:36,581 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:36,581 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:36,582 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:36,582 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:36,766 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:36,766 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:36,766 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:36,767 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:36,974 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:36,974 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:36,974 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:36,974 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:37,158 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:37,159 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:37,159 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:37,159 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:37,363 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:37,364 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:37,364 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:37,364 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:37,548 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:37,548 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:37,549 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:37,549 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:37,751 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:37,752 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:37,752 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:37,752 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:37,938 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:37,938 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:37,938 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:37,939 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:38,139 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:38,140 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:38,140 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:38,140 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:38,314 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:38,315 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:38,315 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:38,315 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:38,528 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:38,528 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:38,529 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:38,529 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:38,705 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:38,706 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:38,706 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:38,706 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:38,932 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:38,933 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:38,933 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:38,934 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:39,111 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:39,111 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:39,112 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:39,112 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:39,323 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:39,325 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:39,325 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:39,325 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:39,500 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:39,501 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:39,501 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:39,501 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:39,716 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:39,716 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:39,717 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:39,717 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:39,891 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:39,892 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:39,892 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:39,892 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:40,094 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:40,095 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:40,095 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:40,095 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:40,282 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:40,282 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:40,283 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:40,283 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:40,486 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:40,487 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:40,487 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:40,487 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:40,674 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:40,674 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:40,674 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:40,674 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:40,894 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:40,894 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:40,894 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:40,894 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:41,110 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:41,110 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:41,111 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:41,111 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:41,312 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:41,314 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:41,314 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:41,314 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:41,532 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:41,532 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:41,534 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:41,534 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:41,719 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:41,720 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:41,720 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:41,720 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:41,939 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:41,940 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:41,940 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:41,941 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:42,125 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:42,125 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:42,126 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:42,126 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:42,341 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:42,342 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:42,342 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:42,342 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:42,516 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:42,517 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:42,517 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:42,517 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:42,732 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:42,733 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:42,733 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:42,733 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:42,907 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:42,908 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:42,908 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:42,908 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:43,108 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:43,109 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:43,109 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:43,110 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:43,298 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:43,298 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:43,298 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:43,298 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:43,516 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:43,517 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:43,517 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:43,517 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:43,704 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:43,704 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:43,704 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:43,705 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:43,923 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:43,923 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:43,924 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:43,924 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:44,111 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:44,111 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:44,112 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:44,112 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:44,315 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:44,316 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:44,316 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:44,316 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:44,535 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:44,536 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:44,536 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:44,536 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:44,731 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:44,731 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:44,732 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:44,732 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:44,944 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:44,945 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:44,945 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:44,946 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:45,146 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:45,147 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:45,147 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:45,147 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:45,349 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:45,350 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:45,350 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:45,351 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:45,554 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:45,555 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:45,555 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:45,555 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:45,736 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:45,737 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:45,737 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:45,738 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:45,944 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:45,945 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:45,945 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:45,945 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:46,125 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:46,126 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:46,126 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:46,126 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:46,336 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:46,337 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:46,337 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:46,337 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:46,526 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:46,526 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:46,527 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:46,527 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:46,705 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:46,706 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:46,706 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:46,707 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:46,914 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:46,914 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:46,914 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:46,915 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:47,095 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:47,096 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:47,096 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:47,097 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:47,316 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:47,317 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:47,317 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:47,318 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:47,501 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:47,501 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:47,502 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:47,502 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:47,706 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:47,706 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:47,706 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:47,707 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:47,891 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:47,892 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:47,892 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:47,893 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:48,096 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:48,097 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:48,097 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:48,097 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:48,283 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:48,284 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:48,284 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:48,284 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:48,487 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:48,487 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:48,488 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:48,488 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:48,672 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:48,672 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:48,674 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:48,674 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:48,878 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:48,879 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:48,879 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:48,879 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:49,063 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-16 16:20:49,063 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My lift's planned path (5, 90) overlaps with other lift's path/position (80, 80).
+2025-05-16 16:20:49,065 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other\'s range: (80, 80)
+2025-05-16 16:20:49,065 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-16 16:20:49,174 - PLCSim_DualLift - INFO - Received signal 2, shutting down gracefully...
+2025-05-16 16:20:49,175 - PLCSim_DualLift - INFO - Dual Lift PLC Simulator Stopping...
+2025-05-16 16:20:50,210 - PLCSim_DualLift - INFO - Received signal 2, shutting down gracefully...
+2025-05-16 16:20:50,210 - PLCSim_DualLift - INFO - Dual Lift PLC Simulator Stopping...
+2025-05-16 16:20:50,211 - PLCSim_DualLift - INFO - Received signal 2, shutting down gracefully...
+2025-05-16 16:20:51,037 - PLCSim_DualLift - INFO - PLC Simulator shutting down...
+2025-05-16 16:20:51,037 - PLCSim_DualLift - INFO - Dual Lift PLC Simulator Stopping...
+2025-05-16 16:20:51,039 - PLCSim_DualLift - INFO - Exiting application
