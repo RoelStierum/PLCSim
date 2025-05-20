@@ -41,7 +41,6 @@ iStationStatus:
 11 = Stop
 
 
-Here are the variables with their full names, extracted from the provided information:
 
 From PlcToEco (PLC to EcoSystem):
 

@@ -89,6 +89,11 @@ class EcoSystemGUI_DualLift_ST:
         self.PLC_TO_ECO_BASE = "Di_Call_Blocks/OPC_UA/PlcToEco"
         self.ECO_TO_PLC_BASE = "Di_Call_Blocks/OPC_UA/EcoToPlc"
 
+        # Global Handshake Data
+        self.global_handshake_job_type = 0
+        self.global_handshake_row_nr = 0
+        self._prev_global_ack_state = False # Tracks if PLC was awaiting global ack
+
         # For system stack light
         self.system_stack_light_canvas = None
         self.system_stack_light_red_rect = None
@@ -184,7 +189,8 @@ class EcoSystemGUI_DualLift_ST:
         """Creates the warehouse visualization frame and canvas."""
         vis_frame = ttk.LabelFrame(parent_frame, text="Warehouse Visualization", padding=10)
         # Set expand to False for vis_frame so it only takes the width of the canvas
-        vis_frame.pack(side=tk.LEFT, fill=tk.Y, expand=False, padx=10, pady=5) # Changed fill to tk.Y and expand to False
+        # Adjusted padx to (20, 10) to give more space on the left of the visualization frame
+        vis_frame.pack(side=tk.LEFT, fill=tk.Y, expand=False, padx=(20, 10), pady=5) # Changed fill to tk.Y and expand to False
         from lift_visualization import CANVAS_WIDTH, CANVAS_HEIGHT # Import canvas dimensions
         self.shared_canvas = tk.Canvas(vis_frame, width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg='#EAEAEA')
         # Canvas should fill the space given to vis_frame (which is now minimal)
@@ -441,7 +447,6 @@ class EcoSystemGUI_DualLift_ST:
             self.update_system_stack_light('off')
             return
 
-        # Check for errors in any lift
         any_lift_in_error = False
         for lift_id in LIFTS:
             lift_data = self.all_lift_data_cache.get(lift_id, {})
@@ -453,19 +458,17 @@ class EcoSystemGUI_DualLift_ST:
             self.update_system_stack_light('error') # Red
             return
 
-        # Check if any lift is busy (e.g., iCycle not 0 or 10, or handshake needed)
-        # This is a simplified check; you might need more specific logic
+        # Check if global handshake is needed or any lift is performing an active cycle
         any_lift_busy = False
-        for lift_id in LIFTS:
-            lift_data = self.all_lift_data_cache.get(lift_id, {})
-            plc_cycle = self._safe_get_int_from_data(lift_data, "iCycle", -1)
-            ack_type = self._safe_get_int_from_data(lift_data, "iJobType") 
-            if plc_cycle not in [0, 10] and plc_cycle > 0 : # Active cycle
-                any_lift_busy = True
-                break
-            if ack_type > 0: # Awaiting acknowledgement
-                any_lift_busy = True
-                break
+        if self.global_handshake_job_type > 0:
+            any_lift_busy = True
+        else:
+            for lift_id in LIFTS:
+                lift_data = self.all_lift_data_cache.get(lift_id, {})
+                plc_cycle = self._safe_get_int_from_data(lift_data, "iCycle", -1)
+                if plc_cycle not in [0, 10] and plc_cycle > 0 : # Active cycle
+                    any_lift_busy = True
+                    break
         
         if any_lift_busy:
             self.update_system_stack_light('busy') # Yellow
@@ -525,34 +528,28 @@ class EcoSystemGUI_DualLift_ST:
 
     async def _monitor_plc(self):
         """Periodically reads data from the PLC and updates the GUI."""
-        # vars_to_read_map: GUI_KEY: (PATH_TYPE, path_template_or_exact_subpath)
-        # PATH_TYPE 'StationData': template uses {{idx}}, path is GVL_OPC/PlcToEco/StationData/{{idx}}/TEMPLATE
-        # PATH_TYPE 'Elevator': template is direct subpath, path is GVL_OPC/PlcToEco/{{elevator_id_str}}/TEMPLATE
         vars_to_read_map = {
             "iCycle": ("StationData", "iCycle"),
-            "iStatus": ("StationData", "iStationStatus"), # Maps to iStationStatus in interface.txt
-            "sSeq_Step_comment": ("Elevator", "sSeq_Step_comment"), # Corrected: Maps to ElevatorX/sSeq_Step_comment
-            "iJobType": ("StationData", "Handshake/iJobType"),
-            "iCancelAssignmentReasonCode": ("StationData", "iCancelAssignment"), # Maps to iCancelAssignment
-            "sErrorShortDescription": ("StationData", "sShortAlarmDescription"), # Maps to sShortAlarmDescription
-            "sErrorSolution": ("StationData", "sAlarmSolution"), # Maps to sAlarmSolution
-            
-            # These are expected by GUI but not in interface.txt's StationDataToEco. Reading from ElevatorX path.
+            "iStatus": ("StationData", "iStationStatus"),
+            "sSeq_Step_comment": ("Elevator", "sSeq_Step_comment"),
+            # "iJobType" is now global, removed from here
+            "iCancelAssignmentReasonCode": ("StationData", "iCancelAssignment"),
+            "sErrorShortDescription": ("StationData", "sShortAlarmDescription"),
+            "sErrorSolution": ("StationData", "sAlarmSolution"),
             "iElevatorRowLocation": ("Elevator", "iElevatorRowLocation"),
             "xTrayInElevator": ("Elevator", "xTrayInElevator"),
             "iCurrentForkSide": ("Elevator", "iCurrentForkSide"),
-            "iErrorCode": ("Elevator", "iErrorCode"), # GUI expects iErrorCode; PLCSim provides this path (No "Error/" subfolder)
-            "sErrorMessage": ("Elevator", "sSeq_Step_comment"), # PLCSim provides sSeq_Step_comment under ElevatorX, let's map GUI's sErrorMessage to this for now.
-                                                              # interface.txt does not specify sErrorMessage under PlcToEco/ElevatorX
+            "iErrorCode": ("Elevator", "iErrorCode"),
+            "sErrorMessage": ("Elevator", "sSeq_Step_comment"),
         }
 
         while self.is_connected:
             try:
                 any_update_failed = False
                 for lift_id in LIFTS: # LIFT1_ID, LIFT2_ID
-                    current_lift_data = self.all_lift_data_cache.get(lift_id, {}).copy() # Work with a copy
-                    station_idx_for_opc = self._get_station_index(lift_id) # 0 for Lift1, 1 for Lift2
-                    elevator_id_str = self._get_elevator_identifier(lift_id) # "Elevator1", "Elevator2"
+                    current_lift_data = self.all_lift_data_cache.get(lift_id, {}).copy()
+                    station_idx_for_opc = self._get_station_index(lift_id)
+                    elevator_id_str = self._get_elevator_identifier(lift_id)
 
                     if station_idx_for_opc is None or elevator_id_str is None:
                         logger.error(f"Cannot determine OPC identifiers for GUI lift ID: {lift_id}")
@@ -562,7 +559,6 @@ class EcoSystemGUI_DualLift_ST:
                     for gui_key, (path_type, sub_path_template) in vars_to_read_map.items():
                         full_opc_path = ""
                         if path_type == "StationData":
-                            # Corrected path construction:
                             full_opc_path = f"{self.PLC_TO_ECO_BASE}/StationData/{station_idx_for_opc}/{sub_path_template}"
                         elif path_type == "Elevator":
                             full_opc_path = f"{self.PLC_TO_ECO_BASE}/{elevator_id_str}/{sub_path_template}"
@@ -571,24 +567,53 @@ class EcoSystemGUI_DualLift_ST:
                             any_update_failed = True
                             continue
                         
-                        # logger.debug(f"Attempting to read OPC variable: {full_opc_path} for lift {lift_id}, gui_key {gui_key}")
                         value = await self.opcua_client.read_variable(full_opc_path)
                         if value is not None:
                             current_lift_data[gui_key] = value
                         else:
-                            # logger.warning(f"Failed to read {full_opc_path} for {lift_id}. Value is None.")
                             any_update_failed = True
-                            current_lift_data[gui_key] = None # Store None to indicate read failure for this var
+                            current_lift_data[gui_key] = None
 
                     self.all_lift_data_cache[lift_id] = current_lift_data
-                    self._update_gui_for_lift(lift_id, current_lift_data)
+                    # GUI update for lift-specific data will be called after global handshake read
+                    # self._update_gui_for_lift(lift_id, current_lift_data) # Moved down
+
+                # Read Global Handshake Data
+                global_job_type_path = f"{self.PLC_TO_ECO_BASE}/StationDataToEco/ExtraData/Handshake/iJobType"
+                global_row_nr_path = f"{self.PLC_TO_ECO_BASE}/StationDataToEco/ExtraData/Handshake/iRowNr"
+                
+                job_type_val = await self.opcua_client.read_variable(global_job_type_path)
+                row_nr_val = await self.opcua_client.read_variable(global_row_nr_path)
+
+                if job_type_val is not None:
+                    self.global_handshake_job_type = self._safe_get_int_from_data({'val': job_type_val}, 'val', default=0)
+                else:
+                    logger.warning(f"Failed to read global iJobType from {global_job_type_path}. Using previous value: {self.global_handshake_job_type}")
+                    any_update_failed = True
+                
+                if row_nr_val is not None:
+                    self.global_handshake_row_nr = self._safe_get_int_from_data({'val': row_nr_val}, 'val', default=0)
+                else:
+                    logger.warning(f"Failed to read global iRowNr from {global_row_nr_path}. Using previous value: {self.global_handshake_row_nr}")
+                    any_update_failed = True
+
+                # Log changes in global acknowledge state
+                current_global_ack_requested = self.global_handshake_job_type > 0
+                if current_global_ack_requested and not self._prev_global_ack_state:
+                    logger.info(f"Global Acknowledge requested by PLC (iJobType={self.global_handshake_job_type}, iRowNr={self.global_handshake_row_nr}).")
+                elif not current_global_ack_requested and self._prev_global_ack_state:
+                    logger.info(f"Global Acknowledge condition cleared by PLC (iJobType={self.global_handshake_job_type}).")
+                self._prev_global_ack_state = current_global_ack_requested
+
+                # Now update GUI for all lifts, including the global handshake status
+                for lift_id in LIFTS:
+                    self._update_gui_for_lift(lift_id, self.all_lift_data_cache.get(lift_id, {}))
 
                 self._determine_and_update_global_stack_light()
                 if any_update_failed:
-                    # logger.debug("One or more OPC reads failed in the cycle.") # Potentially log less frequently
                     pass
                 
-                await asyncio.sleep(0.25)  # Read interval (e.g., 250ms)
+                await asyncio.sleep(0.25)
             except asyncio.CancelledError:
                 logger.info("PLC monitoring task was cancelled.")
                 break
@@ -614,8 +639,6 @@ class EcoSystemGUI_DualLift_ST:
         if lift_id in self.status_labels and "sSeq_Step_comment" in self.status_labels[lift_id]:
             comment_widget = self.status_labels[lift_id]["sSeq_Step_comment"]
             new_comment = lift_data.get("sSeq_Step_comment", "ErrorRead")
-            # Only update if different to avoid flicker and preserve history if that's desired
-            # For now, always update based on deque history
             if new_comment != self.seq_step_history[lift_id][0] if self.seq_step_history[lift_id] else True:
                 self.seq_step_history[lift_id].appendleft(new_comment if new_comment is not None else "")
                 comment_widget.config(state=tk.NORMAL)
@@ -623,18 +646,13 @@ class EcoSystemGUI_DualLift_ST:
                 comment_widget.insert("1.0", "\n".join(self.seq_step_history[lift_id]))
                 comment_widget.config(state=tk.DISABLED)
 
-        # Update tray presence status (for BringAway job validation and visualization)
-        # This read is from xTrayInElevator (PlcToEco)
         tray_present_plc = lift_data.get("xTrayInElevator")
         if tray_present_plc is not None:
             self.lift_tray_status[lift_id] = bool(tray_present_plc)
-        # Visualization of tray is handled by lift_vis_manager based on this and other data
 
-        # Visualization update
-        # Prepare arguments for update_lift_visual_state
-        current_row_for_vis = self._safe_get_int_from_data(lift_data, "iElevatorRowLocation", default=1) # Default to row 1 if not found
-        has_tray_for_vis = bool(lift_data.get("xTrayInElevator", False)) # Default to False
-        fork_side_for_vis = self._safe_get_int_from_data(lift_data, "iCurrentForkSide", default=0) # Default to MiddenLocation (0)
+        current_row_for_vis = self._safe_get_int_from_data(lift_data, "iElevatorRowLocation", default=1)
+        has_tray_for_vis = bool(lift_data.get("xTrayInElevator", False))
+        fork_side_for_vis = self._safe_get_int_from_data(lift_data, "iCurrentForkSide", default=0)
         is_error_for_vis = self._safe_get_int_from_data(lift_data, "iErrorCode", default=0) != 0
         
         if self.lift_vis_manager:
@@ -649,30 +667,27 @@ class EcoSystemGUI_DualLift_ST:
             except Exception as e:
                 logger.error(f"Error calling update_lift_visual_state for {lift_id}: {e}")
 
-        # Update Handshake/Acknowledge section
+        # Update Handshake/Acknowledge section using GLOBAL handshake data
         if lift_id in self.ack_controls:
-            ack_type = self._safe_get_int_from_data(lift_data, "iJobType") # From Handshake/iJobType
+            # ack_type = self._safe_get_int_from_data(lift_data, "iJobType") # OLD: per-lift
             ack_button = self.ack_controls[lift_id]['ack_movement_button']
             ack_label = self.ack_controls[lift_id]['ack_info_label']
-            prev_ack_state = getattr(self, f"_prev_ack_state_{lift_id}", None)
-            if ack_type > 0:
-                if prev_ack_state != True:
-                    logger.info(f"Acknowledge requested by PLC for {lift_id} (iJobType={ack_type}).")  # Log when PLC requests ack
-                ack_label.config(text=f"PLC Awaiting Ack (Type: {ack_type})", foreground="blue")
+            
+            # prev_ack_state = getattr(self, f"_prev_ack_state_{lift_id}", None) # OLD: per-lift tracking
+
+            if self.global_handshake_job_type > 0:
+                # Logging is now done in _monitor_plc based on _prev_global_ack_state
+                ack_label.config(text=f"PLC Awaiting Global Ack (Type: {self.global_handshake_job_type}, Row: {self.global_handshake_row_nr})", foreground="blue")
                 ack_button.config(state=tk.NORMAL)
-                setattr(self, f"_prev_ack_state_{lift_id}", True)
+                # setattr(self, f"_prev_ack_state_{lift_id}", True) # OLD
             else:
-                if prev_ack_state == True:
-                    logger.info(f"Acknowledge received by PLC for {lift_id}.")  # Log when PLC has received ack (iJobType returns to 0)
+                # Logging is now done in _monitor_plc
                 ack_label.config(text="PLC Awaiting Ack: No", foreground="grey")
                 ack_button.config(state=tk.DISABLED)
-                setattr(self, f"_prev_ack_state_{lift_id}", False)
+                # setattr(self, f"_prev_ack_state_{lift_id}", False) # OLD
 
-        # Update Error Display section
-        # Error data is directly from lift_data which contains iErrorCode, sErrorShortDescription etc.
         self._update_error_display(lift_id, lift_data) 
 
-        # Update Cancel Reason Display
         if lift_id in self.status_labels and "iCancelAssignmentReasonCode" in self.status_labels[lift_id]:
             reason_code = self._safe_get_int_from_data(lift_data, "iCancelAssignmentReasonCode")
             self.status_labels[lift_id]["iCancelAssignmentReasonCode"].config(text=str(reason_code))
@@ -960,7 +975,7 @@ class EcoSystemGUI_DualLift_ST:
                 # Determine the correct OPC UA name for iCancelAssignment
                 cancel_assignment_opc_name = "iCancelAssignment" # Default correct spelling
                 if lift_id == LIFT1_ID: # LIFT1_ID is 'Lift1' from lift_visualization
-                    cancel_assignment_opc_name = "iCancelAssignent" # Typo for LIFT1_ID
+                    cancel_assignment_opc_name = "iCancelAssignment" 
 
                 # Write to ElevatorXEcoSystAssignment
                 success_type = await self.opcua_client.write_value(f"{assignment_base_path}/iTaskType", task_type, ua.VariantType.Int64)
@@ -1033,7 +1048,7 @@ class EcoSystemGUI_DualLift_ST:
                 # Determine the correct OPC UA name for iCancelAssignment
                 cancel_assignment_opc_name = "iCancelAssignment" # Default correct spelling
                 if lift_id == LIFT1_ID: # LIFT1_ID is 'Lift1' from lift_visualization
-                    cancel_assignment_opc_name = "iCancelAssignent" # Typo for LIFT1_ID
+                    cancel_assignment_opc_name = "iCancelAssignment" # Typo for LIFT1_ID
 
                 # Reset task type in ElevatorXEcoSystAssignment
                 success_task_type = await self.opcua_client.write_value(f"{assignment_base_path}/iTaskType", 0, ua.VariantType.Int64)

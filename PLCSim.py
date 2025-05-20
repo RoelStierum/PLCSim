@@ -16,17 +16,16 @@ if not os.path.exists(logs_dir):
 
 # Clear log file at startup
 log_filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs', 'plcsim.log')
-# Clear the log file first if it exists
 if (os.path.exists(log_filename)):
     try:
         open(log_filename, 'w').close()
-        print(f"Cleared log file: {log_filename}")
+        # print(f"Cleared log file: {log_filename}") # Keep console clean
     except Exception as e:
         print(f"Warning: Could not clear log file {log_filename}: {e}")
 
 log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.INFO, # Changed to INFO for more details during dev
     format=log_format,
     handlers=[
         logging.FileHandler(log_filename, mode='a'),
@@ -35,23 +34,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger("PLCSim_DualLift")
 
-# Set asyncua loggers to ERROR level to reduce verbosity
 logging.getLogger("asyncua").setLevel(logging.ERROR)
 
 LIFT1_ID = 'Lift1'
 LIFT2_ID = 'Lift2'
 LIFTS = [LIFT1_ID, LIFT2_ID]
 
-# Task Type Constants
+# Task Type Constants for ActiveElevatorAssignment_iTaskType
 FullAssignment = 1
 MoveToAssignment = 2
 PreparePickUp = 3
 BringAway = 4
 
+# NEW Handshake Job Type Constants for the global PlcToEco.StationDataToEco.ExtraData.Handshake.iJobType
+HANDSHAKE_JOB_TYPE_1 = 1 # For FullAss P1, MoveTo, PreparePickUp
+HANDSHAKE_JOB_TYPE_2 = 2 # For FullAss P2, BringAway
+HANDSHAKE_JOB_TYPE_IDLE = 0 # For clearing handshake
+
 # Fork Side Constants
 MiddenLocation = 0
-RobotSide = 2  # Right (robot side)
-OpperatorSide = 1  # Left (operator side)
+RobotSide = 2
+OpperatorSide = 1
 
 # Station Status Constants
 STATUS_NOT_APPLICABLE = 0
@@ -74,18 +77,17 @@ CANCEL_ORIGIN_OUT_OF_REACH = 3
 CANCEL_INVALID_ZERO_POSITION = 4
 CANCEL_LIFTS_CROSS = 5
 CANCEL_INVALID_ASSIGNMENT = 6
+CANCEL_BY_ECOSYSTEM = 7
 
-SIMULATION_CYCLE_TIME_MS = 200  # milliseconds
-FORK_MOVEMENT_DURATION_S = 1.0 # seconds
-LIFT_MOVEMENT_DURATION_PER_ROW_S = 0.05 # seconds
+SIMULATION_CYCLE_TIME_MS = 200
+FORK_MOVEMENT_DURATION_S = 1.0
+LIFT_MOVEMENT_DURATION_PER_ROW_S = 0.05
 
 class PLCSimulator_DualLift:
-    # Fork positions (sForks_Position_*)
     sForks_Position_LEFT = 1
     sForks_Position_MIDDLE = 0
     sForks_Position_RIGHT = 2
 
-    # Task types (iTaskType)
     TASK_TYPE_NONE = 0
     TASK_TYPE_FULL_ASSIGNMENT = 1
     TASK_TYPE_MOVE_TO = 2
@@ -96,57 +98,36 @@ class PLCSimulator_DualLift:
         self.server = Server()
         self.endpoint = endpoint
         self.namespace_idx = None
-        # self.nodes = {LIFT1_ID: {}, LIFT2_ID: {}, 'System': {}} # Replaced by opc_node_map
-        self.opc_node_map = {} # Stores (lift_id_or_system_key, var_name_in_state) -> opc_node
+        self.opc_node_map = {}
         self.running = False
-        self._task_duration = 2.0  # Simulation speed
+        self._task_duration = 2.0 # General simulation duration for some actions
         self._pickup_offset = 2
         
-        # Functie om interne positie om te zetten naar fysieke positie
-        # Voor de operatorzijde: 1-50 blijft 1-50
-        # Voor de robotzijde: 51-99 wordt 1-49
         self.to_physical_pos = lambda pos: pos if pos <= 50 else pos - 50
-        
-        # Functie om te bepalen aan welke kant een positie zich bevindt
         self.get_side = lambda pos: "operator" if pos <= 50 else "robot"
 
-        # State templates
         self.lift_state_template = {
-            # --- Status for PlcToEco/StationData[idx]/ ---
             "iCycle": 0,
             "iStationStatus": STATUS_BOOTING,
-            "sStationStateDescription": "Initializing", # Will be formed based on iCycle
+            "sStationStateDescription": "Initializing",
             "sShortAlarmDescription": "",
             "sAlarmSolution": "",
-            "iCancelAssignment": 0, # From PlcToEco.StationData[X].iCancelAssignment
-
-            # --- Status for PlcToEco/StationData[idx]/Handshake/ ---
-            "iJobType": 0,      # For Handshake.iJobType (PLC to Eco: GetTray/SetTray type)
-            "iRowNr": 0,        # For Handshake.iRowNr
-
-            # --- Status for PlcToEco/ElevatorX/ ---
+            "iCancelAssignment": 0,
             "iElevatorRowLocation": 0,
             "xTrayInElevator": False,
             "iCurrentForkSide": MiddenLocation,
             "iErrorCode": 0,
-            "sSeq_Step_comment": "Initializing", # Specific to ElevatorX
-
-            # --- Inputs from EcoToPlc/ElevatorX/ElevatorXEcoSystAssignment/ ---
-            # These are read from OPC but also stored in lift_state for logic
+            "sSeq_Step_comment": "Initializing",
             "Eco_iTaskType": 0,
             "Eco_iOrigination": 0,
             "Eco_iDestination": 0,
             "Eco_xAcknowledgeMovement": False,
-            "Eco_iCancelAssignment": 0, # From EcoToPlc...iCancelAssignment (Eco to PLC)
-            "xClearError": False, # From EcoToPlc...xClearError
-
-            # --- Active Job (Internal processing, not directly in PlcToEco as full struct) ---
+            "Eco_iCancelAssignment": 0,
+            "xClearError": False,
             "ActiveElevatorAssignment_iTaskType": 0,
             "ActiveElevatorAssignment_iOrigination": 0,
             "ActiveElevatorAssignment_iDestination": 0,
-
-            # --- Simulation Internals (not directly OPC UA variables) ---
-            "_watchdog_plc_state": False, # Internal PLC reaction to Eco's watchdog
+            "_watchdog_plc_state": False,
             "_sub_fork_moving": False,
             "_sub_engine_moving": False,
             "_move_target_pos": 0,
@@ -156,14 +137,12 @@ class PLCSimulator_DualLift:
             "_current_job_valid": False
         }
 
-        # System variables for GVL_OPC/PlcToEco and GVL_OPC/EcoToPlc
         self.system_state = {
-            # PlcToEco
             "iAmountOfSations": len(LIFTS),
             "iMainStatus": STATUS_BOOTING,
-            # EcoToPlc
-            "xWatchDog": False  # EcoSystem status, written by EcoSystem, read by PLC
-            # "iCancelAssignmentReson" (global) is removed as it's per station now.
+            "System_Handshake_iJobType": HANDSHAKE_JOB_TYPE_IDLE,
+            "System_Handshake_iRowNr": 0,
+            "xWatchDog": False
         }
 
         self.lift_state = {
@@ -171,14 +150,12 @@ class PLCSimulator_DualLift:
             LIFT2_ID: self.lift_state_template.copy()
         }
         
-        # Different starting positions
-        self.lift_state[LIFT1_ID]['iElevatorRowLocation'] = 5  # Top of system
-        self.lift_state[LIFT2_ID]['iElevatorRowLocation'] = 90  # Bottom of system
-        self.lift_state[LIFT1_ID]['iCycle'] = 10  # Ready
-        self.lift_state[LIFT2_ID]['iCycle'] = 10  # Ready
+        self.lift_state[LIFT1_ID]['iElevatorRowLocation'] = 5
+        self.lift_state[LIFT2_ID]['iElevatorRowLocation'] = 90
+        self.lift_state[LIFT1_ID]['iCycle'] = 10
+        self.lift_state[LIFT2_ID]['iCycle'] = 10
 
     def _get_elevator_info(self, lift_id_key: str) -> tuple[str, int] | None:
-        """Maps internal lift_id (LIFT1_ID) to OPC UA elevator name and station index."""
         if lift_id_key == LIFT1_ID:
             return "Elevator1", 0
         elif lift_id_key == LIFT2_ID:
@@ -195,7 +172,6 @@ class PLCSimulator_DualLift:
         
         uri = "http://gibas.com/plc/"
         self.namespace_idx = await self.server.register_namespace(uri)
-        logger.info(f"Registered namespace '{uri}' with index: {self.namespace_idx}")
         
         base_obj = self.server.nodes.objects
         di_call_blocks_obj = await base_obj.add_object(self.namespace_idx, "Di_Call_Blocks")
@@ -204,148 +180,107 @@ class PLCSimulator_DualLift:
         plc_to_eco_obj = await opc_ua_obj.add_object(self.namespace_idx, "PlcToEco")
         eco_to_plc_obj = await opc_ua_obj.add_object(self.namespace_idx, "EcoToPlc")
 
-        # --- Create Di_Call_Blocks/OPC_UA/PlcToEco system variables ---
+        station_data_to_eco_obj = await plc_to_eco_obj.add_object(self.namespace_idx, "StationDataToEco")
+        
         sys_plc_to_eco_vars = {
             "iAmountOfSations": self.system_state["iAmountOfSations"],
             "iMainStatus": self.system_state["iMainStatus"]
         }
         for name, value in sys_plc_to_eco_vars.items():
-            ua_type = ua.VariantType.Int16 if isinstance(value, int) else ua.VariantType.String
-            node = await plc_to_eco_obj.add_variable(self.namespace_idx, name, value, datatype=ua_type)
-            await node.set_writable() # Sim allows writing, real PLC might be read-only from Eco
+            ua_type = ua.VariantType.Int16 
+            node = await station_data_to_eco_obj.add_variable(self.namespace_idx, name, value, datatype=ua_type)
+            await node.set_writable() 
             self.opc_node_map[("System", name)] = node
-            logger.info(f"  Created Di_Call_Blocks/OPC_UA/PlcToEco/{name}")
 
-        # --- Create Di_Call_Blocks/OPC_UA/EcoToPlc system variables ---
-        eco_to_plc_sys_vars = {
-            "xWatchDog": self.system_state["xWatchDog"]
+        extra_data_obj = await station_data_to_eco_obj.add_object(self.namespace_idx, "ExtraData")
+        global_handshake_obj = await extra_data_obj.add_object(self.namespace_idx, "Handshake")
+
+        global_handshake_vars_map = {
+            "System_Handshake_iJobType": (self.system_state["System_Handshake_iJobType"], ua.VariantType.Int16, "iJobType"),
+            "System_Handshake_iRowNr": (self.system_state["System_Handshake_iRowNr"], ua.VariantType.Int16, "iRowNr")
         }
-        for name, value in eco_to_plc_sys_vars.items():
-            ua_type = ua.VariantType.Boolean if isinstance(value, bool) else ua.VariantType.String
-            node = await eco_to_plc_obj.add_variable(self.namespace_idx, name, value, datatype=ua_type)
-            await node.set_writable() # EcoSystem writes to this
-            self.opc_node_map[("System", name)] = node # Overwrites if name is same, ensure unique keys if needed
-            logger.info(f"  Created Di_Call_Blocks/OPC_UA/EcoToPlc/{name}")
+        for state_key, (initial_value, ua_type_val, opc_name) in global_handshake_vars_map.items():
+            node = await global_handshake_obj.add_variable(self.namespace_idx, opc_name, initial_value, datatype=ua_type_val)
+            await node.set_writable() 
+            self.opc_node_map[("System", state_key)] = node
+            logger.info(f"    Created Di_Call_Blocks/OPC_UA/PlcToEco/StationDataToEco/ExtraData/Handshake/{opc_name}")
 
-        # --- Create structure for each lift ---
+        eco_to_plc_sys_vars = { "xWatchDog": self.system_state["xWatchDog"] }
+        for name, value in eco_to_plc_sys_vars.items():
+            ua_type = ua.VariantType.Boolean
+            node = await eco_to_plc_obj.add_variable(self.namespace_idx, name, value, datatype=ua_type)
+            await node.set_writable()
+            self.opc_node_map[("System", name)] = node
+
         station_data_parent_obj = await plc_to_eco_obj.add_object(self.namespace_idx, "StationData")
 
-        for lift_id_key in LIFTS: # LIFT1_ID, LIFT2_ID
+        for lift_id_key in LIFTS:
             elevator_info = self._get_elevator_info(lift_id_key)
-            if not elevator_info:
-                continue
+            if not elevator_info: continue
             elevator_name, station_idx = elevator_info
-
             initial_lift_state = self.lift_state[lift_id_key]
-            initial_lift_state['iCycle'] = 10 # Ensure ready state
-            initial_lift_state['iStationStatus'] = STATUS_OK
-            initial_lift_state['sSeq_Step_comment'] = "Ready - Waiting for Job Assignment"
-            initial_lift_state['sStationStateDescription'] = "Ready for Job"
+            initial_lift_state.update({
+                'iCycle': 10, 'iStationStatus': STATUS_OK,
+                'sSeq_Step_comment': "Ready - Waiting for Job Assignment",
+                'sStationStateDescription': "Ready for Job"
+            })
 
-
-            # --- Di_Call_Blocks/OPC_UA/PlcToEco/StationData[idx]/ ---
             station_idx_obj = await station_data_parent_obj.add_object(self.namespace_idx, str(station_idx))
-            logger.info(f"  Created Di_Call_Blocks/OPC_UA/PlcToEco/StationData/{station_idx} for {lift_id_key}")
-            
-            station_vars_map = { # internal_state_key: opc_ua_type (None for auto-detect)
-                "iCycle": ua.VariantType.Int16,
-                "iStationStatus": ua.VariantType.Int16,
+            station_vars_map = {
+                "iCycle": ua.VariantType.Int16, "iStationStatus": ua.VariantType.Int16,
                 "sStationStateDescription": ua.VariantType.String,
                 "sShortAlarmDescription": ua.VariantType.String,
                 "sAlarmSolution": ua.VariantType.String,
-                "iCancelAssignment": ua.VariantType.Int16 # As per interface.txt (INT)
+                "iCancelAssignment": ua.VariantType.Int16
             }
             for name, ua_type_val in station_vars_map.items():
-                value = initial_lift_state[name]
-                node = await station_idx_obj.add_variable(self.namespace_idx, name, value, datatype=ua_type_val)
+                node = await station_idx_obj.add_variable(self.namespace_idx, name, initial_lift_state[name], datatype=ua_type_val)
                 await node.set_writable()
                 self.opc_node_map[(lift_id_key, name)] = node
-                logger.info(f"    Var: {name} under StationData/{station_idx}")
+            
+            logger.info(f"    REMOVED old Handshake object under StationData/{station_idx} for {lift_id_key}")
 
-            # --- Di_Call_Blocks/OPC_UA/PlcToEco/StationData[idx]/Handshake/ ---
-            handshake_obj = await station_idx_obj.add_object(self.namespace_idx, "Handshake")
-            handshake_vars_map = {
-                "iRowNr": ua.VariantType.Int16,
-                "iJobType": ua.VariantType.Int16 # Corresponds to iAssignmentType in old state
-            }
-            for name, ua_type_val in handshake_vars_map.items():
-                value = initial_lift_state[name] # Ensure these keys exist in template
-                node = await handshake_obj.add_variable(self.namespace_idx, name, value, datatype=ua_type_val)
-                await node.set_writable()
-                self.opc_node_map[(lift_id_key, name)] = node
-                logger.info(f"    Var: Handshake/{name} under StationData/{station_idx}")
-
-            # --- Di_Call_Blocks/OPC_UA/PlcToEco/ElevatorX/ ---
             elevator_plc_obj = await plc_to_eco_obj.add_object(self.namespace_idx, elevator_name)
-            logger.info(f"  Created Di_Call_Blocks/OPC_UA/PlcToEco/{elevator_name} for {lift_id_key}")
             elevator_vars_map = {
-                "iElevatorRowLocation": ua.VariantType.Int16,
-                "xTrayInElevator": ua.VariantType.Boolean,
-                "iCurrentForkSide": ua.VariantType.Int16,
-                "iErrorCode": ua.VariantType.Int16,
+                "iElevatorRowLocation": ua.VariantType.Int16, "xTrayInElevator": ua.VariantType.Boolean,
+                "iCurrentForkSide": ua.VariantType.Int16, "iErrorCode": ua.VariantType.Int16,
                 "sSeq_Step_comment": ua.VariantType.String
             }
             for name, ua_type_val in elevator_vars_map.items():
-                value = initial_lift_state[name]
-                node = await elevator_plc_obj.add_variable(self.namespace_idx, name, value, datatype=ua_type_val)
+                node = await elevator_plc_obj.add_variable(self.namespace_idx, name, initial_lift_state[name], datatype=ua_type_val)
                 await node.set_writable()
                 self.opc_node_map[(lift_id_key, name)] = node
-                logger.info(f"    Var: {name} under PlcToEco/{elevator_name}")
 
-            # --- Di_Call_Blocks/OPC_UA/EcoToPlc/ElevatorX/ElevatorXEcoSystAssignment/ ---
             elevator_eco_obj = await eco_to_plc_obj.add_object(self.namespace_idx, elevator_name)
             assign_obj_name = f"{elevator_name}EcoSystAssignment"
             eco_assign_obj = await elevator_eco_obj.add_object(self.namespace_idx, assign_obj_name)
-            logger.info(f"  Created Di_Call_Blocks/OPC_UA/EcoToPlc/{elevator_name}/{assign_obj_name} for {lift_id_key}")
-            
-            # Variables under Di_Call_Blocks/OPC_UA/EcoToPlc/ElevatorX/ElevatorXEcoSystAssignment/
-            eco_assignment_specific_vars_map = { # internal_state_key_prefix "Eco_": opc_ua_type
-                "Eco_iTaskType": (ua.VariantType.Int64, "iTaskType"), # (type, opc_name)
+
+            eco_assignment_specific_vars_map = {
+                "Eco_iTaskType": (ua.VariantType.Int64, "iTaskType"),
                 "Eco_iOrigination": (ua.VariantType.Int64, "iOrigination"),
                 "Eco_iDestination": (ua.VariantType.Int64, "iDestination"),
             }
             for state_key, (ua_type_val, opc_name) in eco_assignment_specific_vars_map.items():
-                value = initial_lift_state[state_key]
-                node = await eco_assign_obj.add_variable(self.namespace_idx, opc_name, value, datatype=ua_type_val)
-                await node.set_writable() # EcoSystem writes these
-                self.opc_node_map[(lift_id_key, state_key)] = node # Store with "Eco_" prefixed key
-                logger.info(f"    Var: {opc_name} under EcoToPlc/{elevator_name}/{assign_obj_name}")
-
-            # Variables directly under Di_Call_Blocks/OPC_UA/EcoToPlc/ElevatorX/
-            eco_elevator_direct_vars_map = {
-                "Eco_xAcknowledgeMovement": (ua.VariantType.Boolean, "xAcknowledgeMovement"),
-                # OPC UA name is "iCancelAssignent" as per interface.txt (with typo)
-                # Internal state key remains "Eco_iCancelAssignment"
-                "Eco_iCancelAssignment": (ua.VariantType.Int64, "iCancelAssignment"), # Changed Int16 to Int64
-                "xClearError": (ua.VariantType.Boolean, "xClearError") # Added for error clearing
-            }
-            for state_key, (ua_type_val, opc_name) in eco_elevator_direct_vars_map.items():
-                value = initial_lift_state[state_key]
-                # These are added to elevator_eco_obj (GVL_OPC/EcoToPlc/ElevatorX/)
-                
-                opc_name_to_use = opc_name # Default OPC name from map
-                if state_key == "Eco_iCancelAssignment":
-                    if lift_id_key == LIFT1_ID:
-                        opc_name_to_use = "iCancelAssignent"  # Typo for LIFT1_ID
-                    # For LIFT2_ID, opc_name_to_use remains "iCancelAssignment" (correct)
-
-                node = await elevator_eco_obj.add_variable(self.namespace_idx, opc_name_to_use, value, datatype=ua_type_val) 
+                node = await eco_assign_obj.add_variable(self.namespace_idx, opc_name, initial_lift_state[state_key], datatype=ua_type_val)
                 await node.set_writable()
                 self.opc_node_map[(lift_id_key, state_key)] = node
-                logger.info(f"    Var: {opc_name_to_use} under EcoToPlc/{elevator_name}")
+
+            eco_elevator_direct_vars_map = {
+                "Eco_xAcknowledgeMovement": (ua.VariantType.Boolean, "xAcknowledgeMovement"),
+                "Eco_iCancelAssignment": (ua.VariantType.Int64, "iCancelAssignment"),
+                "xClearError": (ua.VariantType.Boolean, "xClearError")
+            }
+            for state_key, (ua_type_val, opc_name) in eco_elevator_direct_vars_map.items():
+                node = await elevator_eco_obj.add_variable(self.namespace_idx, opc_name, initial_lift_state[state_key], datatype=ua_type_val) 
+                await node.set_writable()
+                self.opc_node_map[(lift_id_key, state_key)] = node
         
-        logger.info("OPC UA Server Variables Initialized with Di_Call_Blocks/OPC_UA structure")
+        logger.info("OPC UA Server Variables Initialized with Di_Call_Blocks/OPC_UA structure and new global handshake")
 
     async def _update_opc_value(self, lift_id_or_system_key, state_var_name, value):
-        """Update OPC UA node value using the opc_node_map and update internal state if applicable."""
-        
         value_for_opc = value
-        # Apply transformations if necessary (e.g., string length)
-        if state_var_name == "sSeq_Step_comment" and isinstance(value, str) and len(value) > 200:
+        if isinstance(value, str) and len(value) > 200 and state_var_name in ["sSeq_Step_comment", "sStationStateDescription", "sShortAlarmDescription", "sAlarmSolution"]:
             value_for_opc = value[:200]
-        elif state_var_name == "sStationStateDescription" and isinstance(value, str) and len(value) > 200: # Assuming similar limit
-            value_for_opc = value[:200]
-
 
         node_key = (lift_id_or_system_key, state_var_name)
         node = self.opc_node_map.get(node_key)
@@ -353,116 +288,140 @@ class PLCSimulator_DualLift:
         if node:
             try:
                 current_opc_val = await node.read_value()
-                if current_opc_val != value_for_opc: # Write only if value changed
+                if current_opc_val != value_for_opc:
                     await node.write_value(value_for_opc)
-                    # logger.debug(f"OPC Write: {node_key} = {value_for_opc}")
             except Exception as e:
                 logger.error(f"Failed to write OPC value for {node_key}: {e}")
-        # else:
-            # logger.warning(f"OPC Node not found for {node_key} during update.")
 
-        # Update internal state
         if lift_id_or_system_key == "System":
-            if state_var_name in self.system_state:
-                self.system_state[state_var_name] = value
+            if state_var_name in self.system_state: self.system_state[state_var_name] = value
         elif lift_id_or_system_key in self.lift_state:
             if state_var_name in self.lift_state[lift_id_or_system_key]:
                 self.lift_state[lift_id_or_system_key][state_var_name] = value
-            # else:
-                # logger.warning(f"Internal state key {state_var_name} not found for {lift_id_or_system_key}")
-        # else:
-            # logger.warning(f"Lift ID/System key {lift_id_or_system_key} not found for internal state update.")
-
 
     async def _read_opc_value(self, lift_id_or_system_key, state_var_name):
-        """Read value from OPC UA node using opc_node_map, and update internal cache for inputs."""
         node_key = (lift_id_or_system_key, state_var_name)
         node = self.opc_node_map.get(node_key)
-
+        value = None
         if node:
             try:
                 value = await node.read_value()
-                # If it's an input variable (Eco_ prefixed, or xWatchDog), update internal state cache
-                if state_var_name.startswith("Eco_") or \
-                   (lift_id_or_system_key == "System" and state_var_name == "xWatchDog"):
-                    
+                is_input_var = state_var_name.startswith("Eco_") or \
+                               (lift_id_or_system_key == "System" and state_var_name == "xWatchDog") or \
+                               (state_var_name == "xClearError") 
+                if is_input_var:
                     if lift_id_or_system_key == "System":
-                        if state_var_name in self.system_state:
-                            self.system_state[state_var_name] = value
+                        if state_var_name in self.system_state: self.system_state[state_var_name] = value
                     elif lift_id_or_system_key in self.lift_state:
                         if state_var_name in self.lift_state[lift_id_or_system_key]:
                             self.lift_state[lift_id_or_system_key][state_var_name] = value
                 return value
             except Exception as e:
                 logger.error(f"Failed to read OPC value for {node_key}: {e}")
-        # else:
-            # logger.warning(f"OPC Node not found for {node_key} during read.")
-
-        # Fallback to internal state if OPC read fails or node not found
-        if lift_id_or_system_key == "System":
-            return self.system_state.get(state_var_name)
+        
+        # Fallback to internal state
+        if lift_id_or_system_key == "System": return self.system_state.get(state_var_name)
         elif lift_id_or_system_key in self.lift_state:
             return self.lift_state[lift_id_or_system_key].get(state_var_name)
-        
-        return None # Should not happen if logic is correct
+        return None
 
     async def _simulate_sub_movement(self, lift_id):
-        """Simulate the progress of engine or fork movement"""
         state = self.lift_state[lift_id]
         now = time.time()
+        movement_finished_this_tick = False
 
-        # Simulate engine movement
         if state["_sub_engine_moving"]:
-            if now - state["_move_start_time"] >= self._task_duration:
+            # Calculate dynamic duration based on rows
+            rows_to_move = abs(state["_move_target_pos"] - state["iElevatorRowLocation"])
+            # Ensure a minimum duration even for 0 rows if a move was intended (e.g. already at target but flag was set)
+            # However, if rows_to_move is 0, it means we are at the target, so duration should be 0.
+            # The check `state["iElevatorRowLocation"] == target_loc` before starting a move should prevent 0-row moves.
+            # If somehow _sub_engine_moving is true but we are at target, finish immediately.
+            if state["iElevatorRowLocation"] == state["_move_target_pos"]:
+                 duration = 0.0
+            else:
+                 duration = max(0.1, rows_to_move * LIFT_MOVEMENT_DURATION_PER_ROW_S) # Min duration 0.1s
+
+            if now - state["_move_start_time"] >= duration:
                 logger.info(f"[{lift_id}] Engine movement finished. Reached: {state['_move_target_pos']}")
                 await self._update_opc_value(lift_id, "iElevatorRowLocation", state["_move_target_pos"])
                 state["_sub_engine_moving"] = False
-                return True
+                movement_finished_this_tick = True
                 
-        # Simulate Fork Movement
         elif state["_sub_fork_moving"]:
-            if now - state["_fork_start_time"] >= (self._task_duration / 2.0): # Corrected to use FORK_MOVEMENT_DURATION_S or similar
+            if now - state["_fork_start_time"] >= FORK_MOVEMENT_DURATION_S:
                 logger.info(f"[{lift_id}] Fork movement finished. Reached: {state['_fork_target_pos']}")
                 await self._update_opc_value(lift_id, "iCurrentForkSide", state["_fork_target_pos"])
                 state["_sub_fork_moving"] = False
-                return True # Ensure this returns True when movement finishes in this cycle
-        return state["_sub_engine_moving"] or state["_sub_fork_moving"]
+                movement_finished_this_tick = True
         
+        return state["_sub_engine_moving"] or state["_sub_fork_moving"] # Returns true if still actively moving
+
     def _calculate_movement_range(self, current_pos, *positions):
-        """
-        Calculate the range of positions a lift will cover during its movement.
-        Returns a tuple (min_pos, max_pos) representing the range.
-        """
         all_positions = [current_pos] + list(positions)
-        # Filter out zero positions (invalid/unspecified positions)
         valid_positions = [pos for pos in all_positions if pos > 0]
-        if not valid_positions:
-            return (0, 0)  # No valid positions
+        if not valid_positions: return (0, 0)
         return (min(valid_positions), max(valid_positions))
 
     def _check_lift_ranges_overlap(self, my_range, other_range):
-        """
-        Check if two lift movement ranges overlap.
-        A range of (0,0) from _calculate_movement_range indicates no valid positions for movement.
-        """
         my_min, my_max = my_range
         other_min, other_max = other_range
-
-        if my_min == 0 and my_max == 0:
-            logger.debug(f"Collision check: My lift has no effective planned movement ({my_range}). No collision for this job.")
-            return False
-
-        logger.debug(f"Collision check: My lift's planned path {my_range}, Other lift's occupied/planned path {other_range}.")
-
+        if my_min == 0 and my_max == 0: return False # My lift is not planning a move
+        if other_min == 0 and other_max == 0: return False # Other lift is not planning a move / not relevant
         overlap = not (my_max < other_min or my_min > other_max)
-        if overlap:
-            logger.warning(f"COLLISION DETECTED: My lift's planned path {my_range} overlaps with other lift's path/position {other_range}.")
+        if overlap: logger.warning(f"COLLISION DETECTED: My path {my_range} overlaps other's {other_range}.")
         return overlap
     
     async def _process_lift_logic(self, lift_id):
-        """Process the PLC logic for a given lift"""
         state = self.lift_state[lift_id]
         other_lift_id = LIFT2_ID if lift_id == LIFT1_ID else LIFT1_ID
+
+        # --- Handle EcoSystem Initiated Cancellation ---
+        # This check should be done early, before most other logic.
+        ecosystem_cancel_reason = await self._read_opc_value(lift_id, "Eco_iCancelAssignment")
+        if ecosystem_cancel_reason > 0:
+            logger.info(f"[{lift_id}] Received cancellation request from EcoSystem with reason: {ecosystem_cancel_reason}. Current cycle: {state['iCycle']}.")
+            
+            # Stop any ongoing movements immediately
+            if state["_sub_engine_moving"] or state["_sub_fork_moving"]:
+                state["_sub_engine_moving"] = False
+                state["_sub_fork_moving"] = False
+                logger.info(f"[{lift_id}] Ongoing movement interrupted due to EcoSystem cancellation.")
+
+            # Clear PLC's active job details
+            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
+            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iOrigination", 0)
+            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iDestination", 0)
+            state["_current_job_valid"] = False
+
+            # Clear EcoSystem job inputs on OPC UA (by writing 0 back to them)
+            await self._update_opc_value(lift_id, "Eco_iTaskType", 0)
+            await self._update_opc_value(lift_id, "Eco_iOrigination", 0)
+            await self._update_opc_value(lift_id, "Eco_iDestination", 0)
+            
+            # Acknowledge the cancellation by writing 0 back to Eco_iCancelAssignment
+            await self._update_opc_value(lift_id, "Eco_iCancelAssignment", 0)
+            
+            # Set PLC's iCancelAssignment (PlcToEco) to indicate cancellation source
+            await self._update_opc_value(lift_id, "iCancelAssignment", CANCEL_BY_ECOSYSTEM)
+            
+            # Clear global handshake
+            await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_IDLE)
+            await self._update_opc_value("System", "System_Handshake_iRowNr", 0)
+
+            # Clear any error state that might have been set by the cancelled job
+            if state["iErrorCode"] != 0:
+                await self._update_opc_value(lift_id, "iErrorCode", 0)
+                await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
+                await self._update_opc_value(lift_id, "sAlarmSolution", "")
+                state["iErrorCode"] = 0
+
+            # Transition to ready state (cycle 10)
+            await self._update_opc_value(lift_id, "iCycle", 10)
+            await self._update_opc_value(lift_id, "sSeq_Step_comment", "Job cancelled by EcoSystem. Returning to Ready.")
+            await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
+            logger.info(f"[{lift_id}] Job cancelled by EcoSystem. Lift transitioning to Cycle 10 (Ready).")
+            return # Exit processing for this cycle as job is cancelled.
 
         # Synchronize xTrayInElevator from OPC node to internal state at the beginning of each cycle
         # This allows EcoSystemSim's "Toggle Tray" to correctly update the PLC's understanding
@@ -488,7 +447,7 @@ class PLCSimulator_DualLift:
             logger.warning(f"[{lift_id}] OPC node for xTrayInElevator not found in opc_node_map.") # Changed self.logger to logger
 
         # Read current state for the lift
-        current_state = self.lift_state[lift_id]
+        # current_state = self.lift_state[lift_id] # Redundant, 'state' already holds this.
 
         # Process any running sub-movements
         # _simulate_sub_movement will return True if a movement is *still* in progress.
@@ -506,12 +465,11 @@ class PLCSimulator_DualLift:
         step_comment = f"Cycle {current_cycle}"  # Default comment
         next_cycle = current_cycle
         
-        task_type = await self._read_opc_value(lift_id, "Eco_iTaskType")
-        origination = await self._read_opc_value(lift_id, "Eco_iOrigination")
-        destination = await self._read_opc_value(lift_id, "Eco_iDestination")
-        acknowledge_movement = await self._read_opc_value(lift_id, "Eco_xAcknowledgeMovement")
-        cancel_assignment_reason_from_eco = await self._read_opc_value(lift_id, "Eco_iCancelAssignment")
-
+        # Read inputs for logic
+        task_type_from_eco = await self._read_opc_value(lift_id, "Eco_iTaskType")
+        origination_from_eco = await self._read_opc_value(lift_id, "Eco_iOrigination")
+        destination_from_eco = await self._read_opc_value(lift_id, "Eco_iDestination")
+        acknowledge_movement = await self._read_opc_value(lift_id, "Eco_xAcknowledgeMovement") # Per-lift ack
 
         # Read the system-level xWatchDog signal from the EcoSystem
         ecosystem_watchdog_status = await self._read_opc_value('System', "xWatchDog")
@@ -547,7 +505,7 @@ class PLCSimulator_DualLift:
             logger.info(f"[{lift_id}] Error cleared. Current cycle {current_cycle}, next cycle will be {next_cycle}")
 
 
-        logger.debug(f"[{lift_id}] Cycle={current_cycle}, Job: Type={task_type}, Origin={origination}, Dest={destination}, Ack={acknowledge_movement}, ErrorCode={state['iErrorCode']}")
+        logger.debug(f"[{lift_id}] Cycle={current_cycle}, Job: Type={task_type_from_eco}, Origin={origination_from_eco}, Dest={destination_from_eco}, Ack={acknowledge_movement}, ErrorCode={state['iErrorCode']}")
         
         # --- Main State Machine Logic ---
         if current_cycle == -10: # Software Init
@@ -566,8 +524,8 @@ class PLCSimulator_DualLift:
             # state["_current_job_valid"] = False # This will be set true only if a job is accepted
 
             # Check for new job if idle and no error
-            if task_type > 0 and state["iErrorCode"] == 0:
-                logger.info(f"[{lift_id}] Received new job in Cycle 10: Type={task_type}, Origin={origination}, Dest={destination}")
+            if task_type_from_eco > 0 and state["iErrorCode"] == 0:
+                logger.info(f"[{lift_id}] Received new job in Cycle 10: Type={task_type_from_eco}, Origin={origination_from_eco}, Dest={destination_from_eco}")
                 
                 is_job_acceptable = True
                 rejection_code = 0
@@ -575,94 +533,86 @@ class PLCSimulator_DualLift:
                 my_movement_range_for_collision_check = (0,0)
                 
                 # Basic parameter validation
-                if task_type == FullAssignment: # TaskType 1
-                    if not (origination > 0 and destination > 0):
+                if task_type_from_eco == FullAssignment: # TaskType 1
+                    if not (origination_from_eco > 0 and destination_from_eco > 0):
                         is_job_acceptable = False
                         rejection_code = CANCEL_INVALID_ZERO_POSITION
                         rejection_msg = "Invalid origin/destination for FullAssignment"
                     else:
-                        my_movement_range_for_collision_check = self._calculate_movement_range(state["iElevatorRowLocation"], origination, destination)
-                elif task_type == MoveToAssignment: # TaskType 2
+                        my_movement_range_for_collision_check = self._calculate_movement_range(state["iElevatorRowLocation"], origination_from_eco, destination_from_eco)
+                elif task_type_from_eco == MoveToAssignment: # TaskType 2
                     # For MoveTo, the target is specified by iOrigination from EcoSystem
-                    if not (origination > 0): # VALIDATION: Check iOrigination (which is the target)
+                    if not (origination_from_eco > 0): # VALIDATION: Check iOrigination (which is the target)
                         is_job_acceptable = False
                         rejection_code = CANCEL_INVALID_ZERO_POSITION
                         rejection_msg = "Invalid origin for MoveTo" # Message updated: origin is the target
                     else:
                         # Collision check uses iOrigination as the target
-                        my_movement_range_for_collision_check = self._calculate_movement_range(state["iElevatorRowLocation"], origination)
-                elif task_type == PreparePickUp: # TaskType 3
-                    if not (origination > 0):
+                        my_movement_range_for_collision_check = self._calculate_movement_range(state["iElevatorRowLocation"], origination_from_eco)
+                elif task_type_from_eco == PreparePickUp: # TaskType 3
+                    if not (origination_from_eco > 0):
                         is_job_acceptable = False
                         rejection_code = CANCEL_INVALID_ZERO_POSITION
                         rejection_msg = "Invalid origin for PreparePickUp"
                     else:
-                        my_movement_range_for_collision_check = self._calculate_movement_range(state["iElevatorRowLocation"], origination)
-                elif task_type == BringAway: # TaskType 4
+                        my_movement_range_for_collision_check = self._calculate_movement_range(state["iElevatorRowLocation"], origination_from_eco)
+                elif task_type_from_eco == BringAway: # TaskType 4
                     if not state["xTrayInElevator"]:
                         is_job_acceptable = False
                         rejection_code = CANCEL_INVALID_ASSIGNMENT 
                         rejection_msg = "No tray in elevator for BringAway"
-                    elif not (destination > 0):
+                    elif not (destination_from_eco > 0):
                         is_job_acceptable = False
                         rejection_code = CANCEL_INVALID_ZERO_POSITION
                         rejection_msg = "Invalid destination for BringAway"
                     else:
-                        my_movement_range_for_collision_check = self._calculate_movement_range(state["iElevatorRowLocation"], destination)
+                        my_movement_range_for_collision_check = self._calculate_movement_range(state["iElevatorRowLocation"], destination_from_eco)
                 else: # Unknown task type
                     is_job_acceptable = False
                     rejection_code = CANCEL_INVALID_ASSIGNMENT
-                    rejection_msg = f"Unknown task type: {task_type}"
+                    rejection_msg = f"Unknown task type: {task_type_from_eco}"
                 
                 # Collision Check (if basic parameters are acceptable)
                 if is_job_acceptable:
-                    other_lift_state = self.lift_state[other_lift_id]
-                    other_lift_active_task_type = await self._read_opc_value(other_lift_id, "ActiveElevatorAssignment_iTaskType")
-                    other_lift_active_origin = await self._read_opc_value(other_lift_id, "ActiveElevatorAssignment_iOrigination")
-                    other_lift_active_dest = await self._read_opc_value(other_lift_id, "ActiveElevatorAssignment_iDestination")
+                    other_state = self.lift_state[other_lift_id]
+                    other_task = other_state["ActiveElevatorAssignment_iTaskType"] # Use internal active task
+                    other_origin = other_state["ActiveElevatorAssignment_iOrigination"]
+                    other_dest = other_state["ActiveElevatorAssignment_iDestination"]
+                    other_move_range = (0,0)
+                    if other_state["_current_job_valid"] and other_task > 0:
+                        if other_task == FullAssignment: other_move_range = self._calculate_movement_range(other_state["iElevatorRowLocation"], other_origin, other_dest)
+                        elif other_task == MoveToAssignment: other_move_range = self._calculate_movement_range(other_state["iElevatorRowLocation"], other_origin)
+                        elif other_task == PreparePickUp: other_move_range = self._calculate_movement_range(other_state["iElevatorRowLocation"], other_origin)
+                        elif other_task == BringAway: other_move_range = self._calculate_movement_range(other_state["iElevatorRowLocation"], other_dest)
+                        else: other_move_range = self._calculate_movement_range(other_state["iElevatorRowLocation"])
+                    else: other_move_range = self._calculate_movement_range(other_state["iElevatorRowLocation"])
 
-                    # --- Belangrijk: Gebruik altijd de juiste range voor het type taak van de andere lift ---
-                    if other_lift_state["_current_job_valid"] and other_lift_active_task_type > 0:
-                        if other_lift_active_task_type == FullAssignment:
-                             other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"], other_lift_active_origin, other_lift_active_dest)
-                        elif other_lift_active_task_type == MoveToAssignment:
-                             # Corrected: MoveTo uses origin as its target destination from EcoSystem's perspective
-                             other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"], other_lift_active_origin)
-                        elif other_lift_active_task_type == PreparePickUp:
-                             other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"], other_lift_active_origin)
-                        elif other_lift_active_task_type == BringAway: 
-                             other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"], other_lift_active_dest)
-                        else: 
-                            other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"])
-                    else: 
-                        other_lift_movement_range = self._calculate_movement_range(other_lift_state["iElevatorRowLocation"])
-
-                    collision_with_other_lift = self._check_lift_ranges_overlap(my_movement_range_for_collision_check, other_lift_movement_range)
+                    collision_with_other_lift = self._check_lift_ranges_overlap(my_movement_range_for_collision_check, other_move_range)
 
                     if collision_with_other_lift:
                         is_job_acceptable = False
                         rejection_code = CANCEL_LIFTS_CROSS
                         rejection_msg = "Potential collision with other lift"
-                        logger.warning(f"[{lift_id}] Collision detected in Cycle 10. My range: {my_movement_range_for_collision_check}, Other\\'s range: {other_lift_movement_range}")
+                        logger.warning(f"[{lift_id}] Collision detected in Cycle 10. My range: {my_movement_range_for_collision_check}, Other\\'s range: {other_move_range}")
 
                 if is_job_acceptable:
-                    await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", task_type)
+                    await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", task_type_from_eco)
                     
                     # Store the received origination and destination from EcoSystem into PLC\'s ActiveElevatorAssignment
                     # For MoveTo, the 'origination' from EcoSystem is the target.
                     # For BringAway, the 'origination' for the PLC\'s active job is its current location.
                     
-                    plc_active_origination = origination # Default, used by FullAssignment, PreparePickUp
-                    plc_active_destination = destination # Default, used by FullAssignment, BringAway
+                    plc_active_origination = origination_from_eco # Default, used by FullAssignment, PreparePickUp
+                    plc_active_destination = destination_from_eco # Default, used by FullAssignment, BringAway
                                         
-                    if task_type == BringAway:
+                    if task_type_from_eco == BringAway:
                         plc_active_origination = state["iElevatorRowLocation"] 
                         # plc_active_destination remains 'destination' from EcoSystem for BringAway
-                    elif task_type == MoveToAssignment:
+                    elif task_type_from_eco == MoveToAssignment:
                         # For MoveTo, EcoSystem\'s 'iOrigination' is the target.
                         # PLC stores this target in its 'ActiveElevatorAssignment_iOrigination'.
                         # PLC\'s 'ActiveElevatorAssignment_iDestination' is not used for target by PLC, set to 0.
-                        plc_active_origination = origination # This is the target for MoveTo
+                        plc_active_origination = origination_from_eco # This is the target for MoveTo
                         plc_active_destination = 0         # Destination not used as PLC target for MoveTo
                     
                     await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iOrigination", plc_active_origination)
@@ -672,11 +622,10 @@ class PLCSimulator_DualLift:
                     
                     await self._update_opc_value(lift_id, "iCancelAssignment", 0) # Corrected path to PlcToEco.StationData.X.iCancelAssignment
                     await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
-                    # await self._update_opc_value(lift_id, "sAlarmMessage", "")
                     await self._update_opc_value(lift_id, "sAlarmSolution", "")
                     await self._update_opc_value(lift_id, "iStationStatus", STATUS_NOTIFICATION) 
 
-                    step_comment = f"TaskType {task_type} received (O:{origination}, D:{destination}). Proceeding to validation."
+                    step_comment = f"TaskType {task_type_from_eco} received (O:{origination_from_eco}, D:{destination_from_eco}). Proceeding to validation."
                     # All accepted jobs go to cycle 25 for further validation (or direct execution start)
                     # For simplicity, let's assume cycle 25 is a brief validation/routing step.
                     next_cycle = 25 
@@ -737,495 +686,241 @@ class PLCSimulator_DualLift:
                     await self._update_opc_value(lift_id, "iCancelAssignment", CANCEL_INVALID_ASSIGNMENT) # Corrected path
                     next_cycle = 10 # Back to ready
         
-        elif current_cycle == 90: # FullAssignment: Signal Job Acceptance to EcoSystem
-            step_comment = f"FullAssignment: Job accepted. Signaling EcoSystem for origin {state['ActiveElevatorAssignment_iOrigination']}."
-            logger.info(f"[{lift_id}] {step_comment}")
-            await self._update_opc_value(lift_id, "iJobType", FullAssignment) # Corrected key for opc_node_map
-            await self._update_opc_value(lift_id, "iRowNr", state["ActiveElevatorAssignment_iOrigination"]) # Corrected key
+        # --- FullAssignment Handshake (Cycles 90, 95, 190, 195) ---
+        elif current_cycle == 90: # FullAssignment: Signal Origin
+            step_comment = f"FullAss: Signaling Eco for origin {state['ActiveElevatorAssignment_iOrigination']}"
+            await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_1)
+            await self._update_opc_value("System", "System_Handshake_iRowNr", state["ActiveElevatorAssignment_iOrigination"])
             next_cycle = 95
+        elif current_cycle == 95: # FullAssignment: Wait Ack Origin
+            step_comment = f"FullAss: Waiting Eco ack for origin {state['ActiveElevatorAssignment_iOrigination']}"
+            if acknowledge_movement:
+                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False)
+                await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_IDLE)
+                await self._update_opc_value("System", "System_Handshake_iRowNr", 0)
+                next_cycle = 100
+        elif current_cycle == 190: # FullAssignment: Signal Destination
+            step_comment = f"FullAss: Signaling Eco for dest {state['ActiveElevatorAssignment_iDestination']}"
+            await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_2)
+            await self._update_opc_value("System", "System_Handshake_iRowNr", state["ActiveElevatorAssignment_iDestination"])
+            next_cycle = 195
+        elif current_cycle == 195: # FullAssignment: Wait Ack Destination
+            step_comment = f"FullAss: Waiting Eco ack for dest {state['ActiveElevatorAssignment_iDestination']}"
+            if acknowledge_movement:
+                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False)
+                await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_IDLE)
+                await self._update_opc_value("System", "System_Handshake_iRowNr", 0)
+                next_cycle = 400 # This was original next cycle for FullAssignment to move to destination
+                                 # which is now part of BringAway logic. If FullAssignment is truly separate,
+                                 # this should go to a dedicated "move to destination" cycle for FullAssignment.
+                                 # For now, assuming it means start of BringAway part of FullAssignment.
+                                 # Let's make it explicit: if it's FullAssignment, it should go to a cycle that moves to destination.
+                                 # Cycle 400 is start of BringAway, which expects a tray.
+                                 # Let's assume FullAssignment's "move to destination" is similar to BringAway's cycle 410.
+                logger.info(f"[{lift_id}] FullAssignment ack for dest received. Next cycle should be move to dest. Currently routing to 400 (BringAway start).")
+                # This routing might need refinement if FullAssignment has distinct move-to-dest logic
+                # For now, let's keep it simple and assume cycle 400 is the correct transition.
+                # The ActiveElevatorAssignment_iDestination is already set.
+                # The ActiveElevatorAssignment_iOrigination for the "BringAway" part of FullAssignment
+                # should effectively be the current location of the lift.
+                # This is handled in cycle 10 when setting up ActiveJob for BringAway.
+                # Here, for FullAssignment, ActiveElevatorAssignment_iOrigination was the *original* pickup.
+                # This needs careful thought.
+                # For now, let's assume the existing ActiveElevatorAssignment_iDestination is the target for the next move.
+                # The BringAway sequence (400-460) will use ActiveElevatorAssignment_iDestination.
+                # Let's ensure xTrayInElevator is true.
+                if not state["xTrayInElevator"]: # Should be true after pickup part of FullAssignment
+                    logger.error(f"[{lift_id}] FullAssignment error: No tray after pickup phase before moving to destination!")
+                    # Error handling
+                else:
+                    next_cycle = 410 # Go directly to move to destination part of BringAway sequence
 
-        elif current_cycle == 95: # FullAssignment: Wait for EcoSystem Acknowledge for Job Start
-            step_comment = f"FullAssignment: Waiting for acknowledge from EcoSystem for origin {state['ActiveElevatorAssignment_iOrigination']}."
-            ack_received = await self._read_opc_value(lift_id, "Eco_xAcknowledgeMovement")
-            logger.debug(f"[{lift_id}] Cycle 95: Reading xAcknowledgeMovement for origin {state['ActiveElevatorAssignment_iOrigination']}. Value: {ack_received}") # DEBUG LINE ADDED
-            if ack_received:
-                logger.info(f"[{lift_id}] FullAssignment: Acknowledge for origin {state['ActiveElevatorAssignment_iOrigination']} received. Proceeding.")
-                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False) # Consume ack
-                await self._update_opc_value(lift_id, "iJobType", 0) # Corrected key
-                await self._update_opc_value(lift_id, "iRowNr", 0) # Corrected key
-                next_cycle = 100 # Proceed to actual job start
-            else:
-                # Stay in this cycle, waiting for xAcknowledgeMovement
-                next_cycle = 95
-
-        elif current_cycle == 100:  # Start Full Assignment
-            step_comment = "Starting Full Assignment Job"
-            next_cycle = 102  # Move to origin
-            
-        elif current_cycle == 102:  # Move to Origin
-            step_comment = "Moving to Origin Position"
+        # --- FullAssignment Execution (Cycles 100-160, then transitions to BringAway-like sequence) ---
+        elif current_cycle == 100: next_cycle = 102
+        elif current_cycle == 102: # Move to Origin
             target_loc = state["ActiveElevatorAssignment_iOrigination"]
-            
-            # Check if already at origin
-            if state["iElevatorRowLocation"] == target_loc:
-                logger.info(f"[{lift_id}] Already at Origin {target_loc}")
-                next_cycle = 150  # Skip move, go to fork preparation
-            else:
-                # Start move to origin
-                state["_move_target_pos"] = target_loc
-                state["_move_start_time"] = time.time()
-                state["_sub_engine_moving"] = True
-                logger.info(f"[{lift_id}] Moving to Origin {target_loc}")
-                # Will stay in this state until movement completes
-                
-        elif current_cycle == 150:  # Prepare Forks for Pickup
+            step_comment = f"FullAss: Moving to Origin {target_loc}"
+            if state["iElevatorRowLocation"] == target_loc: next_cycle = 150
+            elif not state["_sub_engine_moving"]:
+                state["_move_target_pos"] = target_loc; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
+        elif current_cycle == 150: # Prepare Forks for Pickup
             origin = state["ActiveElevatorAssignment_iOrigination"]
             target_fork_side = OpperatorSide if origin <= 50 else RobotSide
-            # Controleer eerst of de lift op de juiste hoogte is
-            if state["iElevatorRowLocation"] != origin:
-                # Eerst de lift naar de juiste hoogte bewegen
-                state["_move_target_pos"] = origin
-                state["_move_start_time"] = time.time()
-                state["_sub_engine_moving"] = True
-                step_comment = f"Moving to Origin {origin} before preparing forks"
-                # Blijf in deze cycle tot de lift op positie is
-            elif state["iCurrentForkSide"] == target_fork_side:
-                logger.info(f"[{lift_id}] Forks already at correct side for pickup")
-                next_cycle = 155  # Skip fork movement
-            else:
-                # Nu pas vorken bewegen!
-                state["_fork_target_pos"] = target_fork_side
-                state["_fork_start_time"] = time.time()
-                state["_sub_fork_moving"] = True
-                logger.info(f"[{lift_id}] Moving forks to {target_fork_side} for pickup")
-                # Blijf in deze cycle tot vorken klaar zijn
-                
-        elif current_cycle == 155:  # Pickup
-            step_comment = "Picking Up Load"
-            
-            # Simulate pickup action
+            step_comment = f"FullAss: Prep forks at {origin} for side {target_fork_side}"
+            if state["iElevatorRowLocation"] != origin: # Ensure at origin
+                state["_move_target_pos"] = origin; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
+            elif state["iCurrentForkSide"] == target_fork_side: next_cycle = 155
+            elif not state["_sub_fork_moving"]:
+                state["_fork_target_pos"] = target_fork_side; state["_fork_start_time"] = time.time(); state["_sub_fork_moving"] = True
+        elif current_cycle == 155: # Pickup
             await self._update_opc_value(lift_id, "xTrayInElevator", True)
-            logger.info(f"[{lift_id}] Picked up load")
             next_cycle = 160
-            
-        elif current_cycle == 160: # FullAssignment: Move Forks to Middle (after pickup)
-            step_comment = "FullAssignment: Moving forks to middle after pickup"
-            
-            # Corrected condition: Initiate movement only if not already moving AND not at the target
-            if state["iCurrentForkSide"] != self.sForks_Position_MIDDLE and not state["_sub_fork_moving"]:
-                state["_fork_target_pos"] = self.sForks_Position_MIDDLE
-                state["_fork_start_time"] = time.time() # Corrected from _fork_move_start_time
-                state["_sub_fork_moving"] = True
-                logger.info(f"[{lift_id}] Moving forks to middle position")
-
-            # Check if movement is complete and at target
-            if not state["_sub_fork_moving"] and state["iCurrentForkSide"] == self.sForks_Position_MIDDLE:
-                logger.info(f"[{lift_id}] Forks at middle position after pickup.")
-                next_cycle = 190 # Proceed to signal for destination move
-            else:
-                # If still moving, or if the move hasn't started yet (and not at target), stay in 160
-                next_cycle = 160
-
-        elif current_cycle == 190: # FullAssignment: Signal Destination Move
-            step_comment = f"FullAssignment: Forks at middle. Signaling move to destination {state['ActiveElevatorAssignment_iDestination']}."
-            logger.info(f"[{lift_id}] {step_comment}")
-            await self._update_opc_value(lift_id, "iJobType", FullAssignment) # Corrected key
-            await self._update_opc_value(lift_id, "iRowNr", state["ActiveElevatorAssignment_iDestination"]) # Corrected key
-            next_cycle = 195
-
-        elif current_cycle == 195: # FullAssignment: Wait for EcoSystem Acknowledge for Destination Move
-            step_comment = f"FullAssignment: Waiting for acknowledge from EcoSystem for destination {state['ActiveElevatorAssignment_iDestination']}."
-            ack_received = await self._read_opc_value(lift_id, "Eco_xAcknowledgeMovement")
-            logger.debug(f"[{lift_id}] Cycle 195: Reading xAcknowledgeMovement for destination {state['ActiveElevatorAssignment_iDestination']}. Value: {ack_received}") # DEBUG LINE ADDED
-            if ack_received:
-                logger.info(f"[{lift_id}] FullAssignment: Acknowledge for destination {state['ActiveElevatorAssignment_iDestination']} received. Proceeding.")
-                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False) # Consume ack
-                await self._update_opc_value(lift_id, "iJobType", 0) # Corrected key
-                await self._update_opc_value(lift_id, "iRowNr", 0) # Corrected key
-                next_cycle = 400 # Proceed to move to destination
-            else:
-                # Stay in this cycle, waiting for xAcknowledgeMovement
-                next_cycle = 195
-
-        # --- MoveToAssignment Sequence (TaskType 2) ---
-        # Routed from cycle 25 to 290
-        elif current_cycle == 290: # MoveToAssignment: Signal Job Acceptance to EcoSystem
-            # Target for MoveTo is stored in ActiveElevatorAssignment_iOrigination
+        elif current_cycle == 160: # Move Forks to Middle
+            step_comment = "FullAss: Forks to middle after pickup"
+            if state["iCurrentForkSide"] == MiddenLocation: next_cycle = 190 # Ready for dest handshake
+            elif not state["_sub_fork_moving"]:
+                state["_fork_target_pos"] = MiddenLocation; state["_fork_start_time"] = time.time(); state["_sub_fork_moving"] = True
+        
+        # --- MoveToAssignment (Cycles 290, 295, 300, 310) ---
+        elif current_cycle == 290: # Signal Target
             target_loc = state["ActiveElevatorAssignment_iOrigination"]
-            step_comment = f"MoveToAssignment: Job accepted. Signaling EcoSystem for target {target_loc}."
-            logger.info(f"[{lift_id}] {step_comment}")
-            await self._update_opc_value(lift_id, "iJobType", MoveToAssignment)
-            await self._update_opc_value(lift_id, "iRowNr", target_loc)
+            step_comment = f"MoveTo: Signaling Eco for target {target_loc}"
+            await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_1)
+            await self._update_opc_value("System", "System_Handshake_iRowNr", target_loc)
             next_cycle = 295
-
-        elif current_cycle == 295: # MoveToAssignment: Wait for EcoSystem Acknowledge
+        elif current_cycle == 295: # Wait Ack Target
             target_loc = state["ActiveElevatorAssignment_iOrigination"]
-            step_comment = f"MoveToAssignment: Waiting for acknowledge from EcoSystem for target {target_loc}."
-            ack_received = await self._read_opc_value(lift_id, "Eco_xAcknowledgeMovement")
-            if ack_received:
-                logger.info(f"[{lift_id}] MoveToAssignment: Acknowledge for target {target_loc} received. Proceeding.")
-                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False) # Consume ack
-                await self._update_opc_value(lift_id, "iJobType", 0)
-                await self._update_opc_value(lift_id, "iRowNr", 0)
-                next_cycle = 300 # Proceed to move
-            else:
-                next_cycle = 295 # Stay in this cycle
-
-        elif current_cycle == 300:  # MoveToAssignment: Move Lift to Target
+            step_comment = f"MoveTo: Waiting Eco ack for target {target_loc}"
+            if acknowledge_movement:
+                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False)
+                await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_IDLE)
+                await self._update_opc_value("System", "System_Handshake_iRowNr", 0)
+                next_cycle = 300
+        elif current_cycle == 300: # Move to Target
             target_loc = state["ActiveElevatorAssignment_iOrigination"]
-            step_comment = f"MoveToAssignment: Moving to target position {target_loc}" 
-
-            if not state["_sub_engine_moving"]: 
-                if state["iElevatorRowLocation"] == target_loc:
-                    logger.info(f"[{lift_id}] MoveToAssignment: Arrived or already at target {target_loc}.")
-                    step_comment = f"MoveToAssignment: Arrived at target {target_loc}."
-                    next_cycle = 310
-                else: 
-                    state["_move_target_pos"] = target_loc
-                    state["_move_start_time"] = time.time()
-                    state["_sub_engine_moving"] = True
-                    logger.info(f"[{lift_id}] MoveToAssignment: Initiating move to target {target_loc}.")
-        
-        elif current_cycle == 310:  # MoveToAssignment: Job Complete
-            target_loc = state["ActiveElevatorAssignment_iOrigination"] 
-            step_comment = f"MoveToAssignment: Job Complete. Arrived at target {target_loc}. Returning to Ready."
-            logger.info(f"[{lift_id}] Job type {state['ActiveElevatorAssignment_iTaskType']} (MoveToAssignment) completed for target {target_loc}.")
-
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iOrigination", 0) 
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iDestination", 0) 
+            step_comment = f"MoveTo: Moving to target {target_loc}"
+            if state["iElevatorRowLocation"] == target_loc: next_cycle = 310
+            elif not state["_sub_engine_moving"]:
+                state["_move_target_pos"] = target_loc; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
+        elif current_cycle == 310: # MoveTo Complete
+            step_comment = f"MoveTo: Complete at {state['ActiveElevatorAssignment_iOrigination']}. To Ready."
+            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0) # Clear active job
+            await self._update_opc_value(lift_id, "Eco_iTaskType", 0) # Clear Eco request
             state["_current_job_valid"] = False
-
-            await self._update_opc_value(lift_id, "Eco_iTaskType", 0)
-            await self._update_opc_value(lift_id, "Eco_iOrigination", 0)
-            await self._update_opc_value(lift_id, "Eco_iDestination", 0)
-            
-            await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False)
-
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
-            await self._update_opc_value(lift_id, "iJobType", 0) 
-            await self._update_opc_value(lift_id, "iRowNr", 0)   
-            
-            next_cycle = 10 
-        
-        elif current_cycle == 400: # Start BringAway: Validate (already done in 10/25), prepare for move
-            step_comment = f"BringAway: Preparing to move to destination {state['ActiveElevatorAssignment_iDestination']}"
-            if not state["xTrayInElevator"]: 
-                step_comment = "BringAway Error: No tray at start of sequence!"
-                logger.error(f"[{lift_id}] {step_comment}")
-                await self._update_opc_value(lift_id, "sShortAlarmDescription", step_comment) # Use step_comment for the message
-                # REMOVED: await self._update_opc_value(lift_id, "sAlarmMessage", "TaskType BringAway started but xTrayInElevator is false.")
-                await self._update_opc_value(lift_id, "sAlarmSolution", "Ensure tray is present or use a different task. Reset job.")
-                await self._update_opc_value(lift_id, "iErrorCode", CANCEL_INVALID_ASSIGNMENT) 
+            await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_IDLE) # Ensure handshake cleared
+            await self._update_opc_value("System", "System_Handshake_iRowNr", 0)
+            next_cycle = 10
+
+        # --- BringAway (Cycles 400-460) ---
+        # This sequence is also used for the "drop-off" part of FullAssignment after cycle 195
+        elif current_cycle == 400: # Start BringAway (or drop-off part of FullAss)
+            step_comment = f"BringAway: Start to dest {state['ActiveElevatorAssignment_iDestination']}"
+            if not state["xTrayInElevator"]:
+                step_comment = "BringAway Error: No tray!"
+                # Error handling... (set error code, go to cycle 10 or 800)
+                await self._update_opc_value(lift_id, "sShortAlarmDescription", step_comment)
+                await self._update_opc_value(lift_id, "iErrorCode", CANCEL_INVALID_ASSIGNMENT)
                 state["iErrorCode"] = CANCEL_INVALID_ASSIGNMENT
                 await self._update_opc_value(lift_id, "iStationStatus", STATUS_ERROR)
-                
                 await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-                await self._update_opc_value(lift_id, "Eco_iTaskType", 0) # Corrected
+                await self._update_opc_value(lift_id, "Eco_iTaskType", 0)
                 state["_current_job_valid"] = False
-                next_cycle = 10 
+                next_cycle = 10
             else:
                 next_cycle = 410
-        elif current_cycle == 410: # BringAway: Move to Destination
-            destination_pos = state["ActiveElevatorAssignment_iDestination"]
-            step_comment = f"BringAway: Moving to destination {destination_pos}"
-
-            # Check if we need to start the movement
-            if state["iElevatorRowLocation"] != destination_pos and not state["_sub_engine_moving"]:
-                # Only initiate if not already at destination and no movement is currently flagged as active
-                # (The _simulate_sub_movement call above would have cleared _sub_engine_moving if it just finished)
-                state["_move_target_pos"] = destination_pos
-                state["_move_start_time"] = time.time()
-                state["_sub_engine_moving"] = True
-                logger.info(f"[{lift_id}] BringAway: Initiating engine move from {state['iElevatorRowLocation']} to {destination_pos}")
-                # Since we just started a movement, set step_comment and allow _simulate_sub_movement next tick to handle it
-                await self._update_opc_value(lift_id, "sSeq_Step_comment", step_comment)
-                # DO NOT set next_cycle here, let the movement run.
-                # The next tick, _simulate_sub_movement will run, and if it's still busy, it will return early.
-                # If it finishes, still_busy_with_sub_movement will be false, and this cycle logic will run again.
-                return # Return to let the movement start and be processed by the next tick's _simulate_sub_movement
-
-            # If we are here, it means either:
-            # 1. Movement was already started and _sub_engine_moving is true (still_busy_with_sub_movement would have returned early)
-            # 2. Movement was started, _simulate_sub_movement ran, finished it, and cleared _sub_engine_moving.
-            # 3. We are already at the destination.
-
-            if not state["_sub_engine_moving"] and state["iElevatorRowLocation"] == destination_pos:
-                logger.info(f"[{lift_id}] BringAway: Engine movement to {destination_pos} complete or already there.")
-                step_comment = f"BringAway: Arrived at destination {destination_pos}" # Update comment for arrival
-                next_cycle = 420
-            else:
-                # If _sub_engine_moving is true, it means _simulate_sub_movement will handle it and return early.
-                # If _sub_engine_moving is false, but we are not at destination, something is wrong or it's the first entry.
-                # The logic at the start of this cycle (410) should handle initiating the move.
-                # We stay in 410 if movement is supposed to be happening.
-                # If movement was just initiated, we returned, so this 'else' shouldn't be hit immediately after initiation.
-                next_cycle = 410
-        elif current_cycle == 420: # BringAway: Arrived at Destination, Wait for Ack
-            destination_pos = state["ActiveElevatorAssignment_iDestination"]
-            # This state is entered when _sub_engine_moving becomes false
-            # Update internal location only if it's actually changed by the movement
-            if state["iElevatorRowLocation"] != destination_pos:
-                 state["iElevatorRowLocation"] = destination_pos 
-                 await self._update_opc_value(lift_id, "iElevatorRowLocation", destination_pos)
-            
-            step_comment = f"BringAway: Arrived at destination {destination_pos}" # Default comment for this cycle
-
-            # Signal EcoSystem for acknowledgement
-            await self._update_opc_value(lift_id, "iJobType", BringAway) # Corrected key; Inform EcoSystem task type being acknowledged
-            await self._update_opc_value(lift_id, "iRowNr", destination_pos) # Corrected key; Inform EcoSystem row for ack
-
+        elif current_cycle == 410: # Move to Destination
+            dest_pos = state["ActiveElevatorAssignment_iDestination"]
+            step_comment = f"BringAway: Moving to dest {dest_pos}"
+            if state["iElevatorRowLocation"] == dest_pos: next_cycle = 420
+            elif not state["_sub_engine_moving"]:
+                state["_move_target_pos"] = dest_pos; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
+        elif current_cycle == 420: # Arrived at Dest, Signal Eco, Wait Ack
+            dest_pos = state["ActiveElevatorAssignment_iDestination"]
+            step_comment = f"BringAway: At dest {dest_pos}. Signaling Eco."
+            await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_2)
+            await self._update_opc_value("System", "System_Handshake_iRowNr", dest_pos)
             if acknowledge_movement:
-                step_comment = f"BringAway: Ack received at {destination_pos}. Preparing to place tray."
-                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False) # Consume ack
-                await self._update_opc_value(lift_id, "iJobType", 0) # Corrected key
-                await self._update_opc_value(lift_id, "iRowNr", 0) # Corrected key
+                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False)
+                await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_IDLE)
+                await self._update_opc_value("System", "System_Handshake_iRowNr", 0)
                 next_cycle = 430
-            else:
-                step_comment = f"BringAway: Waiting for acknowledge at destination {destination_pos}"
-                # Stay in this cycle, waiting for xAcknowledgeMovement to become true
-                next_cycle = 420 
-
-        elif current_cycle == 430: # BringAway: Move Forks to Side for Placing
-            destination_pos = state["ActiveElevatorAssignment_iDestination"]
-            step_comment = f"BringAway: Moving forks to side for placing at {destination_pos}"
-            target_side = RobotSide if self.get_side(destination_pos) == "robot" else OpperatorSide
-            
-            # Controleer eerst of de lift op de juiste hoogte is
-            if state["iElevatorRowLocation"] != destination_pos:
-                state["_move_target_pos"] = destination_pos
-                state["_move_start_time"] = time.time()
-                state["_sub_engine_moving"] = True
-                step_comment = f"Moving to Destination {destination_pos} before moving forks"
-                # Blijf in deze cycle tot lift op positie is
-            elif state["iCurrentForkSide"] == target_side:
-                logger.info(f"[{lift_id}] BringAway: Forks al op juiste zijde voor plaatsen.")
-                next_cycle = 435  # Skip fork movement
-            else:
-                state["_fork_target_pos"] = target_side
-                state["_fork_start_time"] = time.time()
-                state["_sub_fork_moving"] = True
-                logger.info(f"[{lift_id}] BringAway: Moving forks to {target_side} for placing.")
-                # Blijf in deze cycle tot vorken klaar zijn
-
-        elif current_cycle == 435: # BringAway: Forks at Side, Place Tray
-            # This state is entered when _sub_fork_moving (from 430) becomes false, or if skipped
-            destination_pos = state["ActiveElevatorAssignment_iDestination"]
-            actual_fork_side = state["_fork_target_pos"] # This was the target for the previous movement
-            
-            # Update current fork side if it was moved
-            if state["iCurrentForkSide"] != actual_fork_side:
-                 state["iCurrentForkSide"] = actual_fork_side
-                 await self._update_opc_value(lift_id, "iCurrentForkSide", actual_fork_side)
-
-            step_comment = f"BringAway: Forks at side. Placing tray at {destination_pos}."
-            logger.info(f"[{lift_id}] {step_comment}")
-            
-            state["xTrayInElevator"] = False # Tray placed
+        elif current_cycle == 430: # Move Forks to Side
+            dest_pos = state["ActiveElevatorAssignment_iDestination"]
+            target_side = RobotSide if self.get_side(dest_pos) == "robot" else OpperatorSide
+            step_comment = f"BringAway: Forks to side {target_side} at {dest_pos}"
+            if state["iElevatorRowLocation"] != dest_pos: # Ensure at dest
+                 state["_move_target_pos"] = dest_pos; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
+            elif state["iCurrentForkSide"] == target_side: next_cycle = 435
+            elif not state["_sub_fork_moving"]:
+                state["_fork_target_pos"] = target_side; state["_fork_start_time"] = time.time(); state["_sub_fork_moving"] = True
+        elif current_cycle == 435: # Place Tray
             await self._update_opc_value(lift_id, "xTrayInElevator", False)
-            
             next_cycle = 440
-
-        elif current_cycle == 440: # BringAway: Tray Placed, Move Fork to Middle
-            step_comment = f"BringAway: Tray placed at {state['ActiveElevatorAssignment_iDestination']}. Moving fork to middle."
-            # Controleer eerst of de lift op de juiste hoogte is
-            if state["iElevatorRowLocation"] != state["ActiveElevatorAssignment_iDestination"]:
-                state["_move_target_pos"] = state["ActiveElevatorAssignment_iDestination"]
-                state["_move_start_time"] = time.time()
-                state["_sub_engine_moving"] = True
-                step_comment = f"Moving to Destination {state['ActiveElevatorAssignment_iDestination']} before moving fork to middle"
-                # Blijf in deze cycle tot lift op positie is
-            elif state["iCurrentForkSide"] == MiddenLocation:
-                logger.info(f"[{lift_id}] BringAway: Forks already at middle after placing.")
-                next_cycle = 450 # Skip fork movement
-            else:
-                state["_fork_target_pos"] = MiddenLocation
-                state["_sub_fork_moving"] = True
-                # sSeq_Step_comment will be updated by the main logic
-                next_cycle = 450 # Proceed to 450 after fork movement
-
-        elif current_cycle == 450: # BringAway: Fork at Middle
-            # This state is entered when _sub_fork_moving (from 440) becomes false, or if skipped
-            # Update current fork side if it was moved
-            if state["iCurrentForkSide"] != MiddenLocation:
-                state["iCurrentForkSide"] = MiddenLocation
-                await self._update_opc_value(lift_id, "iCurrentForkSide", MiddenLocation)
-
-            step_comment = f"BringAway: Fork at middle. Job sequence complete."
-            next_cycle = 460
-            
-        elif current_cycle == 460: # BringAway: Job Complete
-            step_comment = "BringAway: Job Complete - Returning to Ready"
-            
-            logger.info(f"[{lift_id}] Job type {state['ActiveElevatorAssignment_iTaskType']} (BringAway or FullAssignment) fully completed. Clearing active and EcoSystem job.")
-            # Clear active job variables
+        elif current_cycle == 440: # Move Forks to Middle
+            step_comment = "BringAway: Forks to middle after placing"
+            if state["iElevatorRowLocation"] != state["ActiveElevatorAssignment_iDestination"]: # Ensure at dest
+                 state["_move_target_pos"] = state["ActiveElevatorAssignment_iDestination"]; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
+            elif state["iCurrentForkSide"] == MiddenLocation: next_cycle = 450
+            elif not state["_sub_fork_moving"]:
+                state["_fork_target_pos"] = MiddenLocation; state["_fork_start_time"] = time.time(); state["_sub_fork_moving"] = True
+        elif current_cycle == 450: next_cycle = 460 # Fork at Middle
+        elif current_cycle == 460: # BringAway Complete
+            step_comment = "BringAway: Complete. To Ready."
             await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iOrigination", 0) 
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iDestination", 0)
-            state["_current_job_valid"] = False
-
-            # Clear EcoSystem job request variables by writing 0 to the OPC UA nodes
             await self._update_opc_value(lift_id, "Eco_iTaskType", 0)
-            await self._update_opc_value(lift_id, "Eco_iOrigination", 0)
-            await self._update_opc_value(lift_id, "Eco_iDestination", 0)
-            
-            # Also reset the acknowledge flag from EcoSystem if it was somehow left true
-            await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False)
-
-            # === DIAGNOSTIC START ===
-            # try:
-            #     logger.info(f"[{lift_id}] DIAGNOSTIC: Reading back Eco_iTaskType after attempting to clear.")
-            #     # node_task_type_path_diag = self._get_node_path(lift_id, "Eco_iTaskType") # _get_node_path is not defined
-            #     # if node_task_type_path_diag: # Ensure path was found
-            #     #     task_type_node_diag = self.server.get_node(node_task_type_path_diag)
-            #     #     eco_task_type_diag = await task_type_node_diag.read_value()
-            #     #     logger.info(f"[{lift_id}] DIAGNOSTIC: Value of Eco_iTaskType on server is now: {eco_task_type_diag}")
-            #     # else:
-            #     #     logger.warning(f"[{lift_id}] DIAGNOSTIC: Could not get node path for Eco_iTaskType.")
-            # except Exception as e_diag:
-            #     logger.error(f"[{lift_id}] DIAGNOSTIC: Error reading back Eco_iTaskType: {e_diag}")
-            # === DIAGNOSTIC END ===
-
+            state["_current_job_valid"] = False
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
-            await self._update_opc_value(lift_id, "iJobType", 0) # Clear any handshake signals
-            await self._update_opc_value(lift_id, "iRowNr", 0)   # Clear any handshake signals
-            
-            next_cycle = 10 # Back to Ready
-        
-        elif current_cycle == 490: # PreparePickUp: Signal Job Acceptance to EcoSystem
-            step_comment = f"PreparePickUp: Job accepted. Signaling EcoSystem for origin {state['ActiveElevatorAssignment_iOrigination']}."
-            logger.info(f"[{lift_id}] {step_comment}")
-            await self._update_opc_value(lift_id, "iJobType", PreparePickUp)
-            await self._update_opc_value(lift_id, "iRowNr", state["ActiveElevatorAssignment_iOrigination"])
+            await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_IDLE) # Ensure handshake cleared
+            await self._update_opc_value("System", "System_Handshake_iRowNr", 0)
+            next_cycle = 10
+
+        # --- PreparePickUp (Cycles 490, 495, 500-520) ---
+        elif current_cycle == 490: # Signal Origin
+            orig_loc = state["ActiveElevatorAssignment_iOrigination"]
+            step_comment = f"PrepPickUp: Signaling Eco for origin {orig_loc}"
+            await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_1)
+            await self._update_opc_value("System", "System_Handshake_iRowNr", orig_loc)
             next_cycle = 495
-
-        elif current_cycle == 495: # PreparePickUp: Wait for EcoSystem Acknowledge
-            step_comment = f"PreparePickUp: Waiting for acknowledge from EcoSystem for origin {state['ActiveElevatorAssignment_iOrigination']}."
-            ack_received = await self._read_opc_value(lift_id, "Eco_xAcknowledgeMovement")
-            logger.debug(f"[{lift_id}] Cycle 495: Reading xAcknowledgeMovement for origin {state['ActiveElevatorAssignment_iOrigination']}. Value: {ack_received}") # DEBUG LINE ADDED
-            if ack_received:
-                logger.info(f"[{lift_id}] PreparePickUp: Acknowledge for origin {state['ActiveElevatorAssignment_iOrigination']} received. Proceeding.")
-                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False) # Consume ack
-                await self._update_opc_value(lift_id, "iJobType", 0) # Corrected key
-                await self._update_opc_value(lift_id, "iRowNr", 0) # Corrected key
-                next_cycle = 500 # Proceed to original start of PreparePickUp sequence
-            else:
-                # Stay in this cycle, waiting for xAcknowledgeMovement
-                next_cycle = 495
-
-        # --- PreparePickUp Sequence (TaskType 3) ---
-        elif current_cycle == 500:  # Start PreparePickUp
-            origination_pos = state["ActiveElevatorAssignment_iOrigination"]
-            step_comment = f"PreparePickUp: Starting (O:{origination_pos})"
-            logger.info(f"[{lift_id}] Starting PreparePickUp job for origin {origination_pos}")
-            await self._update_opc_value(lift_id, "iStationStatus", STATUS_NOTIFICATION)
-            # Validate if tray is present - PreparePickUp should not have a tray
+        elif current_cycle == 495: # Wait Ack Origin
+            orig_loc = state["ActiveElevatorAssignment_iOrigination"]
+            step_comment = f"PrepPickUp: Waiting Eco ack for origin {orig_loc}"
+            if acknowledge_movement:
+                await self._update_opc_value(lift_id, "Eco_xAcknowledgeMovement", False)
+                await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_IDLE)
+                await self._update_opc_value("System", "System_Handshake_iRowNr", 0)
+                next_cycle = 500
+        elif current_cycle == 500: # Start PreparePickUp
+            step_comment = f"PrepPickUp: Start (O:{state['ActiveElevatorAssignment_iOrigination']})"
             if state["xTrayInElevator"]:
-                step_comment = "PreparePickUp Error: Tray present on elevator!" # Updated step_comment for clarity
-                logger.error(f"[{lift_id}] {step_comment}")
-                await self._update_opc_value(lift_id, "sShortAlarmDescription", step_comment) # Use step_comment for OPC
-                # REMOVED: await self._update_opc_value(lift_id, "sAlarmMessage", "TaskType PreparePickUp started but xTrayInElevator is true.")
-                await self._update_opc_value(lift_id, "sAlarmSolution", "Ensure tray is not present. Reset job.")
-                await self._update_opc_value(lift_id, "iErrorCode", CANCEL_PICKUP_WITH_TRAY) 
+                step_comment = "PrepPickUp Error: Tray present!"
+                # Error handling...
+                await self._update_opc_value(lift_id, "sShortAlarmDescription", step_comment)
+                await self._update_opc_value(lift_id, "iErrorCode", CANCEL_PICKUP_WITH_TRAY)
                 state["iErrorCode"] = CANCEL_PICKUP_WITH_TRAY
                 await self._update_opc_value(lift_id, "iStationStatus", STATUS_ERROR)
-                
                 await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-                await self._update_opc_value(lift_id, "Eco_iTaskType", 0) # Corrected
+                await self._update_opc_value(lift_id, "Eco_iTaskType", 0)
                 state["_current_job_valid"] = False
-                next_cycle = 10 # Back to ready after error
+                next_cycle = 10
             else:
                 next_cycle = 505
-
-
-        elif current_cycle == 505:  # PreparePickUp: Move to Origin
+        elif current_cycle == 505: # Move to Origin
             target_loc = state["ActiveElevatorAssignment_iOrigination"]
-            step_comment = f"PreparePickUp: Moving to Origin {target_loc}"
-            
-            if state["iElevatorRowLocation"] == target_loc:
-                logger.info(f"[{lift_id}] PreparePickUp: Already at Origin {target_loc}")
-                next_cycle = 510  # Go to Prepare Forks
-            else:
-                state["_move_target_pos"] = target_loc
-                state["_move_start_time"] = time.time()
-                state["_sub_engine_moving"] = True
-                logger.info(f"[{lift_id}] PreparePickUp: Moving to Origin {target_loc}")
-                # Stays in this cycle if _sub_engine_moving is true
-
-        elif current_cycle == 510:  # PreparePickUp: Prepare Forks at Origin
+            step_comment = f"PrepPickUp: Moving to Origin {target_loc}"
+            if state["iElevatorRowLocation"] == target_loc: next_cycle = 510
+            elif not state["_sub_engine_moving"]:
+                state["_move_target_pos"] = target_loc; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
+        elif current_cycle == 510: # Prepare Forks at Origin
             origin_pos = state["ActiveElevatorAssignment_iOrigination"]
-            step_comment = f"PreparePickUp: Preparing Forks at Origin {origin_pos}"
             target_fork_side = RobotSide if self.get_side(origin_pos) == "robot" else OpperatorSide
-            
-            # Controleer eerst of de lift op de juiste hoogte is
-            if state["iElevatorRowLocation"] != origin_pos:
-                state["_move_target_pos"] = origin_pos
-                state["_move_start_time"] = time.time()
-                state["_sub_engine_moving"] = True
-                step_comment = f"Moving to Origin {origin_pos} before preparing forks"
-                # Blijf in deze cycle tot lift op positie is
-            elif state["iCurrentForkSide"] == target_fork_side:
-                logger.info(f"[{lift_id}] PreparePickUp: Forks already at correct side ({target_fork_side}) for pickup at {origin_pos}")
-                next_cycle = 515  # Go to Move Forks to Middle
-            else:
-                state["_fork_target_pos"] = target_fork_side
-                state["_fork_start_time"] = time.time()
-                state["_sub_fork_moving"] = True
-                logger.info(f"[{lift_id}] PreparePickUp: Moving forks to {target_fork_side} for pickup at {origin_pos}")
-                # Blijf in deze cycle tot vorken klaar zijn
-
-        elif current_cycle == 515:  # PreparePickUp: Move Forks to Middle
-            step_comment = "PreparePickUp: Forks prepared. Moving forks to Middle."
-            if state["iCurrentForkSide"] == MiddenLocation:
-                logger.info(f"[{lift_id}] PreparePickUp: Forks already at middle position.")
-                next_cycle = 520  # Go to Completion
-            else:
-                state["_fork_target_pos"] = MiddenLocation
-                state["_fork_start_time"] = time.time()
-                state["_sub_fork_moving"] = True
-                logger.info(f"[{lift_id}] PreparePickUp: Moving forks to middle position.")
-                # Stays in this cycle if _sub_fork_moving is true
-
-        elif current_cycle == 520:  # PreparePickUp: Job Complete
-            step_comment = "PreparePickUp: Complete - Ready at Origin, forks centered. Returning to Ready."
-            logger.info(f"[{lift_id}] Job type {state['ActiveElevatorAssignment_iTaskType']} (PreparePickUp) completed. Clearing active and EcoSystem job.")
-
-            # Clear active job variables
+            step_comment = f"PrepPickUp: Prep forks at {origin_pos} for side {target_fork_side}"
+            if state["iElevatorRowLocation"] != origin_pos: # Ensure at origin
+                 state["_move_target_pos"] = origin_pos; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
+            elif state["iCurrentForkSide"] == target_fork_side: next_cycle = 515
+            elif not state["_sub_fork_moving"]:
+                state["_fork_target_pos"] = target_fork_side; state["_fork_start_time"] = time.time(); state["_sub_fork_moving"] = True
+        elif current_cycle == 515: # Move Forks to Middle
+            step_comment = "PrepPickUp: Forks to middle"
+            if state["iCurrentForkSide"] == MiddenLocation: next_cycle = 520
+            elif not state["_sub_fork_moving"]:
+                state["_fork_target_pos"] = MiddenLocation; state["_fork_start_time"] = time.time(); state["_sub_fork_moving"] = True
+        elif current_cycle == 520: # PreparePickUp Complete
+            step_comment = "PrepPickUp: Complete. To Ready."
             await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iOrigination", 0)
-            await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iDestination", 0)
-            state["_current_job_valid"] = False 
-
-            # Clear EcoSystem job request variables
-            # await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iTaskType", 0)
-            # await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iOrigination", 0)
-            # await self._update_opc_value(lift_id, "ElevatorEcoSystAssignment.iDestination", 0)
             await self._update_opc_value(lift_id, "Eco_iTaskType", 0)
-            await self._update_opc_value(lift_id, "Eco_iOrigination", 0)
-            await self._update_opc_value(lift_id, "Eco_iDestination", 0)
-
-            await self._update_opc_value(lift_id, "iCancelAssignment", 0)
+            state["_current_job_valid"] = False
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
+            await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_IDLE) # Ensure handshake cleared
+            await self._update_opc_value("System", "System_Handshake_iRowNr", 0)
             next_cycle = 10
             
         elif current_cycle == 800: # General Error State
-            step_comment = f"Error {state['iErrorCode']} occurred. Waiting for reset."
+            step_comment = f"Error {state['iErrorCode']}. Waiting xClearError."
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_ERROR)
-            
-            # Check if EcoSystem has cleared the error
-            if cancel_assignment_reason_from_eco == 0:
-                logger.info(f"[{lift_id}] Error cleared by EcoSystem.")
-                await self._update_opc_value(lift_id, "iErrorCode", 0)
-                await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
-                await self._update_opc_value(lift_id, "sAlarmMessage", "")
-                await self._update_opc_value(lift_id, "sAlarmSolution", "")
-                next_cycle = 0 # Go to init/idle after clearing error
-            # else: Stay in error state, waiting for external intervention
+            # Stays in 800 unless xClearError is processed (handled at top of function)
 
-        # Update step comment and cycle if needed
         await self._update_opc_value(lift_id, "sSeq_Step_comment", step_comment)
-        
-        # Only change cycle if not busy with movement and next cycle is different
         if not state["_sub_engine_moving"] and not state["_sub_fork_moving"] and next_cycle != current_cycle:
             logger.info(f"[{lift_id}] Cycle transition: {current_cycle} -> {next_cycle}")
             await self._update_opc_value(lift_id, "iCycle", next_cycle)
@@ -1234,7 +929,7 @@ class PLCSimulator_DualLift:
         try:
             await self._initialize_server()
         except Exception as e:
-            logger.error(f"Failed to initialize server: {e}")
+            logger.error(f"Failed to initialize server: {e}", exc_info=True)
             return
 
         async with self.server:
@@ -1242,20 +937,15 @@ class PLCSimulator_DualLift:
             self.running = True
             while self.running:
                 try:
-                    # Process logic for both lifts
                     await self._process_lift_logic(LIFT1_ID)
                     await self._process_lift_logic(LIFT2_ID)
-
                 except Exception as e:
                     logger.exception(f"Error in main processing loop: {e}")
-
-                await asyncio.sleep(0.2)  # PLC cycle time
+                await asyncio.sleep(SIMULATION_CYCLE_TIME_MS / 1000.0)
 
     async def stop(self):
         self.running = False
         logger.info("Dual Lift PLC Simulator Stopping...")
-
-
 async def main():
     logger.info("Starting PLC Simulator (Dual Lift)")
     
@@ -1301,13 +991,13 @@ async def main():
             await plc_sim.stop()
     except Exception as e:
         logger.error(f"Error starting the PLC Simulator: {e}", exc_info=True)
-
+        
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Application terminated by KeyboardInterrupt")
+        logger.info("Application terminated by KeyboardInterrupt (main).")
     except Exception as e:
-        logger.exception(f"Unhandled exception in main: {e}")
+        logger.exception(f"Unhandled exception in __main__: {e}")
     finally:
-        logger.info("Exiting application")
+        logger.info("Exiting application.")

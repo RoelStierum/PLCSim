@@ -108,7 +108,7 @@ class LiftVisualizationManager:
                 outline='gray', width=1, fill='#C8E6C8', tags=f"rack_left_{row}" # Light green slots
             )
             if row == 1 or row % 5 == 0:
-                self.canvas.create_text(left_rack_x1 - 10, y_pos, text=str(row), font=("Arial", 7), anchor="e")
+                self.canvas.create_text(left_rack_x1 - 3, y_pos, text=str(row), font=("Arial", 7), anchor="e") # Changed -10 to -3
 
         grid_height_right = usable_height / MAX_ROWS_RIGHT
         for i in range(MAX_ROWS_RIGHT):
@@ -121,7 +121,7 @@ class LiftVisualizationManager:
                 outline='gray', width=1, fill='#C8E6C8', tags=f"rack_right_{row}" # Light green slots
             )
             if row == 51 or row % 5 == 0 or row == (50 + MAX_ROWS_RIGHT): # Label first, every 5th, and last
-                 self.canvas.create_text(right_rack_x2 + 10, y_pos, text=str(row), font=("Arial", 7), anchor="w")
+                 self.canvas.create_text(right_rack_x2 + 3, y_pos, text=str(row), font=("Arial", 7), anchor="w") # Changed +10 to +3
 
         # --- Service Locations Visualization ---
         service_area_height = TOP_MARGIN * 0.8 # Visual height for service areas
