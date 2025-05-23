@@ -238,8 +238,6 @@ class PLCSimulator_DualLift:
                 await node.set_writable()
                 self.opc_node_map[(lift_id_key, name)] = node
             
-            logger.info(f"    REMOVED old Handshake object under StationData/{station_idx} for {lift_id_key}")
-
             elevator_plc_obj = await plc_to_eco_obj.add_object(self.namespace_idx, elevator_name)
             elevator_vars_map = {
                 "iElevatorRowLocation": ua.VariantType.Int16, "xTrayInElevator": ua.VariantType.Boolean,
@@ -376,90 +374,43 @@ class PLCSimulator_DualLift:
         state = self.lift_state[lift_id]
         other_lift_id = LIFT2_ID if lift_id == LIFT1_ID else LIFT1_ID
 
-        # --- Handle EcoSystem Initiated Cancellation ---
-        # This check should be done early, before most other logic.
         ecosystem_cancel_reason = await self._read_opc_value(lift_id, "Eco_iCancelAssignment")
         if ecosystem_cancel_reason > 0:
-            logger.info(f"[{lift_id}] Received cancellation request from EcoSystem with reason: {ecosystem_cancel_reason}. Current cycle: {state['iCycle']}.")
-            
-            # Stop any ongoing movements immediately
+            logger.info(f"[{lift_id}] EcoSystem cancel request: {ecosystem_cancel_reason}. Cycle: {state['iCycle']}.")
             if state["_sub_engine_moving"] or state["_sub_fork_moving"]:
-                state["_sub_engine_moving"] = False
-                state["_sub_fork_moving"] = False
-                logger.info(f"[{lift_id}] Ongoing movement interrupted due to EcoSystem cancellation.")
-
-            # Clear PLC's active job details
+                state["_sub_engine_moving"] = False; state["_sub_fork_moving"] = False
+                logger.info(f"[{lift_id}] Movement interrupted by EcoSystem cancel.")
+            
+            # Clear PLC's active job
             await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", 0)
             await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iOrigination", 0)
             await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iDestination", 0)
             state["_current_job_valid"] = False
 
-            # Clear EcoSystem job inputs on OPC UA (by writing 0 back to them)
+            # Clear EcoSystem job inputs on OPC
             await self._update_opc_value(lift_id, "Eco_iTaskType", 0)
             await self._update_opc_value(lift_id, "Eco_iOrigination", 0)
             await self._update_opc_value(lift_id, "Eco_iDestination", 0)
+            await self._update_opc_value(lift_id, "Eco_iCancelAssignment", 0) # Ack cancel
             
-            # Acknowledge the cancellation by writing 0 back to Eco_iCancelAssignment
-            await self._update_opc_value(lift_id, "Eco_iCancelAssignment", 0)
-            
-            # Set PLC's iCancelAssignment (PlcToEco) to indicate cancellation source
-            await self._update_opc_value(lift_id, "iCancelAssignment", CANCEL_BY_ECOSYSTEM)
+            await self._update_opc_value(lift_id, "iCancelAssignment", CANCEL_BY_ECOSYSTEM) # PLC reason
             
             # Clear global handshake
             await self._update_opc_value("System", "System_Handshake_iJobType", HANDSHAKE_JOB_TYPE_IDLE)
             await self._update_opc_value("System", "System_Handshake_iRowNr", 0)
 
-            # Clear any error state that might have been set by the cancelled job
-            if state["iErrorCode"] != 0:
+            if state["iErrorCode"] != 0: # Clear any local error
                 await self._update_opc_value(lift_id, "iErrorCode", 0)
                 await self._update_opc_value(lift_id, "sShortAlarmDescription", "")
                 await self._update_opc_value(lift_id, "sAlarmSolution", "")
-                state["iErrorCode"] = 0
-
-            # Transition to ready state (cycle 10)
+            
             await self._update_opc_value(lift_id, "iCycle", 10)
-            await self._update_opc_value(lift_id, "sSeq_Step_comment", "Job cancelled by EcoSystem. Returning to Ready.")
+            await self._update_opc_value(lift_id, "sSeq_Step_comment", "Job cancelled by EcoSystem. To Ready.")
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
-            logger.info(f"[{lift_id}] Job cancelled by EcoSystem. Lift transitioning to Cycle 10 (Ready).")
-            return # Exit processing for this cycle as job is cancelled.
+            return
 
-        # Synchronize xTrayInElevator from OPC node to internal state at the beginning of each cycle
-        # This allows EcoSystemSim's "Toggle Tray" to correctly update the PLC's understanding
-        # The state_var_name for xTrayInElevator in opc_node_map is "xTrayInElevator"
-        node_key_tray_status = (lift_id, "xTrayInElevator")
-        # Corrected: Use self.opc_node_map instead of self.nodes
-        if node_key_tray_status in self.opc_node_map:
-            try:
-                # Use _read_opc_value which also updates internal cache if it's an input
-                # However, xTrayInElevator is an output from PLC, so direct read from node is fine here for sync
-                # For consistency and to ensure the value is fresh from OPC for this specific sync, read directly.
-                opc_node_tray_status = self.opc_node_map[node_key_tray_status]
-                current_tray_status_opc = await opc_node_tray_status.read_value()
-                
-                # Update internal state if different
-                if self.lift_state[lift_id]["xTrayInElevator"] != current_tray_status_opc:
-                    self.lift_state[lift_id]["xTrayInElevator"] = current_tray_status_opc
-                    logger.info(f"[{lift_id}] Synced xTrayInElevator from OPC: {current_tray_status_opc}") # Changed self.logger to logger
-
-            except Exception as e:
-                logger.error(f"[{lift_id}] Error syncing xTrayInElevator from OPC: {e}") # Changed self.logger to logger
-        else:
-            logger.warning(f"[{lift_id}] OPC node for xTrayInElevator not found in opc_node_map.") # Changed self.logger to logger
-
-        # Read current state for the lift
-        # current_state = self.lift_state[lift_id] # Redundant, 'state' already holds this.
-
-        # Process any running sub-movements
-        # _simulate_sub_movement will return True if a movement is *still* in progress.
-        # If a movement *just finished* in this call, it will have updated state (e.g., iElevatorRowLocation)
-        # and its respective flag (e.g., _sub_engine_moving) will now be False.
         still_busy_with_sub_movement = await self._simulate_sub_movement(lift_id)
-        
-        # If a sub-movement is *actively* running (not just completed in the above call),
-        # then we should wait for it to finish before processing main cycle logic.
-        if still_busy_with_sub_movement:
-            # logger.debug(f"[{lift_id}] Sub-movement still in progress. Waiting.")
-            return 
+        if still_busy_with_sub_movement: return 
         
         current_cycle = state["iCycle"]
         step_comment = f"Cycle {current_cycle}"  # Default comment
@@ -598,11 +549,19 @@ class PLCSimulator_DualLift:
                 if is_job_acceptable:
                     await self._update_opc_value(lift_id, "ActiveElevatorAssignment_iTaskType", task_type_from_eco)
                     
-                    # Store the received origination and destination from EcoSystem into PLC\'s ActiveElevatorAssignment
-                    # For MoveTo, the 'origination' from EcoSystem is the target.
-                    # For BringAway, the 'origination' for the PLC\'s active job is its current location.
-                    
-                    plc_active_origination = origination_from_eco # Default, used by FullAssignment, PreparePickUp
+                    # Explicitly set/reset tray status for tasks that define it at the start
+                    if task_type_from_eco == FullAssignment or task_type_from_eco == PreparePickUp:
+                        # These tasks start by assuming no tray / will pick one up.
+                        # Unconditionally ensure internal state and OPC output reflect this.
+                        logger.info(f"[{lift_id}] Task {task_type_from_eco} starting. Current internal xTrayInElevator: {state['xTrayInElevator']}. Ensuring it is set to False.")
+                        await self._update_opc_value(lift_id, "xTrayInElevator", False)
+                        logger.info(f"[{lift_id}] After ensuring xTrayInElevator is False, internal state is now: {state['xTrayInElevator']}.")
+                    elif task_type_from_eco == BringAway:
+                        # BringAway requires a tray. If not present, it's an error (handled later in cycle 400).
+                        # No change to xTrayInElevator here; its presence is a precondition.
+                        pass
+
+                    plc_active_origination = origination_from_eco 
                     plc_active_destination = destination_from_eco # Default, used by FullAssignment, BringAway
                                         
                     if task_type_from_eco == BringAway:
@@ -634,8 +593,7 @@ class PLCSimulator_DualLift:
                     logger.warning(f"[{lift_id}] Job rejected in Cycle 10. Reason Code: {rejection_code}, Message: {rejection_msg}")
                     
                     await self._update_opc_value(lift_id, "iCancelAssignment", rejection_code) # Corrected path
-                    await self._update_opc_value(lift_id, "sShortAlarmDescription", step_comment) # Use step_comment for the message
-                    # REMOVED: await self._update_opc_value(lift_id, "sAlarmMessage", rejection_msg) 
+                    await self._update_opc_value(lift_id, "sShortAlarmDescription", step_comment) # Use step_comment for the message) 
                     await self._update_opc_value(lift_id, "sAlarmSolution", "Check job parameters. Clear/send new job from EcoSystem.")
                     
                     await self._update_opc_value(lift_id, "iErrorCode", 0) 
@@ -714,9 +672,6 @@ class PLCSimulator_DualLift:
                                  # which is now part of BringAway logic. If FullAssignment is truly separate,
                                  # this should go to a dedicated "move to destination" cycle for FullAssignment.
                                  # For now, assuming it means start of BringAway part of FullAssignment.
-                                 # Let's make it explicit: if it's FullAssignment, it should go to a cycle that moves to destination.
-                                 # Cycle 400 is start of BringAway, which expects a tray.
-                                 # Let's assume FullAssignment's "move to destination" is similar to BringAway's cycle 410.
                 logger.info(f"[{lift_id}] FullAssignment ack for dest received. Next cycle should be move to dest. Currently routing to 400 (BringAway start).")
                 # This routing might need refinement if FullAssignment has distinct move-to-dest logic
                 # For now, let's keep it simple and assume cycle 400 is the correct transition.
