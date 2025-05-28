@@ -1,48 +1,65 @@
-2025-05-28 16:15:41,028 - EcoSystemSim_DualLift_ST - INFO - Attempting to connect to PLC at opc.tcp://192.168.137.2:4860/gibas/plc/...
-2025-05-28 16:15:41,029 - opcua_client - INFO - OPCUAClient: Attempting to connect to opc.tcp://192.168.137.2:4860/gibas/plc/
-2025-05-28 16:15:41,051 - opcua_client - INFO - OPCUAClient: Connected to opc.tcp://192.168.137.2:4860/gibas/plc/. Namespace Index: 2
-2025-05-28 16:15:41,052 - EcoSystemSim_DualLift_ST - INFO - Connection successful. Resetting job inputs on OPC server for all lifts...
-2025-05-28 16:15:41,052 - EcoSystemSim_DualLift_ST - INFO - Resetting job inputs on OPC server for Lift1 (Elevator1).
-2025-05-28 16:15:41,080 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType (value: 0).
-2025-05-28 16:15:41,080 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType
-2025-05-28 16:15:41,106 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination (value: 0).
-2025-05-28 16:15:41,106 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination
-2025-05-28 16:15:41,127 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination (value: 0).
-2025-05-28 16:15:41,127 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination
-2025-05-28 16:15:41,130 - EcoSystemSim_DualLift_ST - INFO - Successfully reset job inputs (TaskType, Origination, Destination) for Lift1 on OPC server.
-2025-05-28 16:15:41,130 - EcoSystemSim_DualLift_ST - INFO - Resetting job inputs on OPC server for Lift2 (Elevator2).
-2025-05-28 16:15:41,145 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iTaskType (value: 0).
-2025-05-28 16:15:41,145 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iTaskType
-2025-05-28 16:15:41,160 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iOrigination (value: 0).
-2025-05-28 16:15:41,161 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iOrigination
-2025-05-28 16:15:41,175 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iDestination (value: 0).
-2025-05-28 16:15:41,175 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iDestination
-2025-05-28 16:15:41,178 - EcoSystemSim_DualLift_ST - INFO - Successfully reset job inputs (TaskType, Origination, Destination) for Lift2 on OPC server.
-2025-05-28 16:15:41,178 - EcoSystemSim_DualLift_ST - INFO - Finished resetting job inputs on OPC server for all lifts.
-2025-05-28 16:15:41,178 - EcoSystemSim_DualLift_ST - INFO - Successfully connected to PLC at opc.tcp://192.168.137.2:4860/gibas/plc/.
-2025-05-28 16:15:41,178 - EcoSystemSim_DualLift_ST - INFO - PLC monitoring task started.
-2025-05-28 16:15:51,256 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1 (Elevator1): TaskType=1, Origin=5, Destination=70
-2025-05-28 16:15:51,270 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType (value: 1).
-2025-05-28 16:15:51,271 - opcua_client - INFO - OPCUAClient: Attempting to write value: 1 (Final UA Variant: Variant(Value=1, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType
-2025-05-28 16:15:51,280 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination (value: 5).
-2025-05-28 16:15:51,280 - opcua_client - INFO - OPCUAClient: Attempting to write value: 5 (Final UA Variant: Variant(Value=5, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination
-2025-05-28 16:15:51,291 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination (value: 70).
-2025-05-28 16:15:51,291 - opcua_client - INFO - OPCUAClient: Attempting to write value: 70 (Final UA Variant: Variant(Value=70, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination
-2025-05-28 16:15:51,301 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement (value: False).
-2025-05-28 16:15:51,301 - opcua_client - INFO - OPCUAClient: Attempting to write value: False (Final UA Variant: Variant(Value=False, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement
-2025-05-28 16:15:51,309 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/iCancelAssignment (value: 0).
-2025-05-28 16:15:51,309 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/iCancelAssignment
-2025-05-28 16:15:51,310 - EcoSystemSim_DualLift_ST - INFO - Successfully sent job to Lift1 (Elevator1).
-2025-05-28 16:15:52,061 - EcoSystemSim_DualLift_ST - INFO - Global Acknowledge requested by PLC (iJobType=1, iRowNr=5).
-2025-05-28 16:15:57,380 - EcoSystemSim_DualLift_ST - INFO - Acknowledge requested by user for Lift1 (Elevator1).
-2025-05-28 16:15:57,388 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement (value: True).
-2025-05-28 16:15:57,388 - opcua_client - INFO - OPCUAClient: Attempting to write value: True (Final UA Variant: Variant(Value=True, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement
-2025-05-28 16:15:57,390 - EcoSystemSim_DualLift_ST - INFO - Acknowledge sent to PLC for Lift1 (Elevator1) at path Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement.
-2025-05-28 16:15:57,778 - EcoSystemSim_DualLift_ST - INFO - Global Acknowledge condition cleared by PLC (iJobType=0).
-2025-05-28 16:16:01,786 - EcoSystemSim_DualLift_ST - INFO - Global Acknowledge requested by PLC (iJobType=2, iRowNr=70).
-2025-05-28 16:16:02,538 - EcoSystemSim_DualLift_ST - INFO - Acknowledge requested by user for Lift1 (Elevator1).
-2025-05-28 16:16:02,549 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement (value: True).
-2025-05-28 16:16:02,550 - opcua_client - INFO - OPCUAClient: Attempting to write value: True (Final UA Variant: Variant(Value=True, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement
-2025-05-28 16:16:02,551 - EcoSystemSim_DualLift_ST - INFO - Acknowledge sent to PLC for Lift1 (Elevator1) at path Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement.
-2025-05-28 16:16:02,742 - EcoSystemSim_DualLift_ST - INFO - Global Acknowledge condition cleared by PLC (iJobType=0).
-2025-05-28 16:16:06,716 - EcoSystemSim_DualLift_ST - INFO - Global Acknowledge requested by PLC (iJobType=2, iRowNr=70).
+2025-05-28 16:18:13,083 - EcoSystemSim_DualLift_ST - INFO - Attempting to connect to PLC at opc.tcp://192.168.137.2:4860/gibas/plc/...
+2025-05-28 16:18:13,083 - opcua_client - INFO - OPCUAClient: Attempting to connect to opc.tcp://192.168.137.2:4860/gibas/plc/
+2025-05-28 16:18:13,102 - opcua_client - INFO - OPCUAClient: Connected to opc.tcp://192.168.137.2:4860/gibas/plc/. Namespace Index: 2
+2025-05-28 16:18:13,102 - EcoSystemSim_DualLift_ST - INFO - Connection successful. Resetting job inputs on OPC server for all lifts...
+2025-05-28 16:18:13,102 - EcoSystemSim_DualLift_ST - INFO - Resetting job inputs on OPC server for Lift1 (Elevator1).
+2025-05-28 16:18:13,135 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType (value: 0).
+2025-05-28 16:18:13,135 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType
+2025-05-28 16:18:13,154 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination (value: 0).
+2025-05-28 16:18:13,155 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination
+2025-05-28 16:18:13,170 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination (value: 0).
+2025-05-28 16:18:13,170 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination
+2025-05-28 16:18:13,173 - EcoSystemSim_DualLift_ST - INFO - Successfully reset job inputs (TaskType, Origination, Destination) for Lift1 on OPC server.
+2025-05-28 16:18:13,173 - EcoSystemSim_DualLift_ST - INFO - Resetting job inputs on OPC server for Lift2 (Elevator2).
+2025-05-28 16:18:13,187 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iTaskType (value: 0).
+2025-05-28 16:18:13,187 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iTaskType
+2025-05-28 16:18:13,203 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iOrigination (value: 0).
+2025-05-28 16:18:13,203 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iOrigination
+2025-05-28 16:18:13,218 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iDestination (value: 0).
+2025-05-28 16:18:13,218 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator2/Elevator2EcoSystAssignment/iDestination
+2025-05-28 16:18:13,220 - EcoSystemSim_DualLift_ST - INFO - Successfully reset job inputs (TaskType, Origination, Destination) for Lift2 on OPC server.
+2025-05-28 16:18:13,220 - EcoSystemSim_DualLift_ST - INFO - Finished resetting job inputs on OPC server for all lifts.
+2025-05-28 16:18:13,220 - EcoSystemSim_DualLift_ST - INFO - Successfully connected to PLC at opc.tcp://192.168.137.2:4860/gibas/plc/.
+2025-05-28 16:18:13,220 - EcoSystemSim_DualLift_ST - INFO - PLC monitoring task started.
+2025-05-28 16:18:13,438 - EcoSystemSim_DualLift_ST - INFO - Global Acknowledge requested by PLC (iJobType=2, iRowNr=70).
+2025-05-28 16:18:16,490 - EcoSystemSim_DualLift_ST - INFO - Acknowledge requested by user for Lift1 (Elevator1).
+2025-05-28 16:18:16,501 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement (value: True).
+2025-05-28 16:18:16,501 - opcua_client - INFO - OPCUAClient: Attempting to write value: True (Final UA Variant: Variant(Value=True, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement
+2025-05-28 16:18:16,503 - EcoSystemSim_DualLift_ST - INFO - Acknowledge sent to PLC for Lift1 (Elevator1) at path Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement.
+2025-05-28 16:18:17,014 - EcoSystemSim_DualLift_ST - INFO - Global Acknowledge condition cleared by PLC (iJobType=0).
+2025-05-28 16:18:20,863 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1 (Elevator1): TaskType=1, Origin=5, Destination=90
+2025-05-28 16:18:20,879 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType (value: 1).
+2025-05-28 16:18:20,879 - opcua_client - INFO - OPCUAClient: Attempting to write value: 1 (Final UA Variant: Variant(Value=1, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType
+2025-05-28 16:18:20,891 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination (value: 5).
+2025-05-28 16:18:20,891 - opcua_client - INFO - OPCUAClient: Attempting to write value: 5 (Final UA Variant: Variant(Value=5, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination
+2025-05-28 16:18:20,905 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination (value: 90).
+2025-05-28 16:18:20,905 - opcua_client - INFO - OPCUAClient: Attempting to write value: 90 (Final UA Variant: Variant(Value=90, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination
+2025-05-28 16:18:20,919 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement (value: False).
+2025-05-28 16:18:20,919 - opcua_client - INFO - OPCUAClient: Attempting to write value: False (Final UA Variant: Variant(Value=False, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement
+2025-05-28 16:18:20,930 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/iCancelAssignment (value: 0).
+2025-05-28 16:18:20,931 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/iCancelAssignment
+2025-05-28 16:18:20,932 - EcoSystemSim_DualLift_ST - INFO - Successfully sent job to Lift1 (Elevator1).
+2025-05-28 16:26:42,857 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1 (Elevator1): TaskType=1, Origin=5, Destination=90
+2025-05-28 16:26:42,872 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType (value: 1).
+2025-05-28 16:26:42,872 - opcua_client - INFO - OPCUAClient: Attempting to write value: 1 (Final UA Variant: Variant(Value=1, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType
+2025-05-28 16:26:42,886 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination (value: 5).
+2025-05-28 16:26:42,886 - opcua_client - INFO - OPCUAClient: Attempting to write value: 5 (Final UA Variant: Variant(Value=5, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination
+2025-05-28 16:26:42,899 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination (value: 90).
+2025-05-28 16:26:42,899 - opcua_client - INFO - OPCUAClient: Attempting to write value: 90 (Final UA Variant: Variant(Value=90, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination
+2025-05-28 16:26:42,915 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement (value: False).
+2025-05-28 16:26:42,915 - opcua_client - INFO - OPCUAClient: Attempting to write value: False (Final UA Variant: Variant(Value=False, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement
+2025-05-28 16:26:42,928 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/iCancelAssignment (value: 0).
+2025-05-28 16:26:42,928 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/iCancelAssignment
+2025-05-28 16:26:42,930 - EcoSystemSim_DualLift_ST - INFO - Successfully sent job to Lift1 (Elevator1).
+2025-05-28 16:28:55,538 - EcoSystemSim_DualLift_ST - INFO - Sending Job to Lift1 (Elevator1): TaskType=1, Origin=5, Destination=90
+2025-05-28 16:28:55,553 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType (value: 1).
+2025-05-28 16:28:55,553 - opcua_client - INFO - OPCUAClient: Attempting to write value: 1 (Final UA Variant: Variant(Value=1, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iTaskType
+2025-05-28 16:28:55,571 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination (value: 5).
+2025-05-28 16:28:55,572 - opcua_client - INFO - OPCUAClient: Attempting to write value: 5 (Final UA Variant: Variant(Value=5, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iOrigination
+2025-05-28 16:28:55,590 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination (value: 90).
+2025-05-28 16:28:55,591 - opcua_client - INFO - OPCUAClient: Attempting to write value: 90 (Final UA Variant: Variant(Value=90, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/Elevator1EcoSystAssignment/iDestination
+2025-05-28 16:28:55,604 - opcua_client - INFO - OPCUAClient: Using provided datatype Boolean for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement (value: False).
+2025-05-28 16:28:55,604 - opcua_client - INFO - OPCUAClient: Attempting to write value: False (Final UA Variant: Variant(Value=False, VariantType=<VariantType.Boolean: 1>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/xAcknowledgeMovement
+2025-05-28 16:28:55,622 - opcua_client - INFO - OPCUAClient: Using provided datatype Int64 for Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/iCancelAssignment (value: 0).
+2025-05-28 16:28:55,622 - opcua_client - INFO - OPCUAClient: Attempting to write value: 0 (Final UA Variant: Variant(Value=0, VariantType=<VariantType.Int64: 8>, Dimensions=None, is_array=False)) to Di_Call_Blocks/OPC_UA/EcoToPlc/Elevator1/iCancelAssignment
+2025-05-28 16:28:55,624 - EcoSystemSim_DualLift_ST - INFO - Successfully sent job to Lift1 (Elevator1).

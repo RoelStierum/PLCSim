@@ -226,7 +226,7 @@ class EcoSystemGUI_DualLift_ST:
         status_vars_to_display = [
             "iCycle", "iStationStatus", "iElevatorRowLocation", 
             "xTrayInElevator", "iCurrentForkSide",
-            "SentTaskType", "SentOrigin", "SentDestination"  # Display last sent job parameters
+            "iTaskType", "iOrigination", "iDestination"  # Labels voor laatst verzonden job parameters
         ]
         status_frame = ttk.LabelFrame(parent_frame, text=f"{lift_id} Status", padding=10)
         status_frame.pack(fill=tk.X, pady=5)
@@ -634,20 +634,29 @@ class EcoSystemGUI_DualLift_ST:
         # Update status labels (including last sent job parameters from cache)
         status_labels_to_update = [
             "iCycle", "iStationStatus", "iElevatorRowLocation", "xTrayInElevator", 
-            "iCurrentForkSide", "SentTaskType", "SentOrigin", "SentDestination"
+            "iCurrentForkSide", "iTaskType", "iOrigination", "iDestination"
         ]
+        # Map GUI label names for sent parameters to their cache keys
+        sent_param_cache_map = {
+            "iTaskType": "SentTaskType",
+            "iOrigination": "SentOrigin",
+            "iDestination": "SentDestination"
+        }
+
         for var_name in status_labels_to_update:
             if lift_id in self.status_labels and var_name in self.status_labels[lift_id]:
-                if var_name.startswith("Sent"): # Handle cached "Sent" values
-                    value = self.last_sent_job_params.get(lift_id, {}).get(var_name, "N/A")
+                value = "N/A" # Default
+                if var_name in sent_param_cache_map: # Check if it's one of the sent parameters
+                    cache_key = sent_param_cache_map[var_name]
+                    value = self.last_sent_job_params.get(lift_id, {}).get(cache_key, "N/A")
+                    if value == "N/A" and not self.last_sent_job_params.get(lift_id):
+                         display_value = "N/A (No job sent)"
+                    else:
+                        display_value = str(value)
                 else: # Handle values read from PLC
-                    value = lift_data.get(var_name)
+                    plc_value = lift_data.get(var_name)
+                    display_value = str(plc_value) if plc_value is not None else "ErrorRead"
                 
-                display_value = str(value) if value is not None else "ErrorRead"
-                if var_name.startswith("Sent") and value == "N/A" and not self.last_sent_job_params.get(lift_id):
-                    display_value = "N/A (No job sent)"
-
-
                 self.status_labels[lift_id][var_name].config(text=display_value)
         
         # Update sSeq_Step_comment (Text widget)
@@ -957,16 +966,14 @@ class EcoSystemGUI_DualLift_ST:
             origin = int(origin_str) if origin_str and origin_str.strip() else 0
             destination = int(destination_str) if destination_str and destination_str.strip() else 0
             
-            # Cache the sent job parameters
+            # Cache the sent job parameters (keys in cache remain "Sent...")
             self.last_sent_job_params[lift_id] = {
                 "SentTaskType": task_type,
                 "SentOrigin": origin,
                 "SentDestination": destination
             }
             # Trigger a GUI update for this lift to show the new "Sent" values immediately
-            # We pass an empty dict for lift_data as we only want to update based on the cache for these specific fields
             self._update_gui_for_lift(lift_id, self.all_lift_data_cache.get(lift_id, {}))
-
 
         except ValueError:
             messagebox.showerror("Input Error", "Origin and Destination must be valid integers.")

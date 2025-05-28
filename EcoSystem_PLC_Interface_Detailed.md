@@ -1,6 +1,6 @@
 # Interface Document: EcoSystemSim.py <=> PLC Communicatie (Gedetailleerde Paden)
 
-Dit document beschrijft de OPC UA variabelen die worden uitgewisseld tussen het EcoSystem en de PLC. De volledige paden zijn primair gebaseerd op de OPC UA structuur zoals geïmplementeerd in de PLC (`PLCSim.py`) en geverifieerd aan de hand van `EcoSystemSim.py` en `interface.txt`.
+Dit document beschrijft de OPC UA variabelen die worden uitgewisseld tussen het EcoSystem en de PLC. De volledige paden zijn  gebaseerd op de OPC UA structuur zoals geïmplementeerd in de PLC (`PLCSim_Pi.py`) en geverifieerd aan de hand van `EcoSystemSim.py` en `interface.txt`.
 
 **Basis OPC UA Paden (aangenomen van `interface.txt`):**
 
@@ -54,7 +54,7 @@ Het EcoSystem kan direct naar een variabele schrijven die normaal gesproken door
 - **xTrayInElevator (per lift, geschreven door EcoSystem):**
   - **Pad Elevator1:** `"Di_Call_Blocks"."OPC_UA"."PlcToEco"."Elevator1"."xTrayInElevator"`
   - **Pad Elevator2:** `"Di_Call_Blocks"."OPC_UA"."PlcToEco"."Elevator2"."xTrayInElevator"`
-  - **Beschrijving:** Simuleert/forceert de aanwezigheidsstatus van de tray in de lift. (Data Type: Boolean)
+  - **Beschrijving:** Simuleert/forceert de aanwezigheidsstatus van de tray in de lift. Gemaakt voor testen van Bring Away job.(Data Type: Boolean)
   - **Geschreven door:** `_toggle_tray_presence`
 
 ## 2. PLC naar EcoSystem Variabelen (PlcToEco)
