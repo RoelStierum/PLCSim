@@ -51,7 +51,8 @@ logging.getLogger("asyncua").setLevel(logging.WARNING)
 logging.getLogger("asyncua.client.client").setLevel(logging.WARNING)
 logging.getLogger("asyncua.client.ua_client").setLevel(logging.WARNING)
 
-PLC_ENDPOINT = "opc.tcp://127.0.0.1:4860/gibas/plc/" # Using port 4860
+#PLC_ENDPOINT = "opc.tcp://127.0.0.1:4860/gibas/plc/" # Using default port 4840
+PLC_ENDPOINT = "opc.tcp://192.168.137.2:4860/gibas/plc/" # Using port 4860
 PLC_NS_URI = "http://gibas.com/plc/"
 # LIFT1_ID, LIFT2_ID, LIFTS are now imported from lift_visualization
 
@@ -82,8 +83,9 @@ class EcoSystemGUI_DualLift_ST:
         self.job_controls = {}
         self.ack_controls = {}
         self.error_controls = {}
-        self.lift_tray_status = {lift_id: False for lift_id in LIFTS} # Initialize tray status
-        self.seq_step_history = {lift_id: collections.deque(maxlen=5) for lift_id in LIFTS} # Changed maxlen to 5
+        self.lift_tray_status = {lift_id: False for lift_id in LIFTS} 
+        self.seq_step_history = {lift_id: collections.deque(maxlen=5) for lift_id in LIFTS} 
+        self.last_sent_job_params = {lift_id: {} for lift_id in LIFTS} # Cache for last sent job
 
         # OPC UA Path Constants
         self.PLC_TO_ECO_BASE = "Di_Call_Blocks/OPC_UA/PlcToEco"
@@ -222,10 +224,9 @@ class EcoSystemGUI_DualLift_ST:
     def _create_status_section(self, parent_frame, lift_id):
         """Creates the status display section for a lift."""
         status_vars_to_display = [
-            "iCycle", "iStatus", "iElevatorRowLocation", 
+            "iCycle", "iStationStatus", "iElevatorRowLocation", 
             "xTrayInElevator", "iCurrentForkSide",
-            # Use base names, assuming they are read from ElevatorEcoSystAssignment
-            "iTaskType", "iOrigination", "iDestination" 
+            "SentTaskType", "SentOrigin", "SentDestination"  # Display last sent job parameters
         ]
         status_frame = ttk.LabelFrame(parent_frame, text=f"{lift_id} Status", padding=10)
         status_frame.pack(fill=tk.X, pady=5)
@@ -529,24 +530,26 @@ class EcoSystemGUI_DualLift_ST:
     async def _monitor_plc(self):
         """Periodically reads data from the PLC and updates the GUI."""
         vars_to_read_map = {
+            # ... (andere variabelen blijven hetzelfde) ...
             "iCycle": ("StationData", "iCycle"),
-            "iStatus": ("StationData", "iStationStatus"),
-            "sSeq_Step_comment": ("Elevator", "sSeq_Step_comment"),
-            # "iJobType" is now global, removed from here
+            "iStationStatus": ("StationData", "iStationStatus"),
+            "sSeq_Step_comment": ("Elevator", "sSeq_Step_comment"), 
             "iCancelAssignmentReasonCode": ("StationData", "iCancelAssignment"),
             "sErrorShortDescription": ("StationData", "sShortAlarmDescription"),
             "sErrorSolution": ("StationData", "sAlarmSolution"),
-            "iElevatorRowLocation": ("Elevator", "iElevatorRowLocation"),
-            "xTrayInElevator": ("Elevator", "xTrayInElevator"),
-            "iCurrentForkSide": ("Elevator", "iCurrentForkSide"),
-            "iErrorCode": ("Elevator", "iErrorCode"),
-            "sErrorMessage": ("Elevator", "sSeq_Step_comment"),
+            "iElevatorRowLocation": ("Elevator", "iElevatorRowLocation"), 
+            "xTrayInElevator": ("Elevator", "xTrayInElevator"),           
+            "iCurrentForkSide": ("Elevator", "iCurrentForkSide"),         
+            "iErrorCode": ("Elevator", "iErrorCode"),                   
+            
+            # Actieve job parameters van de PLC (gepubliceerd door PLC)
+            # "ActiveTask", "ActiveOrigin", "ActiveDest" zijn VERWIJDERD omdat we deze nu uit de lokale cache halen
         }
 
         while self.is_connected:
             try:
                 any_update_failed = False
-                for lift_id in LIFTS: # LIFT1_ID, LIFT2_ID
+                for lift_id in LIFTS: 
                     current_lift_data = self.all_lift_data_cache.get(lift_id, {}).copy()
                     station_idx_for_opc = self._get_station_index(lift_id)
                     elevator_id_str = self._get_elevator_identifier(lift_id)
@@ -562,6 +565,7 @@ class EcoSystemGUI_DualLift_ST:
                             full_opc_path = f"{self.PLC_TO_ECO_BASE}/StationData/{station_idx_for_opc}/{sub_path_template}"
                         elif path_type == "Elevator":
                             full_opc_path = f"{self.PLC_TO_ECO_BASE}/{elevator_id_str}/{sub_path_template}"
+                        # Removed "ActiveAssignment" path_type handling as we are not reading active job from PLC for these specific labels
                         else:
                             logger.warning(f"Unknown path_type: {path_type} for gui_key: {gui_key}")
                             any_update_failed = True
@@ -572,7 +576,7 @@ class EcoSystemGUI_DualLift_ST:
                             current_lift_data[gui_key] = value
                         else:
                             any_update_failed = True
-                            current_lift_data[gui_key] = None
+                            current_lift_data[gui_key] = None # Explicitly set to None on read failure
 
                     self.all_lift_data_cache[lift_id] = current_lift_data
                     # GUI update for lift-specific data will be called after global handshake read
@@ -627,12 +631,23 @@ class EcoSystemGUI_DualLift_ST:
         """Updates all relevant GUI elements for a specific lift based on new data."""
         if not self.root.winfo_exists(): return
 
-        # Update status labels (excluding sSeq_Step_comment, iTaskType, iOrigination, iDestination which are handled differently or not read here)
-        status_labels_to_update = ["iCycle", "iStatus", "iElevatorRowLocation", "xTrayInElevator", "iCurrentForkSide"]
+        # Update status labels (including last sent job parameters from cache)
+        status_labels_to_update = [
+            "iCycle", "iStationStatus", "iElevatorRowLocation", "xTrayInElevator", 
+            "iCurrentForkSide", "SentTaskType", "SentOrigin", "SentDestination"
+        ]
         for var_name in status_labels_to_update:
             if lift_id in self.status_labels and var_name in self.status_labels[lift_id]:
-                value = lift_data.get(var_name)
+                if var_name.startswith("Sent"): # Handle cached "Sent" values
+                    value = self.last_sent_job_params.get(lift_id, {}).get(var_name, "N/A")
+                else: # Handle values read from PLC
+                    value = lift_data.get(var_name)
+                
                 display_value = str(value) if value is not None else "ErrorRead"
+                if var_name.startswith("Sent") and value == "N/A" and not self.last_sent_job_params.get(lift_id):
+                    display_value = "N/A (No job sent)"
+
+
                 self.status_labels[lift_id][var_name].config(text=display_value)
         
         # Update sSeq_Step_comment (Text widget)
@@ -694,19 +709,6 @@ class EcoSystemGUI_DualLift_ST:
             reason_text = CANCEL_REASON_TEXTS.get(reason_code, "Unknown or Invalid Code")
             self.status_labels[lift_id]["sCancelAssignmentReasonText"].config(text=reason_text)
 
-        # The Lift Visualization is updated earlier in this method using the correctly prepared arguments.
-        # vis_data = {
-        #     'iElevatorRowLocation': lift_data.get('iElevatorRowLocation'),
-        #     'xTrayInElevator': self.lift_tray_status[lift_id], # Use the locally synced status
-        #     'iCurrentForkSide': lift_data.get('iCurrentForkSide'),
-        #     'iStatus': lift_data.get('iStatus'),
-        #     'iErrorCode': lift_data.get('iErrorCode') # Pass error code for visual indication
-        # }
-        # seq_comment_for_vis = lift_data.get("sSeq_Step_comment", "")
-        # if hasattr(self, 'lift_vis_manager') and self.lift_vis_manager:
-        #     self.lift_vis_manager.update_lift_visual_state(lift_id, vis_data, seq_comment_for_vis) # Changed method name
-        
-        # logger.debug(f"GUI updated for {lift_id} with data: {lift_data}")
 
     def _safe_get_int_from_data(self, data_dict, key, default=0):
         """Safely gets an integer from a dictionary, handling potential errors."""
@@ -875,6 +877,12 @@ class EcoSystemGUI_DualLift_ST:
                  self.lift_vis_manager.update_lift_visualization(lift_id, {}, "N/A")
 
 
+        # Clear the last sent job parameters cache on disconnect
+        self.last_sent_job_params = {lift_id: {} for lift_id in LIFTS}
+        # Update GUI to reflect cleared sent job parameters
+        for lift_id_to_update in LIFTS:
+            self._update_gui_for_lift(lift_id_to_update, self.all_lift_data_cache.get(lift_id_to_update, {}))
+
         self.all_lift_data_cache = {lift_id: {} for lift_id in LIFTS} # Clear cache
         self.update_system_stack_light('off') 
         logger.info("GUI state reset to disconnected.")
@@ -946,8 +954,20 @@ class EcoSystemGUI_DualLift_ST:
             origin_str = controls['origin_entry'].get()
             destination_str = controls['destination_entry'].get()
 
-            origin = int(origin_str) if origin_str else 0
-            destination = int(destination_str) if destination_str else 0
+            origin = int(origin_str) if origin_str and origin_str.strip() else 0
+            destination = int(destination_str) if destination_str and destination_str.strip() else 0
+            
+            # Cache the sent job parameters
+            self.last_sent_job_params[lift_id] = {
+                "SentTaskType": task_type,
+                "SentOrigin": origin,
+                "SentDestination": destination
+            }
+            # Trigger a GUI update for this lift to show the new "Sent" values immediately
+            # We pass an empty dict for lift_data as we only want to update based on the cache for these specific fields
+            self._update_gui_for_lift(lift_id, self.all_lift_data_cache.get(lift_id, {}))
+
+
         except ValueError:
             messagebox.showerror("Input Error", "Origin and Destination must be valid integers.")
             return

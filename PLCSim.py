@@ -6,8 +6,7 @@ import time
 import os
 import sys
 
-# Global variable for auto tasking mode
-AUTO_TASKING_ENABLED = False
+
 
 # Zorg dat de logs map bestaat
 logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
@@ -25,7 +24,7 @@ if (os.path.exists(log_filename)):
 
 log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(
-    level=logging.INFO, # Changed to INFO for more details during dev
+    level=logging.INFO, # Changed to INFO for more details dev
     format=log_format,
     handlers=[
         logging.FileHandler(log_filename, mode='a'),
@@ -104,8 +103,7 @@ class PLCSimulator_DualLift:
         self._pickup_offset = 2
         
         self.to_physical_pos = lambda pos: pos if pos <= 50 else pos - 50
-        self.get_side = lambda pos: "operator" if pos <= 50 else "robot"
-
+        self.get_side = lambda pos: "operator" if pos <= 50 else "robot"        
         self.lift_state_template = {
             "iCycle": 0,
             "iStationStatus": STATUS_BOOTING,
@@ -134,7 +132,11 @@ class PLCSimulator_DualLift:
             "_move_start_time": 0,
             "_fork_target_pos": MiddenLocation,
             "_fork_start_time": 0,
-            "_current_job_valid": False
+            "_current_job_valid": False,
+            "_fork_pickup_pending": False,
+            "_fork_pickup_start_time": 0,
+            "_fork_release_pending": False,
+            "_fork_release_start_time": 0
         }
 
         self.system_state = {
@@ -273,8 +275,8 @@ class PLCSimulator_DualLift:
                 await node.set_writable()
                 self.opc_node_map[(lift_id_key, state_key)] = node
         
-        logger.info("OPC UA Server Variables Initialized with Di_Call_Blocks/OPC_UA structure and new global handshake")
-
+        logger.info("OPC UA Server Variables Initialized with Di_Call_Blocks/OPC_UA structure")
+        
     async def _update_opc_value(self, lift_id_or_system_key, state_var_name, value):
         value_for_opc = value
         if isinstance(value, str) and len(value) > 200 and state_var_name in ["sSeq_Step_comment", "sStationStateDescription", "sShortAlarmDescription", "sAlarmSolution"]:
@@ -294,7 +296,21 @@ class PLCSimulator_DualLift:
         if lift_id_or_system_key == "System":
             if state_var_name in self.system_state: self.system_state[state_var_name] = value
         elif lift_id_or_system_key in self.lift_state:
-            if state_var_name in self.lift_state[lift_id_or_system_key]:
+            # Special handling for iElevatorRowLocation: do NOT update internal state automatically
+            # Internal state should only be updated when physical movement is complete
+            if state_var_name == "iElevatorRowLocation":
+                # Only update OPC value, not internal state - physical position managed separately
+                logger.debug(f"[{lift_id_or_system_key}] Skipping automatic update of internal iElevatorRowLocation, updated only OPC to {value}")
+                pass
+            # Special handling for xTrayInElevator when picking up a tray (True)
+            elif state_var_name == "xTrayInElevator" and value is True:
+                logger.debug(f"[{lift_id_or_system_key}] Tray pickup requested but will be delayed for visualization")
+                # Start the tray pickup process instead of immediate update
+                await self._start_tray_pickup(lift_id_or_system_key)
+                # Don't update internal state - will be done when pickup is complete
+                pass
+            # Normal handling for other state variables
+            elif state_var_name in self.lift_state[lift_id_or_system_key]:
                 self.lift_state[lift_id_or_system_key][state_var_name] = value
 
     async def _read_opc_value(self, lift_id_or_system_key, state_var_name):
@@ -319,60 +335,206 @@ class PLCSimulator_DualLift:
         
         # Fallback to internal state
         if lift_id_or_system_key == "System": return self.system_state.get(state_var_name)
-        elif lift_id_or_system_key in self.lift_state:
-            return self.lift_state[lift_id_or_system_key].get(state_var_name)
+        elif lift_id_or_system_key in self.lift_state:            return self.lift_state[lift_id_or_system_key].get(state_var_name)
         return None
-
+        
     async def _simulate_sub_movement(self, lift_id):
         state = self.lift_state[lift_id]
         now = time.time()
-        movement_finished_this_tick = False
-
+        movement_finished_this_tick = False        
+          # Handle elevator movement
         if state["_sub_engine_moving"]:
             # Calculate dynamic duration based on rows
             rows_to_move = abs(state["_move_target_pos"] - state["iElevatorRowLocation"])
-            # Ensure a minimum duration even for 0 rows if a move was intended (e.g. already at target but flag was set)
-            # However, if rows_to_move is 0, it means we are at the target, so duration should be 0.
-            # The check `state["iElevatorRowLocation"] == target_loc` before starting a move should prevent 0-row moves.
-            # If somehow _sub_engine_moving is true but we are at target, finish immediately.
+            # If already at target position, complete immediately
             if state["iElevatorRowLocation"] == state["_move_target_pos"]:
-                 duration = 0.0
+                duration = 0.0  # Complete immediately if already at target
             else:
-                 duration = max(0.1, rows_to_move * LIFT_MOVEMENT_DURATION_PER_ROW_S) # Min duration 0.1s
-
-            if now - state["_move_start_time"] >= duration:
+                duration = max(0.1, rows_to_move * LIFT_MOVEMENT_DURATION_PER_ROW_S)  # Min duration 0.1s
+            
+            time_elapsed = now - state["_move_start_time"]
+            if time_elapsed >= duration:
                 logger.info(f"[{lift_id}] Engine movement finished. Reached: {state['_move_target_pos']}")
-                await self._update_opc_value(lift_id, "iElevatorRowLocation", state["_move_target_pos"])
+                # Use dedicated method to update both OPC and internal state consistently
+                await self._update_elevator_position_complete(lift_id, state["_move_target_pos"])
                 state["_sub_engine_moving"] = False
                 movement_finished_this_tick = True
                 
+                # After position update is complete, check if there was a pending tray operation
+                # that was blocked because the elevator wasn't at the correct position
+                if state.get("_fork_pickup_pending") == False and state.get("ActiveElevatorAssignment_iTaskType") in [FullAssignment, PreparePickUp]:
+                    # This handles the case where the elevator just arrived at the pickup position
+                    # and we need to check if a tray pickup should be initiated
+                    current_cycle = state.get("iCycle")
+                    expected_origin = state.get("ActiveElevatorAssignment_iOrigination")
+                    
+                    if current_cycle == 155 and state["iElevatorRowLocation"] == expected_origin:
+                        logger.info(f"[{lift_id}] Elevator arrived at origin position {expected_origin}. Re-checking tray pickup conditions.")
+                        # Re-run through the cycle logic which will check pickup conditions again
+        
+        # Handle fork movement
         elif state["_sub_fork_moving"]:
             if now - state["_fork_start_time"] >= FORK_MOVEMENT_DURATION_S:
                 logger.info(f"[{lift_id}] Fork movement finished. Reached: {state['_fork_target_pos']}")
                 await self._update_opc_value(lift_id, "iCurrentForkSide", state["_fork_target_pos"])
                 state["_sub_fork_moving"] = False
                 movement_finished_this_tick = True
+                
+                # After fork movement completes, check if we need to update tray status
+                if state["_fork_pickup_pending"]:
+                    logger.info(f"[{lift_id}] Processing pending tray pickup after fork movement")
+                    state["_fork_pickup_pending"] = False
+                    await self._update_tray_status_complete(lift_id, True)
+                
+                if state["_fork_release_pending"]:
+                    logger.info(f"[{lift_id}] Processing pending tray release after fork movement")
+                    state["_fork_release_pending"] = False
+                    await self._update_tray_status_complete(lift_id, False)
         
-        return state["_sub_engine_moving"] or state["_sub_fork_moving"] # Returns true if still actively moving
+        # Handle standalone tray operations (if not tied to fork movements)
+        elif state["_fork_pickup_pending"] and not state["_sub_fork_moving"]:
+            # If pickup was requested without fork movement, use timing directly
+            if now - state["_fork_pickup_start_time"] >= FORK_MOVEMENT_DURATION_S:
+                logger.info(f"[{lift_id}] Standalone tray pickup completed")
+                state["_fork_pickup_pending"] = False
+                await self._update_tray_status_complete(lift_id, True)
+                movement_finished_this_tick = True
+        
+        elif state["_fork_release_pending"] and not state["_sub_fork_moving"]:
+            # If release was requested without fork movement, use timing directly
+            if now - state["_fork_release_start_time"] >= FORK_MOVEMENT_DURATION_S:
+                logger.info(f"[{lift_id}] Standalone tray release completed")
+                state["_fork_release_pending"] = False
+                await self._update_tray_status_complete(lift_id, False)
+                movement_finished_this_tick = True
+        
+        # Return true if any movement is still in progress        return state["_sub_engine_moving"] or state["_sub_fork_moving"] or state["_fork_pickup_pending"] or state["_fork_release_pending"]
 
+    async def _update_elevator_position_complete(self, lift_id, new_position):
+        """
+        Update both OPC and internal state when elevator movement is physically complete.
+        This ensures the internal state and OPC are updated together when movement is done.
+        """
+        logger.info(f"[{lift_id}] Elevator position update complete. Position: {new_position}")
+        
+        # Update internal state first
+        if lift_id in self.lift_state:
+            self.lift_state[lift_id]["iElevatorRowLocation"] = new_position
+        
+        # Then update OPC
+        node_key = (lift_id, "iElevatorRowLocation")
+        node = self.opc_node_map.get(node_key)
+        if node:
+            try:
+                await node.write_value(new_position)
+                logger.debug(f"[{lift_id}] Updated OPC elevator position to {new_position}")
+            except Exception as e:
+                logger.error(f"Failed to write OPC value for elevator position: {e}")
+                
+    async def _update_tray_status_complete(self, lift_id, has_tray):
+        """
+        Update tray status when pickup/release is complete.
+        This updates both OPC and internal state together.
+        """
+        logger.info(f"[{lift_id}] Tray status update complete. Has tray: {has_tray}")
+        
+        # Update internal state
+        if lift_id in self.lift_state:
+            self.lift_state[lift_id]["xTrayInElevator"] = has_tray
+        
+        # Update OPC
+        node_key = (lift_id, "xTrayInElevator")
+        node = self.opc_node_map.get(node_key)
+        if node:
+            try:
+                await node.write_value(has_tray)
+                logger.debug(f"[{lift_id}] Updated OPC tray status to {has_tray}")
+            except Exception as e:                logger.error(f"Failed to write OPC value for tray status: {e}")
+    
+    async def _start_tray_pickup(self, lift_id):
+        """
+        Start the tray pickup process with a delay to match visualization.
+        The actual status update happens after fork movement is complete
+        and only if the elevator is at the correct position.
+        """
+        if lift_id in self.lift_state:
+            state = self.lift_state[lift_id]
+            current_position = state.get("iElevatorRowLocation")
+            target_position = state.get("ActiveElevatorAssignment_iOrigination")
+            
+            # Check if elevator is at the correct position before allowing tray pickup
+            if state.get("_sub_engine_moving") or current_position != target_position:
+                logger.warning(f"[{lift_id}] Tray pickup requested but elevator is not at target position. Current: {current_position}, Target: {target_position}, Moving: {state.get('_sub_engine_moving')}")
+                # Don't update anything - movement logic will retry the pickup when elevator is in position
+                return
+            
+            logger.info(f"[{lift_id}] Starting delayed tray pickup process. Position is correct: {current_position}")
+            state["_fork_pickup_pending"] = True
+            state["_fork_pickup_start_time"] = time.time()
+            # The actual tray status will be updated when _simulate_sub_movement processes this
+    
+    async def _start_tray_release(self, lift_id):
+        """
+        Start the tray release process with a delay to match visualization.
+        The actual status update happens after fork movement is complete.
+        """
+
+        if lift_id in self.lift_state:
+            state = self.lift_state[lift_id]
+            current_position = state.get("iElevatorRowLocation")
+            target_position = state.get("ActiveElevatorAssignment_iDestination")
+
+            if state.get("_sub_engine_moving") or current_position != target_position:
+                logger.warning(f"[{lift_id}] Tray release requested but elevator is not at target position for release. Current: {current_position}, Target: {target_position}, Moving: {state.get('_sub_engine_moving')}")
+                return
+
+            logger.info(f"[{lift_id}] Starting delayed tray release process at position {current_position}")
+            state["_fork_release_pending"] = True
+            state["_fork_release_start_time"] = time.time()
+
+            
     def _calculate_movement_range(self, current_pos, *positions):
         all_positions = [current_pos] + list(positions)
         valid_positions = [pos for pos in all_positions if pos > 0]
         if not valid_positions: return (0, 0)
-        return (min(valid_positions), max(valid_positions))
-
+        return (min(valid_positions), max(valid_positions))    
     def _check_lift_ranges_overlap(self, my_range, other_range):
         my_min, my_max = my_range
         other_min, other_max = other_range
         if my_min == 0 and my_max == 0: return False # My lift is not planning a move
         if other_min == 0 and other_max == 0: return False # Other lift is not planning a move / not relevant
-        overlap = not (my_max < other_min or my_min > other_max)
-        if overlap: logger.warning(f"COLLISION DETECTED: My path {my_range} overlaps other's {other_range}.")
+        
+        # Voor de fysieke overlap moeten we de werkelijke fysieke posities vergelijken
+        # In de fysieke wereld zijn rij 1 en 51 op dezelfde hoogte, rij 50 en 99 ook, etc.
+        # Converteer de nummering naar fysieke posities
+        def to_physical_pos(pos):
+            return pos if pos <= 50 else pos - 50
+            
+        # Bereken de fysieke overlap door de posities te normaliseren naar fysieke hoogte
+        my_physical_min = to_physical_pos(my_min)
+        my_physical_max = to_physical_pos(my_max)
+        other_physical_min = to_physical_pos(other_min)
+        other_physical_max = to_physical_pos(other_max)
+        
+        # Nu controleren we de overlap van de fysieke posities
+        overlap = not (my_physical_max < other_physical_min or my_physical_min > other_physical_max)
+        
+        if overlap: 
+            logger.warning(f"COLLISION DETECTED: My path {my_range} (fysiek: {my_physical_min}-{my_physical_max}) overlaps other's {other_range} (fysiek: {other_physical_min}-{other_physical_max}).")
+        
         return overlap
     
     async def _process_lift_logic(self, lift_id):
         state = self.lift_state[lift_id]
         other_lift_id = LIFT2_ID if lift_id == LIFT1_ID else LIFT1_ID
+
+        # PREVENT OVERLAPPING MOVEMENTS: Only process cycle logic if no sub-movements are active
+        if state["_sub_engine_moving"] or state["_sub_fork_moving"]:
+            # If any sub-movement is active, skip cycle logic and only simulate the movement
+            still_busy_with_sub_movement = await self._simulate_sub_movement(lift_id)
+            if still_busy_with_sub_movement: 
+                return  # Don't process cycle logic until movement is complete
+            # If movement just finished, continue to process cycle logic below
 
         ecosystem_cancel_reason = await self._read_opc_value(lift_id, "Eco_iCancelAssignment")
         if ecosystem_cancel_reason > 0:
@@ -556,6 +718,14 @@ class PLCSimulator_DualLift:
                         logger.info(f"[{lift_id}] Task {task_type_from_eco} starting. Current internal xTrayInElevator: {state['xTrayInElevator']}. Ensuring it is set to False.")
                         await self._update_opc_value(lift_id, "xTrayInElevator", False)
                         logger.info(f"[{lift_id}] After ensuring xTrayInElevator is False, internal state is now: {state['xTrayInElevator']}.")
+
+                        # Ensure forks are considered middle at the start of these tasks
+                        if state["iCurrentForkSide"] != MiddenLocation:
+                            logger.info(f"[{lift_id}] Task {task_type_from_eco} starting. Current internal iCurrentForkSide: {state['iCurrentForkSide']}. Ensuring it is set to MiddenLocation.")
+                            await self._update_opc_value(lift_id, "iCurrentForkSide", MiddenLocation)
+                            logger.info(f"[{lift_id}] After ensuring iCurrentForkSide is MiddenLocation, internal state is now: {state['iCurrentForkSide']}.")
+                            # This corrects the state value. Actual fork movement is handled by _simulate_sub_movement
+                            # when _sub_fork_moving is true, which is not set here.
                     elif task_type_from_eco == BringAway:
                         # BringAway requires a tray. If not present, it's an error (handled later in cycle 400).
                         # No change to xTrayInElevator here; its presence is a precondition.
@@ -673,17 +843,6 @@ class PLCSimulator_DualLift:
                                  # this should go to a dedicated "move to destination" cycle for FullAssignment.
                                  # For now, assuming it means start of BringAway part of FullAssignment.
                 logger.info(f"[{lift_id}] FullAssignment ack for dest received. Next cycle should be move to dest. Currently routing to 400 (BringAway start).")
-                # This routing might need refinement if FullAssignment has distinct move-to-dest logic
-                # For now, let's keep it simple and assume cycle 400 is the correct transition.
-                # The ActiveElevatorAssignment_iDestination is already set.
-                # The ActiveElevatorAssignment_iOrigination for the "BringAway" part of FullAssignment
-                # should effectively be the current location of the lift.
-                # This is handled in cycle 10 when setting up ActiveJob for BringAway.
-                # Here, for FullAssignment, ActiveElevatorAssignment_iOrigination was the *original* pickup.
-                # This needs careful thought.
-                # For now, let's assume the existing ActiveElevatorAssignment_iDestination is the target for the next move.
-                # The BringAway sequence (400-460) will use ActiveElevatorAssignment_iDestination.
-                # Let's ensure xTrayInElevator is true.
                 if not state["xTrayInElevator"]: # Should be true after pickup part of FullAssignment
                     logger.error(f"[{lift_id}] FullAssignment error: No tray after pickup phase before moving to destination!")
                     # Error handling
@@ -695,9 +854,16 @@ class PLCSimulator_DualLift:
         elif current_cycle == 102: # Move to Origin
             target_loc = state["ActiveElevatorAssignment_iOrigination"]
             step_comment = f"FullAss: Moving to Origin {target_loc}"
-            if state["iElevatorRowLocation"] == target_loc: next_cycle = 150
+            
+            location_matches_target = state["iElevatorRowLocation"] == target_loc
+            logger.debug(f"[{lift_id}] Cycle 102: Location: {state['iElevatorRowLocation']}, Target: {target_loc}, Match: {location_matches_target}, SubEngineMoving: {state['_sub_engine_moving']}")
+
+            if location_matches_target: 
+                next_cycle = 150
+                logger.info(f"[{lift_id}] Cycle 102: Reached origin {target_loc}. Transitioning to 150.")
             elif not state["_sub_engine_moving"]:
                 state["_move_target_pos"] = target_loc; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
+        
         elif current_cycle == 150: # Prepare Forks for Pickup
             origin = state["ActiveElevatorAssignment_iOrigination"]
             target_fork_side = OpperatorSide if origin <= 50 else RobotSide
@@ -706,10 +872,37 @@ class PLCSimulator_DualLift:
                 state["_move_target_pos"] = origin; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
             elif state["iCurrentForkSide"] == target_fork_side: next_cycle = 155
             elif not state["_sub_fork_moving"]:
-                state["_fork_target_pos"] = target_fork_side; state["_fork_start_time"] = time.time(); state["_sub_fork_moving"] = True
-        elif current_cycle == 155: # Pickup
-            await self._update_opc_value(lift_id, "xTrayInElevator", True)
-            next_cycle = 160
+                state["_fork_target_pos"] = target_fork_side; state["_fork_start_time"] = time.time(); state["_sub_fork_moving"] = True          
+            elif current_cycle == 155: # Pickup - with comprehensive position and movement checks
+                origin = state["ActiveElevatorAssignment_iOrigination"]
+                target_fork_side = OpperatorSide if origin <= 50 else RobotSide
+            
+            # Comprehensive checks before allowing pickup
+            position_correct = state["iElevatorRowLocation"] == origin
+            not_moving = not state["_sub_engine_moving"]
+            forks_positioned = state["iCurrentForkSide"] == target_fork_side
+            
+            if position_correct and not_moving and forks_positioned:
+                step_comment = f"FullAss: Pickup at {origin}"
+                logger.info(f"[{lift_id}] Cycle 155: All conditions met for pickup. Location: {state['iElevatorRowLocation']}, Expected Origin: {origin}, Fork Side: {state['iCurrentForkSide']}")
+                
+                # When all conditions are met, start the tray pickup process using the specialized method
+                await self._start_tray_pickup(lift_id)
+                
+                # Only move to the next cycle - the actual tray status update will happen with a delay
+                next_cycle = 160
+            else:
+                # Special handling: if position is not correct and we're not moving, initiate movement
+                if not position_correct and not state["_sub_engine_moving"]:
+                    logger.warning(f"[{lift_id}] Elevator not at pickup position. Current: {state['iElevatorRowLocation']}, Target: {origin}. Starting movement.")
+                    state["_move_target_pos"] = origin
+                    state["_move_start_time"] = time.time()
+                    state["_sub_engine_moving"] = True
+                
+                step_comment = f"FullAss: Waiting for pickup conditions at {origin}"
+                logger.debug(f"[{lift_id}] Cycle 155: Waiting for pickup conditions. Position correct: {position_correct}, Not moving: {not_moving}, Forks positioned: {forks_positioned}")
+                # Stay in cycle 155 until all conditions are met
+                next_cycle = 155
         elif current_cycle == 160: # Move Forks to Middle
             step_comment = "FullAss: Forks to middle after pickup"
             if state["iCurrentForkSide"] == MiddenLocation: next_cycle = 190 # Ready for dest handshake
@@ -788,9 +981,11 @@ class PLCSimulator_DualLift:
                  state["_move_target_pos"] = dest_pos; state["_move_start_time"] = time.time(); state["_sub_engine_moving"] = True
             elif state["iCurrentForkSide"] == target_side: next_cycle = 435
             elif not state["_sub_fork_moving"]:
-                state["_fork_target_pos"] = target_side; state["_fork_start_time"] = time.time(); state["_sub_fork_moving"] = True
+                state["_fork_target_pos"] = target_side; state["_fork_start_time"] = time.time(); state["_sub_fork_moving"] = True        
         elif current_cycle == 435: # Place Tray
-            await self._update_opc_value(lift_id, "xTrayInElevator", False)
+            # Use the new tray release method to delay tray status update
+            await self._start_tray_release(lift_id)
+            step_comment = "BringAway: Releasing tray"
             next_cycle = 440
         elif current_cycle == 440: # Move Forks to Middle
             step_comment = "BringAway: Forks to middle after placing"
@@ -904,10 +1099,7 @@ class PLCSimulator_DualLift:
 async def main():
     logger.info("Starting PLC Simulator (Dual Lift)")
     
-    # Use the global variable for auto-tasking mode
-    global AUTO_TASKING_ENABLED
-    # Already initialized at the top of the file
-    
+
     try:
         # Create and run the simulator
         plc_sim = PLCSimulator_DualLift()

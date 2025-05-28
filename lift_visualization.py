@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 # Visualization constants
 CANVAS_HEIGHT = 600
-CANVAS_WIDTH = 500 # Adjusted from 550
+CANVAS_WIDTH = 600  # Increased from 650 to 800 for wider canvas
 MAX_ROWS_LEFT = 50
 MAX_ROWS_RIGHT = 49
 MIN_ROW = -2 # Used for logical row calculations, can be a service point
@@ -45,9 +45,6 @@ class LiftVisualizationManager:
         # Als een animatie in uitvoering is
         self.animation_running = {lift_id: False for lift_id in lift_ids}
         
-        # We zullen deze keer GEEN aparte thread gebruiken, maar de Tkinter after-methode
-        # Dit voorkomt de "main thread is not in main loop" fout
-
         self._setup_warehouse_visualization()
 
     def _setup_warehouse_visualization(self):
@@ -56,7 +53,7 @@ class LiftVisualizationManager:
 
         shaft_width = 80
         rack_width = 150
-        center_x = CANVAS_WIDTH / 2 # Keep for reference if needed
+        center_x = CANVAS_WIDTH / 2 + 5  
 
         # Usable height for racks
         usable_height = CANVAS_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
@@ -66,8 +63,8 @@ class LiftVisualizationManager:
         # --- Define Zone Colors ---
         operator_zone_color = "#FFDDC1" # Light orange/peach for Operator Zone
         robot_zone_color = "#D1E8FF"    # Light blue for Robot Zone
-        shaft_color = '#F0F0F0'
-        service_area_color = '#E6E6FA' # Light purple/lavender for service areas
+        shaft_color = "#D8D8D8"
+        service_area_color = "#8989FF" # Light purple/lavender for service areas
 
         # --- Draw Zones ---
         # Operator Zone (Left)
@@ -77,7 +74,7 @@ class LiftVisualizationManager:
             left_rack_x1, TOP_MARGIN, left_rack_x2, CANVAS_HEIGHT - BOTTOM_MARGIN,
             outline='black', width=1, fill=operator_zone_color, tags="operator_zone_bg"
         )
-        self.canvas.create_text(left_rack_x1 + rack_width/2, TOP_MARGIN - 15, text="Operator Zone (Rows 1-50)", font=("Arial", 9, "bold"))
+        self.canvas.create_text(left_rack_x1 + rack_width/2, TOP_MARGIN - 15, text="Operator Zone (Rows 1-50)", font=("Arial", 11, "bold"))
 
         # Robot Zone (Right)
         right_rack_x1 = center_x + shaft_width/2 + 40
@@ -86,7 +83,7 @@ class LiftVisualizationManager:
             right_rack_x1, TOP_MARGIN, right_rack_x2, CANVAS_HEIGHT - BOTTOM_MARGIN,
             outline='black', width=1, fill=robot_zone_color, tags="robot_zone_bg"
         )
-        self.canvas.create_text(right_rack_x1 + rack_width/2, TOP_MARGIN - 15, text="Robot Zone (Rows 51-99)", font=("Arial", 9, "bold"))
+        self.canvas.create_text(right_rack_x1 + rack_width/2, TOP_MARGIN - 15, text="Robot Zone (Rows 51-99)", font=("Arial", 11, "bold"))
 
         # Lift Shaft
         shaft_x1 = center_x - shaft_width/2
@@ -105,40 +102,35 @@ class LiftVisualizationManager:
             self.canvas.create_rectangle(
                 left_rack_x1 + 5, y_pos - slot_height/2,
                 left_rack_x2 - 5, y_pos + slot_height/2,
-                outline='gray', width=1, fill='#C8E6C8', tags=f"rack_left_{row}" # Light green slots
+                outline='gray', width=1, fill='#C8E6C8', tags=f"rack_left_{row}"
             )
             if row == 1 or row % 5 == 0:
-                self.canvas.create_text(left_rack_x1 - 3, y_pos, text=str(row), font=("Arial", 7), anchor="e") # Changed -10 to -3
-
+                self.canvas.create_text(left_rack_x1 - 10, y_pos, text=str(row), font=("Arial", 11, "bold"), anchor="e")
         grid_height_right = usable_height / MAX_ROWS_RIGHT
         for i in range(MAX_ROWS_RIGHT):
-            row = i + 51 # Logical row number for right side
-            # y_pos calculation for right side should be similar to left, but using right side's row index `i`
-            y_pos = CANVAS_HEIGHT - BOTTOM_MARGIN - (i * grid_height_right) - (grid_height_right / 2) 
+            row = i + 51
+            y_pos = CANVAS_HEIGHT - BOTTOM_MARGIN - (i * grid_height_right) - (grid_height_right / 2)
             self.canvas.create_rectangle(
                 right_rack_x1 + 5, y_pos - slot_height/2,
                 right_rack_x2 - 5, y_pos + slot_height/2,
-                outline='gray', width=1, fill='#C8E6C8', tags=f"rack_right_{row}" # Light green slots
+                outline='gray', width=1, fill='#C8E6C8', tags=f"rack_right_{row}"
             )
-            if row == 51 or row % 5 == 0 or row == (50 + MAX_ROWS_RIGHT): # Label first, every 5th, and last
-                 self.canvas.create_text(right_rack_x2 + 3, y_pos, text=str(row), font=("Arial", 7), anchor="w") # Changed +10 to +3
+            if row == 51 or row % 5 == 0 or row == (50 + MAX_ROWS_RIGHT):
+                self.canvas.create_text(right_rack_x2 + 10, y_pos, text=str(row), font=("Arial", 11, "bold"), anchor="w")
 
         # --- Service Locations Visualization ---
-        service_area_height = TOP_MARGIN * 0.8 # Visual height for service areas
-
-        # Service Location 100 (Top)
+        service_area_height = TOP_MARGIN * 0.8
         service_100_y_center = TOP_MARGIN / 2
         self.canvas.create_rectangle(shaft_x1, service_100_y_center - service_area_height/2,
                                      shaft_x2, service_100_y_center + service_area_height/2,
                                      fill=service_area_color, outline='darkblue', width=1, tags="service_100_bg")
-        self.canvas.create_text(center_x, service_100_y_center, text=f"Service {SERVICE_ROW_TOP}", font=("Arial", 9, "bold"), fill="darkblue", anchor=tk.CENTER) # Added anchor
+        self.canvas.create_text(center_x, service_100_y_center, text=f"Service {SERVICE_ROW_TOP}", font=("Arial", 11), fill="darkblue", anchor=tk.CENTER)
 
-        # Service Location -2 (Bottom)
         service_neg2_y_center = CANVAS_HEIGHT - (BOTTOM_MARGIN / 2)
         self.canvas.create_rectangle(shaft_x1, service_neg2_y_center - service_area_height/2,
                                      shaft_x2, service_neg2_y_center + service_area_height/2,
                                      fill=service_area_color, outline='darkblue', width=1, tags="service_-2_bg")
-        self.canvas.create_text(center_x, service_neg2_y_center, text=f"Service {SERVICE_ROW_BOTTOM}", font=("Arial", 9, "bold"), fill="darkblue", anchor=tk.CENTER)
+        self.canvas.create_text(center_x, service_neg2_y_center, text=f"Service {SERVICE_ROW_BOTTOM}", font=("Arial", 11), fill="darkblue", anchor=tk.CENTER)
 
         # Store rack_info (ensure y-positions for service areas are center points for lift calculations)
         self.rack_info = {
@@ -166,13 +158,13 @@ class LiftVisualizationManager:
                 fill=lift_color, tags=(f"{lift_id}_lift",)
             )
 
-            fork_width = 25
+            fork_width = 35
             fork_rect = self.canvas.create_rectangle(
                 center_x - fork_width/2, initial_y + lift_y_size*0.1,
                 center_x + fork_width/2, initial_y + lift_y_size*0.9,
                 fill='gray', tags=(f"{lift_id}_fork",)
             )
-            tray_width = 30
+            tray_width = 40
             tray_rect = self.canvas.create_rectangle(
                 center_x - tray_width/2, initial_y + lift_y_size*0.15,
                 center_x + tray_width/2, initial_y + lift_y_size*0.85,
@@ -224,7 +216,7 @@ class LiftVisualizationManager:
         return position
 
     def animate_lift_movement(self, lift_id, target_row):
-        """Start a new animation to move the lift to a target row"""
+        """Start a new animation to move the lift to a target row (time-based, smooth and consistent)"""
         if lift_id not in self.lift_visuals:
             logger.warning(f"Attempted to animate non-existent lift: {lift_id}")
             return
@@ -236,94 +228,57 @@ class LiftVisualizationManager:
             self.animation_running[lift_id] = False
             logger.debug(f"Cancelled existing animation for lift {lift_id}")
 
-        # Haal huidige visuele data op
         vis_data = self.lift_visuals[lift_id]
         current_logical_row = self.last_position.get(lift_id, 1)
-
-        # Bereken huidige en doel Y posities
-        current_center_y_canvas = self._calculate_y_position(current_logical_row) 
+        current_center_y_canvas = self._calculate_y_position(current_logical_row)
         target_center_y_canvas = self._calculate_y_position(target_row)
 
-        # Als de lift al op de doelpositie is (of er bijna)
         if abs(current_center_y_canvas - target_center_y_canvas) < 1:
             if current_logical_row != target_row:
                 self.last_position[lift_id] = target_row
-                # Update de label om de nieuwe positie te tonen
-                # self.canvas.itemconfig(vis_data['location_label'], text="") # Removed: location_label is no longer used
-                # logger.info(f"Lift {lift_id} already at target row {target_row} (visual check). Logical position updated.")
             return
 
-        # logger.info(f"Lift {lift_id} moving from row {current_logical_row} (Y: {current_center_y_canvas:.2f}) to {target_row} (Y: {target_center_y_canvas:.2f})")
-
-        # Start de animatie met behulp van Tkinter's after-mechanisme
         self.animation_running[lift_id] = True
-        
-        # Dynamically calculate animation parameters for smoother movement
-        MIN_ANIMATION_STEPS = 10
-        STEPS_PER_ROW_FACTOR = 3  # User's suggestion: 3 steps per row distance
-        MAX_TOTAL_ANIMATION_DURATION_MS = 2500 # Max 2.5 seconds for any animation
-        MIN_TOTAL_ANIMATION_DURATION_MS = 250  # Min 0.25 seconds for any animation
-        TARGET_DURATION_PER_ROW_MS = 60      # Target 60ms of total animation time per row of distance
-        MIN_STEP_DURATION_MS = 10            # Smallest time slice for a single animation step
 
-        row_distance = abs(target_row - current_logical_row)
+        # Tijd-gebaseerde animatie: altijd vaste totale duur, ongeacht event loop delays
+        total_rows = abs(target_row - current_logical_row)
+        if total_rows == 0:
+            logger.warning(f"Lift {lift_id} is already at the target row {target_row}. No animation needed.")
+            self.animation_running[lift_id] = False
+            return
+        total_duration_ms = max(60, total_rows * 35)  # 60ms minimaal, 35ms per rij 
+        start_time = time.perf_counter()
+        end_time = start_time + (total_duration_ms / 2000.0)
 
-        # Calculate total steps based on distance, with a minimum
-        total_steps_calculated = max(MIN_ANIMATION_STEPS, row_distance * STEPS_PER_ROW_FACTOR)
-        
-        # Calculate total animation duration, scaled with distance but bounded
-        calculated_total_duration = row_distance * TARGET_DURATION_PER_ROW_MS
-        calculated_total_duration = max(MIN_TOTAL_ANIMATION_DURATION_MS, calculated_total_duration)
-        calculated_total_duration = min(MAX_TOTAL_ANIMATION_DURATION_MS, calculated_total_duration)
-        
-        # Calculate duration of each step
-        # Ensure step_duration is not zero if total_steps_calculated is very large
-        if total_steps_calculated == 0: # Should not happen if row_distance > 0 or MIN_ANIMATION_STEPS > 0
-            total_steps_calculated = MIN_ANIMATION_STEPS # Safeguard
+        def step():
+            now = time.perf_counter()
+            t = min(1.0, (now - start_time) / (end_time - start_time))
+            current_y = current_center_y_canvas + (target_center_y_canvas - current_center_y_canvas) * t
+            self._update_lift_position(lift_id, current_y)
+            if t >= 1.0:
+                self.last_position[lift_id] = target_row
+                self.animation_running[lift_id] = False
+                self.current_animation_tasks[lift_id] = None
+                self._update_lift_position(lift_id, target_center_y_canvas)
+            else:
+                self.current_animation_tasks[lift_id] = self.root.after(8, step)  # 8ms = ~120fps
 
-        step_duration_ms_calculated = max(MIN_STEP_DURATION_MS, int(calculated_total_duration / total_steps_calculated))
-        
-        # logger.info(f"Lift {lift_id} animation: rows={row_distance}, steps={total_steps_calculated}, step_ms={step_duration_ms_calculated}, total_ms={total_steps_calculated*step_duration_ms_calculated}")
-        
-        # Start de eerste animatiestap
-        self._animate_lift_step(
-            lift_id=lift_id,
-            start_y=current_center_y_canvas,
-            target_y=target_center_y_canvas,
-            target_row=target_row,
-            current_step=0,
-            total_steps=total_steps_calculated,
-            step_duration_ms=step_duration_ms_calculated
-        )
+        step()
 
     def _animate_lift_step(self, lift_id, start_y, target_y, target_row, current_step, total_steps, step_duration_ms):
-        """Voer één stap van de liftanimatie uit"""
+        """Voer één stap van de liftanimatie uit (restored 'perfect' version)"""
         if lift_id not in self.lift_visuals or not self.animation_running[lift_id]:
             return
-            
-        # Bereken de Y-positie voor de huidige stap
         progress = (current_step + 1) / total_steps
         current_y = start_y + (target_y - start_y) * progress
-        
-        # Update de lift positie voor deze stap
         self._update_lift_position(lift_id, current_y)
-        
-        # Als dit de laatste stap is, markeer de animatie als voltooid
         if current_step >= total_steps - 1:
             self.last_position[lift_id] = target_row
             self.animation_running[lift_id] = False
             self.current_animation_tasks[lift_id] = None
-            
-            # Zorg voor een exacte laatste positie
             final_y = target_y
             self._update_lift_position(lift_id, final_y)
-            
-            # Update de locatie label
-            # vis_data = self.lift_visuals[lift_id] # Not needed if location_label is removed
-            # self.canvas.itemconfig(vis_data['location_label'], text=str(target_row)) # Removed: location_label is no longer used
-            
         else:
-            # Anders plan de volgende animatiestap
             next_step = current_step + 1
             task_id = self.root.after(
                 step_duration_ms,
@@ -332,7 +287,6 @@ class LiftVisualizationManager:
                     next_step, total_steps, step_duration_ms
                 )
             )
-            # Sla de task ID op zodat we deze later kunnen annuleren indien nodig
             self.current_animation_tasks[lift_id] = task_id
 
     def _update_lift_position(self, lift_id, center_y):
@@ -400,6 +354,11 @@ class LiftVisualizationManager:
         if self.canvas is None:
             logger.error("Canvas not initialized in LiftVisualizationManager.")
             return
+
+        # Fork mag alleen bewegen als de animatie klaar is en de lift op zijn bestemming staat
+        if not hasattr(self, 'fork_move_allowed'):
+            self.fork_move_allowed = {}
+        self.fork_move_allowed[lift_id] = (not self.animation_running.get(lift_id, False)) and (current_row == self.last_position.get(lift_id))
 
         # Calculate y-coordinate based on current_row (for vertical lift positioning)
         y_pos = self._calculate_y_position(current_row)
@@ -477,8 +436,8 @@ class LiftVisualizationManager:
                                lift_y1 + vis_data['y_size']*0.85)
 
 
-        # Animate lift movement if logical row has changed and not already animating to it
-        if current_row != self.last_position.get(lift_id) and current_row != MIN_ROW:
+        # Animate lift movement if logical row has changed
+        if current_row != self.last_position.get(lift_id):
             # Alleen een nieuwe animatie starten als er geen loopt
             if not self.animation_running.get(lift_id, False):
                 self.animate_lift_movement(lift_id, current_row)

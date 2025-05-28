@@ -1,51 +1,169 @@
-2025-05-22 11:34:06,296 - PLCSim_DualLift - INFO - Starting PLC Simulator (Dual Lift)
-2025-05-22 11:34:06,296 - PLCSim_DualLift - INFO - Setting up dual-lift server on endpoint: opc.tcp://127.0.0.1:4860/gibas/plc/ with Di_Call_Blocks/OPC_UA structure
-2025-05-22 11:34:07,824 - PLCSim_DualLift - INFO -     Created Di_Call_Blocks/OPC_UA/PlcToEco/StationDataToEco/ExtraData/Handshake/iJobType
-2025-05-22 11:34:07,825 - PLCSim_DualLift - INFO -     Created Di_Call_Blocks/OPC_UA/PlcToEco/StationDataToEco/ExtraData/Handshake/iRowNr
-2025-05-22 11:34:07,837 - PLCSim_DualLift - INFO - OPC UA Server Variables Initialized with Di_Call_Blocks/OPC_UA structure and new global handshake
-2025-05-22 11:34:07,838 - PLCSim_DualLift - INFO - Dual Lift PLC Simulator Server Started.
-2025-05-22 11:34:22,142 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=1, Origin=5, Dest=65
-2025-05-22 11:34:22,143 - PLCSim_DualLift - INFO - [Lift1] Task 1 starting. Current internal xTrayInElevator: False. Ensuring it is set to False.
-2025-05-22 11:34:22,144 - PLCSim_DualLift - INFO - [Lift1] After ensuring xTrayInElevator is False, internal state is now: False.
-2025-05-22 11:34:22,144 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 10 -> 25
-2025-05-22 11:34:22,344 - PLCSim_DualLift - INFO - [Lift1] Cycle 25: Routing TaskType 1. Origin: 5, Dest: 65
-2025-05-22 11:34:22,344 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 25 -> 90
-2025-05-22 11:34:22,530 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 90 -> 95
-2025-05-22 11:34:24,328 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 95 -> 100
-2025-05-22 11:34:24,510 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 100 -> 102
-2025-05-22 11:34:24,717 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 102 -> 150
-2025-05-22 11:34:26,112 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 1
-2025-05-22 11:34:26,113 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 150 -> 155
-2025-05-22 11:34:26,291 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 155 -> 160
-2025-05-22 11:34:27,681 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 0
-2025-05-22 11:34:27,681 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 160 -> 190
-2025-05-22 11:34:27,886 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 190 -> 195
-2025-05-22 11:34:29,086 - PLCSim_DualLift - INFO - [Lift1] FullAssignment ack for dest received. Next cycle should be move to dest. Currently routing to 400 (BringAway start).
-2025-05-22 11:34:29,087 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 195 -> 410
-2025-05-22 11:34:32,322 - PLCSim_DualLift - INFO - [Lift1] Engine movement finished. Reached: 65
-2025-05-22 11:34:32,323 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 410 -> 420
-2025-05-22 11:34:33,533 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 420 -> 430
-2025-05-22 11:34:34,746 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 2
-2025-05-22 11:34:34,746 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 430 -> 435
-2025-05-22 11:34:34,949 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 435 -> 440
-2025-05-22 11:34:36,164 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 0
-2025-05-22 11:34:36,164 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 440 -> 450
-2025-05-22 11:34:36,383 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 450 -> 460
-2025-05-22 11:34:36,571 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 460 -> 10
-2025-05-22 11:34:39,161 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=1, Origin=5, Dest=65
-2025-05-22 11:34:39,161 - PLCSim_DualLift - INFO - [Lift1] Task 1 starting. Current internal xTrayInElevator: False. Ensuring it is set to False.
-2025-05-22 11:34:39,161 - PLCSim_DualLift - INFO - [Lift1] After ensuring xTrayInElevator is False, internal state is now: False.
-2025-05-22 11:34:39,162 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 10 -> 25
-2025-05-22 11:34:39,338 - PLCSim_DualLift - INFO - [Lift1] Cycle 25: Routing TaskType 1. Origin: 5, Dest: 65
-2025-05-22 11:34:39,339 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 25 -> 90
-2025-05-22 11:34:39,549 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 90 -> 95
-2025-05-22 11:34:42,727 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 95 -> 100
-2025-05-22 11:34:42,915 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 100 -> 102
-2025-05-22 11:34:46,314 - PLCSim_DualLift - INFO - [Lift1] Engine movement finished. Reached: 5
-2025-05-22 11:34:46,315 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 102 -> 150
-2025-05-22 11:34:47,526 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 1
-2025-05-22 11:34:47,526 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 150 -> 155
-2025-05-22 11:34:47,713 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 155 -> 160
-2025-05-22 11:34:48,938 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 0
-2025-05-22 11:34:48,939 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 160 -> 190
-2025-05-22 11:34:49,119 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 190 -> 195
+2025-05-27 03:32:22,932 - PLCSim_DualLift - INFO - Starting PLC Simulator (Dual Lift)
+2025-05-27 03:32:22,934 - PLCSim_DualLift - INFO - GPIO initialized: EMG_STOP on pin 24, RESET on pin 23
+2025-05-27 03:32:22,934 - PLCSim_DualLift - INFO - Setting up dual-lift server on endpoint: opc.tcp://192.168.137.2:4860/gibas/plc/ with Di_Call_Blocks/OPC_UA structure
+2025-05-27 03:32:28,242 - PLCSim_DualLift - INFO -     Created Di_Call_Blocks/OPC_UA/PlcToEco/StationDataToEco/ExtraData/Handshake/iJobType
+2025-05-27 03:32:28,243 - PLCSim_DualLift - INFO -     Created Di_Call_Blocks/OPC_UA/PlcToEco/StationDataToEco/ExtraData/Handshake/iRowNr
+2025-05-27 03:32:28,297 - PLCSim_DualLift - INFO - OPC UA Server Variables Initialized with Di_Call_Blocks/OPC_UA structure
+2025-05-27 03:32:28,300 - PLCSim_DualLift - INFO - Dual Lift PLC Simulator Server Started.
+2025-05-27 03:32:45,091 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=2, Origin=100, Dest=95
+2025-05-27 03:32:45,091 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My path (5, 100) (fysiek: 5-50) overlaps other's (90, 90) (fysiek: 40-40).
+2025-05-27 03:32:45,091 - PLCSim_DualLift - WARNING - [Lift1] Collision detected in Cycle 10. My range: (5, 100), Other's range: (90, 90)
+2025-05-27 03:32:45,092 - PLCSim_DualLift - WARNING - [Lift1] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-27 03:32:48,722 - PLCSim_DualLift - INFO - Reset button pressed. Clearing other errors.
+2025-05-27 03:32:48,924 - PLCSim_DualLift - INFO - Processing reset button - clearing errors on both lifts
+2025-05-27 03:32:48,924 - PLCSim_DualLift - INFO - Resetting error on Lift1. Current ErrorCode: 888
+2025-05-27 03:32:48,926 - PLCSim_DualLift - INFO - System status set to OK after reset.
+2025-05-27 03:32:49,124 - PLCSim_DualLift - INFO - Reset button pressed, but no active emergency stop or other errors to clear.
+2025-05-27 03:32:49,526 - PLCSim_DualLift - INFO - Reset button pressed, but no active emergency stop or other errors to clear.
+2025-05-27 03:32:55,370 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=2, Origin=5, Dest=90
+2025-05-27 03:32:55,371 - PLCSim_DualLift - WARNING - COLLISION DETECTED: My path (5, 90) (fysiek: 5-40) overlaps other's (5, 5) (fysiek: 5-5).
+2025-05-27 03:32:55,371 - PLCSim_DualLift - WARNING - [Lift2] Collision detected in Cycle 10. My range: (5, 90), Other's range: (5, 5)
+2025-05-27 03:32:55,371 - PLCSim_DualLift - WARNING - [Lift2] Job rejected in Cycle 10. Reason Code: 5, Message: Potential collision with other lift
+2025-05-27 03:32:56,785 - PLCSim_DualLift - INFO - Reset button pressed. Clearing other errors.
+2025-05-27 03:32:56,986 - PLCSim_DualLift - INFO - Processing reset button - clearing errors on both lifts
+2025-05-27 03:32:56,987 - PLCSim_DualLift - INFO - Resetting error on Lift2. Current ErrorCode: 888
+2025-05-27 03:32:56,988 - PLCSim_DualLift - INFO - System status set to OK after reset.
+2025-05-27 03:32:57,187 - PLCSim_DualLift - INFO - Reset button pressed, but no active emergency stop or other errors to clear.
+2025-05-27 03:32:57,590 - PLCSim_DualLift - INFO - Reset button pressed, but no active emergency stop or other errors to clear.
+2025-05-27 03:34:16,849 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=2, Origin=-2, Dest=95
+2025-05-27 03:34:16,851 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 10 -> 25
+2025-05-27 03:34:17,052 - PLCSim_DualLift - INFO - [Lift1] Cycle 25: Routing TaskType 2. Origin: -2, Dest: 0
+2025-05-27 03:34:17,053 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 25 -> 290
+2025-05-27 03:34:17,255 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 290 -> 295
+2025-05-27 03:34:17,861 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 295 -> 300
+2025-05-27 03:34:18,467 - PLCSim_DualLift - INFO - [Lift1] Engine movement finished. Reached: -2
+2025-05-27 03:34:18,468 - PLCSim_DualLift - INFO - [Lift1] Elevator position update complete. Position: -2
+2025-05-27 03:34:18,468 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 300 -> 310
+2025-05-27 03:34:18,672 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 310 -> 10
+2025-05-27 03:34:21,296 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-27 03:34:21,297 - PLCSim_DualLift - INFO - [Lift2] Task 1 starting. xTrayInElevator is already False, no action needed.
+2025-05-27 03:34:21,298 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 10 -> 25
+2025-05-27 03:34:21,500 - PLCSim_DualLift - INFO - [Lift2] Cycle 25: Routing TaskType 1. Origin: 5, Dest: 90
+2025-05-27 03:34:21,501 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 25 -> 90
+2025-05-27 03:34:21,704 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 90 -> 95
+2025-05-27 03:34:22,915 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 95 -> 100
+2025-05-27 03:34:23,117 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 100 -> 102
+2025-05-27 03:34:27,748 - PLCSim_DualLift - INFO - [Lift2] Engine movement finished. Reached: 5
+2025-05-27 03:34:27,748 - PLCSim_DualLift - INFO - [Lift2] Elevator position update complete. Position: 5
+2025-05-27 03:34:27,749 - PLCSim_DualLift - INFO - [Lift2] Cycle 102: Reached origin 5. Transitioning to 150.
+2025-05-27 03:34:27,749 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 102 -> 150
+2025-05-27 03:34:28,959 - PLCSim_DualLift - INFO - [Lift2] Fork movement finished. Reached: 1
+2025-05-27 03:34:28,960 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 150 -> 155
+2025-05-27 03:34:29,162 - PLCSim_DualLift - INFO - [Lift2] Cycle 155: All conditions met for pickup. Location: 5, Expected Origin: 5, Fork Side: 1
+2025-05-27 03:34:29,162 - PLCSim_DualLift - INFO - [Lift2] Starting delayed tray pickup process at position 5
+2025-05-27 03:34:30,170 - PLCSim_DualLift - INFO - [Lift2] Standalone tray pickup completed (positie klopt)
+2025-05-27 03:34:30,170 - PLCSim_DualLift - INFO - [Lift2] Tray status update complete. Has tray: True
+2025-05-27 03:34:30,171 - PLCSim_DualLift - INFO - [Lift2] Cycle 155: Tray already present of pickup pending, skipping pickup.
+2025-05-27 03:34:30,171 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 155 -> 160
+2025-05-27 03:34:31,379 - PLCSim_DualLift - INFO - [Lift2] Fork movement finished. Reached: 0
+2025-05-27 03:34:31,380 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 160 -> 190
+2025-05-27 03:34:31,583 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 190 -> 195
+2025-05-27 03:34:32,996 - PLCSim_DualLift - INFO - [Lift2] FullAssignment ack for dest received. Proceeding to move to destination (cycle 410).
+2025-05-27 03:34:32,996 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 195 -> 410
+2025-05-27 03:34:37,626 - PLCSim_DualLift - INFO - [Lift2] Engine movement finished. Reached: 90
+2025-05-27 03:34:37,626 - PLCSim_DualLift - INFO - [Lift2] Elevator position update complete. Position: 90
+2025-05-27 03:34:37,627 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 410 -> 420
+2025-05-27 03:34:40,659 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 420 -> 430
+2025-05-27 03:34:41,867 - PLCSim_DualLift - INFO - [Lift2] Fork movement finished. Reached: 2
+2025-05-27 03:34:41,868 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 430 -> 435
+2025-05-27 03:34:42,070 - PLCSim_DualLift - INFO - [Lift2] Starting delayed tray release process at position 90
+2025-05-27 03:34:43,076 - PLCSim_DualLift - INFO - [Lift2] Standalone tray release completed
+2025-05-27 03:34:43,076 - PLCSim_DualLift - INFO - [Lift2] Tray status update complete. Has tray: False
+2025-05-27 03:34:43,077 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 435 -> 440
+2025-05-27 03:34:44,286 - PLCSim_DualLift - INFO - [Lift2] Fork movement finished. Reached: 0
+2025-05-27 03:34:44,287 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 440 -> 450
+2025-05-27 03:34:44,490 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 450 -> 460
+2025-05-27 03:34:44,693 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 460 -> 10
+2025-05-27 03:36:00,525 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-27 03:36:00,525 - PLCSim_DualLift - INFO - [Lift2] Task 1 starting. xTrayInElevator is already False, no action needed.
+2025-05-27 03:36:00,526 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 10 -> 25
+2025-05-27 03:36:00,728 - PLCSim_DualLift - INFO - [Lift2] Cycle 25: Routing TaskType 1. Origin: 5, Dest: 90
+2025-05-27 03:36:00,728 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 25 -> 90
+2025-05-27 03:36:00,932 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 90 -> 95
+2025-05-27 03:36:03,151 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 95 -> 100
+2025-05-27 03:36:03,353 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 100 -> 102
+2025-05-27 03:36:07,987 - PLCSim_DualLift - INFO - [Lift2] Engine movement finished. Reached: 5
+2025-05-27 03:36:07,987 - PLCSim_DualLift - INFO - [Lift2] Elevator position update complete. Position: 5
+2025-05-27 03:36:07,988 - PLCSim_DualLift - INFO - [Lift2] Cycle 102: Reached origin 5. Transitioning to 150.
+2025-05-27 03:36:07,988 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 102 -> 150
+2025-05-27 03:36:09,198 - PLCSim_DualLift - INFO - [Lift2] Fork movement finished. Reached: 1
+2025-05-27 03:36:09,199 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 150 -> 155
+2025-05-27 03:36:09,401 - PLCSim_DualLift - INFO - [Lift2] Cycle 155: All conditions met for pickup. Location: 5, Expected Origin: 5, Fork Side: 1
+2025-05-27 03:36:09,402 - PLCSim_DualLift - INFO - [Lift2] Starting delayed tray pickup process at position 5
+2025-05-27 03:36:10,408 - PLCSim_DualLift - INFO - [Lift2] Standalone tray pickup completed (positie klopt)
+2025-05-27 03:36:10,408 - PLCSim_DualLift - INFO - [Lift2] Tray status update complete. Has tray: True
+2025-05-27 03:36:10,409 - PLCSim_DualLift - INFO - [Lift2] Cycle 155: Tray already present of pickup pending, skipping pickup.
+2025-05-27 03:36:10,410 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 155 -> 160
+2025-05-27 03:36:11,620 - PLCSim_DualLift - INFO - [Lift2] Fork movement finished. Reached: 0
+2025-05-27 03:36:11,621 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 160 -> 190
+2025-05-27 03:36:11,824 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 190 -> 195
+2025-05-27 03:36:13,440 - PLCSim_DualLift - INFO - [Lift2] FullAssignment ack for dest received. Proceeding to move to destination (cycle 410).
+2025-05-27 03:36:13,440 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 195 -> 410
+2025-05-27 03:36:18,070 - PLCSim_DualLift - INFO - [Lift2] Engine movement finished. Reached: 90
+2025-05-27 03:36:18,070 - PLCSim_DualLift - INFO - [Lift2] Elevator position update complete. Position: 90
+2025-05-27 03:36:18,071 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 410 -> 420
+2025-05-27 03:36:40,467 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 420 -> 430
+2025-05-27 03:36:41,676 - PLCSim_DualLift - INFO - [Lift2] Fork movement finished. Reached: 2
+2025-05-27 03:36:41,677 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 430 -> 435
+2025-05-27 03:36:41,878 - PLCSim_DualLift - INFO - [Lift2] Starting delayed tray release process at position 90
+2025-05-27 03:36:42,886 - PLCSim_DualLift - INFO - [Lift2] Standalone tray release completed
+2025-05-27 03:36:42,886 - PLCSim_DualLift - INFO - [Lift2] Tray status update complete. Has tray: False
+2025-05-27 03:36:42,887 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 435 -> 440
+2025-05-27 03:36:44,097 - PLCSim_DualLift - INFO - [Lift2] Fork movement finished. Reached: 0
+2025-05-27 03:36:44,098 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 440 -> 450
+2025-05-27 03:36:44,301 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 450 -> 460
+2025-05-27 03:36:44,503 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 460 -> 10
+2025-05-27 03:36:44,705 - PLCSim_DualLift - INFO - [Lift2] Received new job in Cycle 10: Type=1, Origin=5, Dest=90
+2025-05-27 03:36:44,706 - PLCSim_DualLift - INFO - [Lift2] Task 1 starting. xTrayInElevator is already False, no action needed.
+2025-05-27 03:36:44,706 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 10 -> 25
+2025-05-27 03:36:44,909 - PLCSim_DualLift - INFO - [Lift2] Cycle 25: Routing TaskType 1. Origin: 5, Dest: 90
+2025-05-27 03:36:44,910 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 25 -> 90
+2025-05-27 03:36:45,113 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 90 -> 95
+2025-05-27 03:36:46,526 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 95 -> 100
+2025-05-27 03:36:46,729 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 100 -> 102
+2025-05-27 03:36:51,360 - PLCSim_DualLift - INFO - [Lift2] Engine movement finished. Reached: 5
+2025-05-27 03:36:51,360 - PLCSim_DualLift - INFO - [Lift2] Elevator position update complete. Position: 5
+2025-05-27 03:36:51,361 - PLCSim_DualLift - INFO - [Lift2] Cycle 102: Reached origin 5. Transitioning to 150.
+2025-05-27 03:36:51,361 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 102 -> 150
+2025-05-27 03:36:52,570 - PLCSim_DualLift - INFO - [Lift2] Fork movement finished. Reached: 1
+2025-05-27 03:36:52,571 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 150 -> 155
+2025-05-27 03:36:52,773 - PLCSim_DualLift - INFO - [Lift2] Cycle 155: All conditions met for pickup. Location: 5, Expected Origin: 5, Fork Side: 1
+2025-05-27 03:36:52,774 - PLCSim_DualLift - INFO - [Lift2] Starting delayed tray pickup process at position 5
+2025-05-27 03:36:53,781 - PLCSim_DualLift - INFO - [Lift2] Standalone tray pickup completed (positie klopt)
+2025-05-27 03:36:53,781 - PLCSim_DualLift - INFO - [Lift2] Tray status update complete. Has tray: True
+2025-05-27 03:36:53,782 - PLCSim_DualLift - INFO - [Lift2] Cycle 155: Tray already present of pickup pending, skipping pickup.
+2025-05-27 03:36:53,783 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 155 -> 160
+2025-05-27 03:36:54,992 - PLCSim_DualLift - INFO - [Lift2] Fork movement finished. Reached: 0
+2025-05-27 03:36:54,993 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 160 -> 190
+2025-05-27 03:36:55,197 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 190 -> 195
+2025-05-27 03:37:02,860 - PLCSim_DualLift - INFO - [Lift2] FullAssignment ack for dest received. Proceeding to move to destination (cycle 410).
+2025-05-27 03:37:02,861 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 195 -> 410
+2025-05-27 03:37:07,492 - PLCSim_DualLift - INFO - [Lift2] Engine movement finished. Reached: 90
+2025-05-27 03:37:07,493 - PLCSim_DualLift - INFO - [Lift2] Elevator position update complete. Position: 90
+2025-05-27 03:37:07,493 - PLCSim_DualLift - INFO - [Lift2] Cycle transition: 410 -> 420
+2025-05-27 03:37:10,118 - PLCSim_DualLift - INFO - [Lift1] Received new job in Cycle 10: Type=1, Origin=-2, Dest=95
+2025-05-27 03:37:10,118 - PLCSim_DualLift - INFO - [Lift1] Task 1 starting. xTrayInElevator is already False, no action needed.
+2025-05-27 03:37:10,119 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 10 -> 25
+2025-05-27 03:37:10,321 - PLCSim_DualLift - INFO - [Lift1] Cycle 25: Routing TaskType 1. Origin: -2, Dest: 95
+2025-05-27 03:37:10,321 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 25 -> 90
+2025-05-27 03:37:10,524 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 90 -> 95
+2025-05-27 03:37:11,332 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 95 -> 100
+2025-05-27 03:37:11,535 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 100 -> 102
+2025-05-27 03:37:11,737 - PLCSim_DualLift - INFO - [Lift1] Cycle 102: Reached origin -2. Transitioning to 150.
+2025-05-27 03:37:11,738 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 102 -> 150
+2025-05-27 03:37:12,946 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 1
+2025-05-27 03:37:12,947 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 150 -> 155
+2025-05-27 03:37:13,150 - PLCSim_DualLift - INFO - [Lift1] Cycle 155: All conditions met for pickup. Location: -2, Expected Origin: -2, Fork Side: 1
+2025-05-27 03:37:13,150 - PLCSim_DualLift - INFO - [Lift1] Starting delayed tray pickup process at position -2
+2025-05-27 03:37:14,157 - PLCSim_DualLift - INFO - [Lift1] Standalone tray pickup completed (positie klopt)
+2025-05-27 03:37:14,158 - PLCSim_DualLift - INFO - [Lift1] Tray status update complete. Has tray: True
+2025-05-27 03:37:14,160 - PLCSim_DualLift - INFO - [Lift1] Cycle 155: Tray already present of pickup pending, skipping pickup.
+2025-05-27 03:37:14,161 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 155 -> 160
+2025-05-27 03:37:15,371 - PLCSim_DualLift - INFO - [Lift1] Fork movement finished. Reached: 0
+2025-05-27 03:37:15,372 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 160 -> 190
+2025-05-27 03:37:15,574 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 190 -> 195
+2025-05-27 03:37:18,195 - PLCSim_DualLift - INFO - [Lift1] FullAssignment ack for dest received. Proceeding to move to destination (cycle 410).
+2025-05-27 03:37:18,195 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 195 -> 410
+2025-05-27 03:37:23,432 - PLCSim_DualLift - INFO - [Lift1] Engine movement finished. Reached: 95
+2025-05-27 03:37:23,433 - PLCSim_DualLift - INFO - [Lift1] Elevator position update complete. Position: 95
+2025-05-27 03:37:23,434 - PLCSim_DualLift - INFO - [Lift1] Cycle transition: 410 -> 420
