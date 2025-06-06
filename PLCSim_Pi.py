@@ -583,7 +583,7 @@ class PLCSimulator_DualLift:
             await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
             next_cycle = 10
         elif current_cycle == 10:
-            step_comment = "Ready for EcoSystem job"
+            step_comment = "Station is Ready"
             if state["iErrorCode"] == 0:
                 await self._update_opc_value(lift_id, "iStationStatus", STATUS_OK)
             next_cycle = 20
